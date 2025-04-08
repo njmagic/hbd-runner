@@ -54,32 +54,43 @@
         /* Mobile leaderboard submit button - only shows on game over */
         #submitLeaderboardBtn {
             display: none; /* Hidden by default, shown conditionally */
-            position: absolute;
-            top: 50%; /* Centered vertically */
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: fixed !important; /* Use fixed positioning to ensure it stays on screen */
+            top: 35% !important; /* Position higher on screen */
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
             width: 280px; 
-            height: 70px; 
+            height: 80px; /* Slightly taller for better visibility */
             text-align: center;
-            line-height: 70px;
+            line-height: 80px;
             font-family: 'Courier New', monospace;
             color: white;
-            font-size: 18px;
+            font-size: 20px; /* Slightly larger font */
             font-weight: bold;
-            background-color: rgba(40, 10, 15, 0.95); /* Dark red that fits noir aesthetic */
-            border: 2px solid rgba(180, 120, 120, 0.9); /* Reddish border */
+            background-color: rgba(180, 30, 30, 0.95); /* Brighter red for better visibility */
+            border: 3px solid rgba(255, 200, 200, 0.9); /* Brighter border */
             border-radius: 8px;
-            z-index: 10001; /* Above other controls */
-            pointer-events: auto;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+            z-index: 20000 !important; /* Ensure it's above everything else */
+            pointer-events: auto !important;
+            box-shadow: 0 0 25px rgba(255, 50, 50, 0.8); /* Brighter glow */
             text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.8);
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 1px;
+            opacity: 1 !important;
+            visibility: visible !important;
+            animation: pulse 1.5s infinite alternate; /* Add pulsing animation for attention */
         }
+        
+        /* Pulse animation for the submit score button */
+        @keyframes pulse {
+            from { transform: translate(-50%, -50%) scale(1); }
+            to { transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
         #submitLeaderboardBtn:active {
-            background-color: rgba(60, 20, 25, 0.95);
-            transform: translate(-50%, -48%);
+            background-color: rgba(200, 50, 50, 0.95);
+            transform: translate(-50%, -50%) scale(0.95) !important;
+            animation: none; /* Stop pulsing when pressed */
         }
         .control-area {
             position: absolute;
@@ -480,10 +491,20 @@
         
         // Function to monitor game state and ensure restart button shows correctly
         function setupRestartButtonMonitor() {
-            console.log("Setting up enhanced restart button monitor v3");
+            console.log("Setting up enhanced button monitor v4");
             
             let lastState = "";
             let restartButtonShowAttempts = 0;
+            let leaderboardButtonShowAttempts = 0;
+            
+            // Check if the buttons initially exist
+            setTimeout(function() {
+                // Create buttons if they don't exist
+                if (!document.getElementById('submitLeaderboardBtn')) {
+                    createLeaderboardButton();
+                }
+                updateLeaderboardButtonVisibility();
+            }, 500);
             
             // Monitor very frequently for maximum responsiveness
             setInterval(function() {
@@ -496,6 +517,7 @@
                         console.log(`Game state changed from "${lastState}" to "${currentState}"`);
                         lastState = currentState;
                         restartButtonShowAttempts = 0; // Reset counter on state change
+                        leaderboardButtonShowAttempts = 0;
                         
                         // Add aggressive event listeners whenever we enter an end-game state
                         const isEndGameState = currentState === "gameOver" || 
@@ -508,9 +530,14 @@
                                 addAggressiveRestartButtonListeners();
                                 window.forceShowRestartButton(); // Force show button
                                 
-                                // On game over, check if we should show the leaderboard submit button
                                 if (currentState === "gameOver") {
+                                    addLeaderboardButtonListeners();
                                     updateLeaderboardButtonVisibility();
+                                    
+                                    // Check again after a delay to ensure it appears
+                                    setTimeout(updateLeaderboardButtonVisibility, 200);
+                                    setTimeout(updateLeaderboardButtonVisibility, 500);
+                                    setTimeout(updateLeaderboardButtonVisibility, 1000);
                                 }
                             }, 100);
                         }
@@ -544,11 +571,6 @@
                                 console.log(`[Attempt ${restartButtonShowAttempts}] Refreshing restart button`);
                                 addAggressiveRestartButtonListeners();
                             }
-                            
-                            // Also check leaderboard button visibility periodically
-                            if (currentState === "gameOver" && restartButtonShowAttempts % 5 === 0) {
-                                updateLeaderboardButtonVisibility();
-                            }
                         } else {
                             // If button doesn't exist, check if we should create it
                             if (restartButtonShowAttempts % 20 === 0) {
@@ -574,8 +596,33 @@
                                 }
                             }
                         }
+                        
+                        // Also check/update leaderboard button on game over state
+                        if (currentState === "gameOver") {
+                            leaderboardButtonShowAttempts++;
+                            
+                            // Update leaderboard button visibility every attempt
+                            updateLeaderboardButtonVisibility();
+                            
+                            // Extra logging for debugging
+                            if (leaderboardButtonShowAttempts % 10 === 0) {
+                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                                if (leaderboardBtn) {
+                                    console.log(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button status:`, {
+                                        display: leaderboardBtn.style.display,
+                                        visibility: leaderboardBtn.style.visibility,
+                                        opacity: leaderboardBtn.style.opacity,
+                                        zIndex: leaderboardBtn.style.zIndex,
+                                        scoreSubmitted: window.leaderboardScoreSubmitted
+                                    });
+                                } else {
+                                    console.error(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button not found, recreating...`);
+                                    createLeaderboardButton();
+                                }
+                            }
+                        }
                     } else {
-                        // Hide button when not in end game state
+                        // Hide buttons when not in end game state
                         const restartButton = document.getElementById('restartButton');
                         if (restartButton) {
                             restartButton.style.display = 'none';
@@ -588,7 +635,7 @@
                         }
                     }
                 } catch (e) {
-                    console.error("Error in restart button monitor:", e);
+                    console.error("Error in button monitor:", e);
                 }
             }, 50); // Check every 50ms for maximum responsiveness
         }
@@ -599,6 +646,8 @@
                 const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
                 if (!leaderboardBtn) {
                     console.error("Leaderboard submit button not found!");
+                    // Create the button if it doesn't exist
+                    createLeaderboardButton();
                     return;
                 }
                 
@@ -606,18 +655,131 @@
                 if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
                     console.log("Showing leaderboard submit button for mobile");
                     
-                    // Position it appropriately - near the end of the screen, 
-                    // but not overlapping with the restart button
-                    leaderboardBtn.style.display = 'block';
-                    leaderboardBtn.style.top = '40%'; // Position above the restart button
-                    leaderboardBtn.style.zIndex = '10001';
-                    leaderboardBtn.style.opacity = '1';
-                    leaderboardBtn.style.visibility = 'visible';
+                    // Force display and positioning properties with !important flags
+                    leaderboardBtn.style.cssText = `
+                        display: block !important;
+                        position: fixed !important;
+                        top: 35% !important; 
+                        left: 50% !important;
+                        transform: translate(-50%, -50%) !important;
+                        z-index: 20000 !important;
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                        pointer-events: auto !important;
+                    `;
+                    
+                    // Add class to ensure it gets proper styling
+                    if (!leaderboardBtn.className.includes("control-area")) {
+                        leaderboardBtn.className += " control-area";
+                    }
+                    
+                    // Debugging info
+                    setTimeout(() => {
+                        const computedStyle = window.getComputedStyle(leaderboardBtn);
+                        console.log("Submit button computed styles:", {
+                            display: computedStyle.display,
+                            position: computedStyle.position,
+                            zIndex: computedStyle.zIndex,
+                            visibility: computedStyle.visibility,
+                            opacity: computedStyle.opacity,
+                            top: computedStyle.top,
+                            left: computedStyle.left
+                        });
+                    }, 100);
                 } else {
                     leaderboardBtn.style.display = 'none';
                 }
             } catch (e) {
                 console.error("Error updating leaderboard button visibility:", e);
+            }
+        }
+        
+        // Function to create the leaderboard button if it doesn't exist
+        function createLeaderboardButton() {
+            try {
+                console.log("Attempting to create missing leaderboard button");
+                const mobileControls = document.getElementById('mobileControls');
+                if (!mobileControls) {
+                    console.error("Mobile controls container not found!");
+                    return;
+                }
+                
+                // Check if it already exists (double-check)
+                if (document.getElementById('submitLeaderboardBtn')) {
+                    console.log("Button already exists, no need to create");
+                    return;
+                }
+                
+                // Create new button
+                const newButton = document.createElement('div');
+                newButton.id = 'submitLeaderboardBtn';
+                newButton.className = 'control-area';
+                newButton.innerHTML = 'SUBMIT SCORE';
+                
+                // Set inline styles to ensure visibility
+                newButton.style.cssText = `
+                    display: block !important;
+                    position: fixed !important;
+                    top: 35% !important; 
+                    left: 50% !important;
+                    transform: translate(-50%, -50%) !important;
+                    width: 280px;
+                    height: 80px;
+                    text-align: center;
+                    line-height: 80px;
+                    font-family: 'Courier New', monospace;
+                    color: white;
+                    font-size: 20px;
+                    font-weight: bold;
+                    background-color: rgba(180, 30, 30, 0.95);
+                    border: 3px solid rgba(255, 200, 200, 0.9);
+                    border-radius: 8px;
+                    z-index: 20000 !important;
+                    pointer-events: auto !important;
+                    box-shadow: 0 0 25px rgba(255, 50, 50, 0.8);
+                    text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.8);
+                    cursor: pointer;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                `;
+                
+                // Add event handlers
+                newButton.onclick = function(e) {
+                    console.log('Leaderboard button clicked');
+                    submitToLeaderboard();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+                
+                newButton.ontouchstart = function(e) {
+                    console.log('Leaderboard button touched');
+                    submitToLeaderboard();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+                
+                // Append to mobile controls
+                mobileControls.appendChild(newButton);
+                console.log("Created new leaderboard button and added to DOM");
+                
+                // Set up event listeners
+                addLeaderboardButtonListeners();
+                
+                // Check if it was actually added
+                setTimeout(() => {
+                    const addedButton = document.getElementById('submitLeaderboardBtn');
+                    if (addedButton) {
+                        console.log("Confirmed button was successfully added to DOM");
+                    } else {
+                        console.error("Button was not successfully added to DOM!");
+                    }
+                }, 100);
+            } catch (e) {
+                console.error("Error creating leaderboard button:", e);
             }
         }
         
@@ -777,7 +939,65 @@
             }
         };
         
-        // Add patch for game loop to ensure restart button is shown
+        // Global helper function to force show leaderboard button
+        window.forceShowLeaderboardButton = function() {
+            console.log("Force showing leaderboard button");
+            let leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+            
+            // Create button if it doesn't exist
+            if (!leaderboardBtn) {
+                console.log("Button not found, creating it first");
+                createLeaderboardButton();
+                leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                if (!leaderboardBtn) {
+                    console.error("Failed to create leaderboard button!");
+                    return false;
+                }
+            }
+            
+            // Force all essential display properties with inline styles
+            leaderboardBtn.style.cssText = `
+                display: block !important;
+                position: fixed !important;
+                top: 35% !important; 
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 280px;
+                height: 80px;
+                text-align: center;
+                line-height: 80px;
+                font-family: 'Courier New', monospace;
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                background-color: rgba(180, 30, 30, 0.95);
+                border: 3px solid rgba(255, 200, 200, 0.9);
+                border-radius: 8px;
+                z-index: 20000 !important;
+                pointer-events: auto !important;
+                box-shadow: 0 0 25px rgba(255, 50, 50, 0.8);
+                text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.8);
+                cursor: pointer;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+            
+            // Ensure it has proper class
+            if (!leaderboardBtn.classList.contains('control-area')) {
+                leaderboardBtn.classList.add('control-area');
+            }
+            
+            console.log("Leaderboard button should now be visible");
+            
+            // Call to add event listeners
+            addLeaderboardButtonListeners();
+            
+            return true;
+        };
+        
+        // Add patch for game loop to ensure buttons are shown
         document.addEventListener('DOMContentLoaded', function() {
             // Wait for p5.js to initialize
             setTimeout(function() {
@@ -800,11 +1020,27 @@
                             if (restartButton && restartButton.style.display !== 'block') {
                                 window.forceShowRestartButton();
                             }
+                            
+                            // Make sure leaderboard button is visible in game over state (when score not submitted)
+                            if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
+                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                                if (!leaderboardBtn || leaderboardBtn.style.display !== 'block') {
+                                    window.forceShowLeaderboardButton();
+                                }
+                            }
                         }
                     };
                     
-                    console.log("Successfully patched draw function to monitor game state");
+                    console.log("Successfully patched draw function to monitor game state and button visibility");
                 }
+                
+                // Also check initially after a delay
+                setTimeout(function() {
+                    if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
+                        updateLeaderboardButtonVisibility();
+                        window.forceShowLeaderboardButton();
+                    }
+                }, 2000);
             }, 1000); // Wait for game to initialize
         });
         
@@ -964,12 +1200,13 @@
         </div>
         <!-- Leaderboard submission button for mobile -->
         <div id="submitLeaderboardBtn"
-             onclick="submitToLeaderboard(); return false;"
+             onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
              onmousedown="event.preventDefault(); event.stopPropagation(); return false;"
              onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
              ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
              ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchmove="event.preventDefault(); event.stopPropagation(); return false;">
+             ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
+             style="font-weight: bold; letter-spacing: 1px; text-transform: uppercase; display: none; position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%); z-index: 20000; width: 280px; height: 80px; line-height: 80px; background-color: rgba(180, 30, 30, 0.95); border: 3px solid rgba(255, 200, 200, 0.9);">
              SUBMIT SCORE
         </div>
     </div>
