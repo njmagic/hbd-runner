@@ -2937,70 +2937,23 @@ function touchStarted() {
   touchStartTime = millis();
   touchStartY = touchY;
   
-  // Handle start button on title screen
+  // Handle start button on title screen - SIMPLIFIED APPROACH
   if (showTitleScreen) {
     console.log("Touch detected on title screen");
     
-    // Get start button dimensions
+    // Get the start button
     const startBtn = document.getElementById('startButton');
     if (!startBtn) {
       console.error("Start button element not found");
       return false;
     }
     
-    // Make sure it's visible
+    // Make sure the start button is visible, but let its own handler manage the click/touch
     startBtn.style.display = 'block';
     
-    // Get the button's position and dimensions
-    const startBtnRect = startBtn.getBoundingClientRect();
-    
-    // Check if the touch is within the start button's boundaries
-    if (touchX >= startBtnRect.left && touchX <= startBtnRect.right &&
-        touchY >= startBtnRect.top && touchY <= startBtnRect.bottom) {
-      
-      console.log("Start button touched - starting game");
-      
-      // Start the game (same logic as pressing space)
-      showTitleScreen = false;
-      gameState = "playing";
-      
-      // Reset game elements (same as in keyPressed function)
-      score = 0;
-      enemiesKilled = 0;
-      enemies = [];
-      obstacles = [];
-      projectiles = [];
-      shootEffects = [];
-      powerUps = [];
-      slowMotion = false;
-      slowMotionTimer = 0;
-      scrollSpeed = normalScrollSpeed;
-      screenFlash = 0;
-      
-      // Reset player position
-      player.y = groundY;
-      player.vy = 0;
-      player.state = "running";
-      
-      // Reset offsets
-      groundOffset = 0;
-      backgroundOffset = 0;
-      midgroundOffset = 0;
-      foregroundOffset = 0;
-      
-      lastEnemySpawnTime = 0;
-      forceEnemySpawnCounter = 0;
-      lastPowerUpTime = 0;
-      
-      // Hide the start button
-      startBtn.style.display = 'none';
-      
-      console.log("Game started");
-    } else {
-      console.log("Touch outside start button - ignoring");
-    }
-    
-    return false; // Prevent default
+    // DO NOT directly handle game start here - the button has its own event handlers
+    // Return false to prevent any default behavior
+    return false; 
   }
   
   // Only process gameplay touches when in the playing state
