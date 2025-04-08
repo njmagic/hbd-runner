@@ -5042,15 +5042,32 @@ function setupMobileControls() {
     if (mobileControls) {
       mobileControls.style.display = 'block';
       controlsVisible = true;
+      
+      // Add click listeners directly to the controls
+      const leftControl = document.getElementById('leftControl');
+      const rightControl = document.getElementById('rightControl');
+      
+      if (leftControl) {
+        leftControl.addEventListener('click', function() {
+          console.log("Left control clicked via event listener");
+          if (typeof window.mobileJump === 'function') {
+            window.mobileJump();
+          }
+        });
+      }
+      
+      if (rightControl) {
+        rightControl.addEventListener('click', function() {
+          console.log("Right control clicked via event listener");
+          if (typeof window.mobileShoot === 'function') {
+            window.mobileShoot();
+          }
+        });
+      }
     }
     
-    // Expose player and game state to window for direct access from HTML
-    window.player = player;
-    window.gameState = gameState;
-    window.groundY = groundY;
-    window.jumpStrength = jumpStrength;
-    window.projectiles = projectiles;
-    window.shootEffects = shootEffects;
+    // Expose game variables to window for direct access from HTML
+    exposeGameFunctions();
     
     console.log("Mobile controls enabled and game variables exposed to window");
   } else {
@@ -5060,3 +5077,67 @@ function setupMobileControls() {
 
 // Call mobile setup after a short delay to ensure the DOM is ready
 setTimeout(setupMobileControls, 1000);
+
+// Expose key functions to window object for direct access from HTML
+function exposeGameFunctions() {
+  console.log("Exposing game functions to global scope");
+  
+  // Directly expose the critical functions
+  window.mobileShoot = function() {
+    console.log("GLOBAL mobileShoot called");
+    // Create a simple projectile regardless of power-ups
+    if (player && projectiles) {
+      let projectile = {
+        x: player.x + 32,
+        y: player.y - 16,
+        vx: 12,
+        vy: 0,
+        isRed: true
+      };
+      
+      projectiles.push(projectile);
+      console.log("Projectile added:", projectiles.length);
+      
+      // Create visual effects
+      for (let i = 0; i < 5; i++) {
+        let angle = random(-PI/4, PI/4);
+        let speed = random(1, 4);
+        let effect = {
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          size: random(2, 5),
+          alpha: 255,
+          life: 8,
+          isRed: true
+        };
+        shootEffects.push(effect);
+      }
+    }
+  };
+  
+  window.mobileJump = function() {
+    console.log("GLOBAL mobileJump called");
+    if (player && player.y >= groundY - 1) {
+      player.vy = jumpStrength;
+      player.state = "jumping";
+      console.log("Jump triggered, vy =", player.vy);
+    }
+  };
+  
+  window.mobileDuck = function() {
+    console.log("GLOBAL mobileDuck called");
+    if (player) {
+      player.state = "ducking";
+    }
+  };
+  
+  window.gameState = gameState;
+  window.player = player;
+  window.groundY = groundY;
+  window.jumpStrength = jumpStrength;
+}
+
+// Call function to expose game functions
+setTimeout(exposeGameFunctions, 500);

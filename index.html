@@ -54,18 +54,23 @@
         .control-area {
             position: absolute;
             pointer-events: auto; /* These areas catch touch events */
-            background-color: rgba(255, 255, 255, 0.3);
-            border: 3px solid rgba(255, 255, 255, 0.5);
-            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border: 4px solid rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            transition: all 0.1s ease-in-out;
+        }
+        .control-area:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
         }
         #leftControl {
-            left: 10px;
-            bottom: 40px; /* Move up from bottom for better visibility */
-            width: 40%;
-            height: 150px;
+            left: 20px;
+            bottom: 50px; /* Move up from bottom for better visibility */
+            width: 45%;
+            height: 170px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -74,33 +79,34 @@
             content: "TAP: JUMP\AHOLD: DUCK";
             white-space: pre;
             color: white;
-            opacity: 0.9;
+            opacity: 1.0;
             font-family: 'Courier New', monospace;
-            font-size: 18px;
+            font-size: 20px;
+            font-weight: bold;
             text-align: center;
             pointer-events: none;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
         }
         #rightControl {
-            right: 10px;
-            bottom: 40px; /* Move up from bottom for better visibility */
-            width: 120px;
-            height: 120px;
+            right: 20px;
+            bottom: 50px; /* Move up from bottom for better visibility */
+            width: 140px;
+            height: 140px;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: rgba(255, 50, 50, 0.5);
-            border: 4px solid rgba(255, 100, 100, 0.7);
+            background-color: rgba(255, 50, 50, 0.6);
+            border: 5px solid rgba(255, 100, 100, 0.8);
         }
         #rightControl::after {
             content: "SHOOT";
             color: white;
             opacity: 1.0;
             font-family: 'Courier New', monospace;
-            font-size: 22px;
+            font-size: 26px;
             font-weight: bold;
             pointer-events: none;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
         }
         #pauseButton {
             right: 10px;
@@ -170,6 +176,49 @@
     <script src="sketch.js"></script>
     <!-- Orientation change handler for mobile -->
     <script>
+        // Handle long press for ducking
+        let pressTimer;
+        let isDucking = false;
+        
+        document.getElementById('leftControl').addEventListener('mousedown', startPressTimer);
+        document.getElementById('leftControl').addEventListener('touchstart', startPressTimer);
+        document.getElementById('leftControl').addEventListener('mouseup', endPressTimer);
+        document.getElementById('leftControl').addEventListener('touchend', endPressTimer);
+        document.getElementById('leftControl').addEventListener('mouseleave', endPressTimer);
+        
+        function startPressTimer(e) {
+            console.log("Press started on left control");
+            e.preventDefault();
+            
+            // First immediate jump
+            if (typeof window.mobileJump === 'function') {
+                window.mobileJump();
+            }
+            
+            // Then start timer for duck if held
+            pressTimer = setTimeout(function() {
+                console.log("Long press detected - ducking");
+                isDucking = true;
+                if (typeof window.mobileDuck === 'function') {
+                    window.mobileDuck();
+                }
+            }, 300);
+        }
+        
+        function endPressTimer(e) {
+            console.log("Press ended on left control");
+            clearTimeout(pressTimer);
+            
+            // End ducking if it was active
+            if (isDucking) {
+                isDucking = false;
+                if (window.player && window.player.state === "ducking") {
+                    window.player.state = "running";
+                    console.log("Ducking ended, returning to running state");
+                }
+            }
+        }
+        
         // Listen for orientation changes
         window.addEventListener('orientationchange', function() {
             // Give the browser time to complete the rotation
@@ -199,168 +248,68 @@
             lastTapTime = currentTime;
         }, { passive: false });
 
-        // Direct touch handlers for mobile controls
-        function handleLeftControlTouch(event) {
-            console.log("LEFT CONTROL TOUCHED DIRECTLY");
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Visual feedback
-            event.target.style.backgroundColor = "rgba(255, 255, 255, 0.4)";
-            event.target.style.transform = "scale(0.95)";
-            
-            // Call the mobile jump function directly
-            if (typeof mobileJump === 'function') {
-                console.log("Calling mobileJump...");
-                mobileJump();
-                window.isJumping = true;
-                window.isDucking = false;
-                
-                // Start timer for duck detection
-                window.touchStartTime = new Date().getTime();
-                
-                // Check for long press
-                window.leftTouchTimer = setTimeout(function() {
-                    console.log("Long press detected on left control");
-                    if (typeof mobileDuck === 'function') {
-                        mobileDuck();
-                        window.isDucking = true;
-                        window.isJumping = false;
-                    }
-                }, 300);
+        // Simple functions for mobile controls
+        function togglePause() {
+            console.log("Toggle pause clicked");
+            if (window.gameState === "playing") {
+                window.gameState = "paused";
+                console.log("Game paused via click");
+            } else if (window.gameState === "paused") {
+                window.gameState = "playing";
+                console.log("Game resumed via click");
             }
-            return false;
         }
         
-        function handleLeftControlEnd(event) {
-            console.log("LEFT CONTROL TOUCH ENDED");
-            event.preventDefault();
-            event.stopPropagation();
+        function startGame() {
+            console.log("Start game clicked");
+            window.showTitleScreen = false;
+            window.gameState = "playing";
             
-            // Clear the timer
-            if (window.leftTouchTimer) {
-                clearTimeout(window.leftTouchTimer);
-            }
+            // Reset game elements
+            window.score = 0;
+            window.enemiesKilled = 0;
+            window.enemies = [];
+            window.obstacles = [];
+            window.projectiles = [];
+            window.shootEffects = [];
+            window.powerUps = [];
+            window.slowMotion = false;
+            window.slowMotionTimer = 0;
+            window.scrollSpeed = window.normalScrollSpeed;
+            window.screenFlash = 0;
             
-            // Reset styling
-            event.target.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
-            event.target.style.transform = "scale(1)";
-            
-            // End ducking if active
-            if (window.isDucking && window.player && window.player.state === "ducking") {
-                console.log("Ending duck state");
-                window.isDucking = false;
+            // Reset player position
+            if (window.player) {
+                window.player.y = window.groundY;
+                window.player.vy = 0;
                 window.player.state = "running";
             }
             
-            return false;
-        }
-        
-        function handleShootTouch(event) {
-            console.log("SHOOT BUTTON TOUCHED DIRECTLY");
-            event.preventDefault();
-            event.stopPropagation();
+            // Reset offsets
+            window.groundOffset = 0;
+            window.backgroundOffset = 0;
+            window.midgroundOffset = 0;
+            window.foregroundOffset = 0;
             
-            // Visual feedback
-            event.target.style.backgroundColor = "rgba(255, 50, 50, 0.7)";
-            event.target.style.transform = "scale(0.95)";
+            window.lastEnemySpawnTime = 0;
+            window.forceEnemySpawnCounter = 0;
+            window.lastPowerUpTime = 0;
             
-            // Call the mobile shoot function directly
-            if (typeof mobileShoot === 'function') {
-                console.log("Calling mobileShoot...");
-                mobileShoot();
-            }
-            return false;
-        }
-        
-        function handleShootEnd(event) {
-            console.log("SHOOT BUTTON TOUCH ENDED");
-            event.preventDefault();
-            event.stopPropagation();
+            // Hide the start button
+            document.getElementById('startButton').style.display = 'none';
             
-            // Reset styling
-            event.target.style.backgroundColor = "rgba(255, 80, 80, 0.35)";
-            event.target.style.transform = "scale(1)";
-            
-            return false;
-        }
-        
-        function handlePauseTouch(event) {
-            console.log("PAUSE BUTTON TOUCHED");
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Toggle between playing and paused
-            if (window.gameState === "playing") {
-                window.gameState = "paused";
-                console.log("Game paused");
-            } else if (window.gameState === "paused") {
-                window.gameState = "playing";
-                console.log("Game resumed");
-            }
-            
-            return false;
-        }
-        
-        function handleStartTouch(event) {
-            console.log("START BUTTON TOUCHED");
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (window.showTitleScreen) {
-                window.showTitleScreen = false;
-                window.gameState = "playing";
-                
-                // Reset game elements
-                window.score = 0;
-                window.enemiesKilled = 0;
-                window.enemies = [];
-                window.obstacles = [];
-                window.projectiles = [];
-                window.shootEffects = [];
-                window.powerUps = [];
-                window.slowMotion = false;
-                window.slowMotionTimer = 0;
-                window.scrollSpeed = window.normalScrollSpeed;
-                window.screenFlash = 0;
-                
-                // Reset player position
-                if (window.player) {
-                    window.player.y = window.groundY;
-                    window.player.vy = 0;
-                    window.player.state = "running";
-                }
-                
-                // Reset offsets
-                window.groundOffset = 0;
-                window.backgroundOffset = 0;
-                window.midgroundOffset = 0;
-                window.foregroundOffset = 0;
-                
-                window.lastEnemySpawnTime = 0;
-                window.forceEnemySpawnCounter = 0;
-                window.lastPowerUpTime = 0;
-                
-                // Hide the start button
-                event.target.style.display = 'none';
-                
-                console.log("Game started from touch");
-            }
-            
-            return false;
+            console.log("Game started via click");
         }
         
         // Initialize once page is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOMContentLoaded - Setting up direct mobile controls");
-            
-            // Expose game variables to window for direct access
-            window.isJumping = false;
-            window.isDucking = false;
+            console.log("DOMContentLoaded - Setting up mobile detection");
             
             // Make mobile controls visible on mobile devices
             if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                (window.matchMedia && window.matchMedia("(max-width: 768px)").matches)) {
+                (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                ('ontouchstart' in window) ||
+                (navigator.maxTouchPoints > 0)) {
                 console.log("Mobile device detected via DOMContentLoaded");
                 document.getElementById('mobileControls').style.display = 'block';
             }
@@ -372,10 +321,10 @@
     
     <!-- Mobile touch controls overlay -->
     <div id="mobileControls">
-        <div id="leftControl" class="control-area" ontouchstart="handleLeftControlTouch(event)" ontouchend="handleLeftControlEnd(event)"></div>
-        <div id="rightControl" class="control-area" ontouchstart="handleShootTouch(event)" ontouchend="handleShootEnd(event)"></div>
-        <div id="pauseButton" class="control-area" ontouchstart="handlePauseTouch(event)">II</div>
-        <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" ontouchstart="handleStartTouch(event)">TAP TO START</div>
+        <div id="leftControl" class="control-area" onclick="mobileJump()" onmousedown="mobileJump()" ontouchstart="mobileJump()"></div>
+        <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
+        <div id="pauseButton" class="control-area" onclick="togglePause()" onmousedown="togglePause()" ontouchstart="togglePause()">II</div>
+        <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
     </div>
     
     <!-- Leaderboard form -->
