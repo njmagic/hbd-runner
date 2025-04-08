@@ -104,6 +104,9 @@ function setup() {
     console.log("Mobile device detected, enabling touch controls");
     document.getElementById('mobileControls').style.display = 'block';
     controlsVisible = true;
+    
+    // Ensure proper canvas sizing on mobile
+    windowResized();
   }
   
   // Initialize Supabase client
@@ -4808,4 +4811,46 @@ async function submitScoreToLeaderboard(name, email, score) {
     submitButton.innerHTML = "SUBMIT";
     submitButton.disabled = false;
   }
+}
+
+// Handle window resizing for responsive canvas
+function windowResized() {
+  // Get the parent container dimensions (window or containing div)
+  let parentWidth = windowWidth;
+  let parentHeight = windowHeight;
+  
+  // Calculate the aspect ratio of our game (800x400 = 2:1)
+  let gameAspectRatio = 800 / 400;
+  
+  // Determine the best fit size while maintaining aspect ratio
+  let newWidth, newHeight;
+  
+  if (parentWidth / parentHeight > gameAspectRatio) {
+    // Window is wider than our game ratio, so height is the constraint
+    newHeight = parentHeight;
+    newWidth = newHeight * gameAspectRatio;
+  } else {
+    // Window is taller than our game ratio, so width is the constraint
+    newWidth = parentWidth;
+    newHeight = newWidth / gameAspectRatio;
+  }
+  
+  // Apply a safety margin to prevent edge bleeding
+  newWidth *= 0.95;
+  newHeight *= 0.95;
+  
+  // Resize the canvas
+  resizeCanvas(800, 400); // Keep the internal resolution the same
+  
+  // Scale the canvas element itself via CSS
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    // Log for debugging
+    console.log(`Resizing canvas to: ${newWidth}px x ${newHeight}px`);
+    canvas.style.width = `${newWidth}px`;
+    canvas.style.height = `${newHeight}px`;
+  }
+  
+  // Don't actually change the drawing surface, just its displayed size
+  return false; // Prevent default p5.js windowResized behavior
 }

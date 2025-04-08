@@ -22,8 +22,11 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            width: auto !important; /* Override any inline width */
+            height: auto !important; /* Override any inline height */
             max-width: 100%;
             max-height: 100vh;
+            object-fit: contain;
         }
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
@@ -121,6 +124,19 @@
     <!-- Add Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="sketch.js"></script>
+    <!-- Orientation change handler for mobile -->
+    <script>
+        // Listen for orientation changes
+        window.addEventListener('orientationchange', function() {
+            // Give the browser time to complete the rotation
+            setTimeout(function() {
+                // Resize the canvas
+                if (typeof windowResized === 'function') {
+                    windowResized();
+                }
+            }, 200);
+        });
+    </script>
 </head>
 <body>
     <!-- Game will be rendered by p5.js -->
