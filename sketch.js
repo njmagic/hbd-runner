@@ -2970,16 +2970,30 @@ function touchStarted() {
       return true;
     }
     
+    // Debug the control elements
+    console.log("Left control:", leftControl, "Right control:", rightControl);
+    
     const leftRect = leftControl.getBoundingClientRect();
     const rightRect = rightControl.getBoundingClientRect();
     
+    // Debug the control element positions
+    console.log("Left rect:", leftRect.left, leftRect.right, leftRect.top, leftRect.bottom);
+    console.log("Right rect:", rightRect.left, rightRect.right, rightRect.top, rightRect.bottom);
+    
+    // Use clientX and clientY directly without canvas offset for overlay elements
     const relativeX = (touches[0] ? touches[0].clientX : mouseX);
     const relativeY = (touches[0] ? touches[0].clientY : mouseY);
+    
+    console.log("Touch position relative to page:", relativeX, relativeY);
     
     // Check if touching the shoot button (right control)
     if (relativeX >= rightRect.left && relativeX <= rightRect.right &&
         relativeY >= rightRect.top && relativeY <= rightRect.bottom) {
-      console.log("Shoot button touched");
+      console.log("Shoot button touched - executing mobileShoot()");
+      
+      // Visual feedback for shoot button press
+      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.5)";
+      
       mobileShoot();
       return false; // Prevent default
     }
@@ -3008,11 +3022,18 @@ function touchEnded() {
   
   console.log("Touch ended - checking states");
   
-  // Get left control element for visual feedback
+  // Get control elements for visual feedback
   const leftControl = document.getElementById('leftControl');
+  const rightControl = document.getElementById('rightControl');
+  
   if (leftControl) {
     // Reset control appearance
     leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+  }
+  
+  if (rightControl) {
+    // Reset shoot button appearance after touch
+    rightControl.style.backgroundColor = "rgba(255, 100, 100, 0.25)";
   }
   
   // Handle ducking state
@@ -4876,6 +4897,16 @@ function windowResized() {
 function mobileShoot() {
   console.log("Mobile shoot function called");
   
+  // Make sure we're in the playing state
+  if (gameState !== "playing") {
+    console.log("Not shooting - game state is not 'playing'");
+    return;
+  }
+  
+  // Debug info
+  console.log("Player state:", player.state);
+  console.log("Active power-ups:", activePowerUps);
+  
   // Direct implementation of shooting logic, exactly as in keyPressed for the 'z' key
   if (activePowerUps.beamShot > 0) {
     // Beam shot
@@ -4891,6 +4922,7 @@ function mobileShoot() {
       maxHits: 3
     };
     projectiles.push(beam);
+    console.log("Beam projectile created:", beam);
     
     // Beam visual effect
     for (let i = 0; i < 8; i++) {
@@ -4918,6 +4950,7 @@ function mobileShoot() {
         isRed: true
       };
       projectiles.push(projectile);
+      console.log("Rapid fire projectile created:", projectile);
     }
     
     // Enhanced shooting effect for rapid fire
@@ -4946,7 +4979,8 @@ function mobileShoot() {
       isRed: true
     };
     projectiles.push(normalProjectile);
-    console.log("Normal projectile pushed:", normalProjectile);
+    console.log("Normal projectile created:", normalProjectile);
+    console.log("Current projectiles array:", projectiles);
     
     // Normal shooting effect
     for (let i = 0; i < 5; i++) {
