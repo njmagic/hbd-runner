@@ -51,6 +51,36 @@
             pointer-events: none; /* Allow clicks to pass through to canvas by default */
             touch-action: none;
         }
+        /* Mobile leaderboard submit button - only shows on game over */
+        #submitLeaderboardBtn {
+            display: none; /* Hidden by default, shown conditionally */
+            position: absolute;
+            top: 50%; /* Centered vertically */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px; 
+            height: 70px; 
+            text-align: center;
+            line-height: 70px;
+            font-family: 'Courier New', monospace;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: rgba(40, 10, 15, 0.95); /* Dark red that fits noir aesthetic */
+            border: 2px solid rgba(180, 120, 120, 0.9); /* Reddish border */
+            border-radius: 8px;
+            z-index: 10001; /* Above other controls */
+            pointer-events: auto;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+            text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #submitLeaderboardBtn:active {
+            background-color: rgba(60, 20, 25, 0.95);
+            transform: translate(-50%, -48%);
+        }
         .control-area {
             position: absolute;
             pointer-events: auto; /* These areas catch touch events */
@@ -448,53 +478,6 @@
             }
         }
         
-        // Initialize mobile controls and button monitoring
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOMContentLoaded - Setting up mobile detection");
-            
-            // Make mobile controls visible on mobile devices
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
-                ('ontouchstart' in window) ||
-                (navigator.maxTouchPoints > 0)) {
-                console.log("Mobile device detected via DOMContentLoaded");
-                document.getElementById('mobileControls').style.display = 'block';
-                
-                // Set up game state monitoring for restart button visibility
-                setupRestartButtonMonitor();
-                
-                // Set up aggressive restart button event monitoring
-                addAggressiveRestartButtonListeners();
-                
-                // Set up periodic event listener refresh
-                setInterval(addAggressiveRestartButtonListeners, 5000);
-                
-                // Check if restart button is working
-                setTimeout(testRestartButton, 2000);
-            }
-            
-            // Add global event listener for restart button
-            document.addEventListener('touchstart', function(e) {
-                const restartButton = document.getElementById('restartButton');
-                if (restartButton && e.target === restartButton) {
-                    console.log("Restart button touched via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    restartGame();
-                }
-            }, {capture: true, passive: false});
-            
-            document.addEventListener('click', function(e) {
-                const restartButton = document.getElementById('restartButton');
-                if (restartButton && e.target === restartButton) {
-                    console.log("Restart button clicked via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    restartGame();
-                }
-            }, {capture: true, passive: false});
-        });
-        
         // Function to monitor game state and ensure restart button shows correctly
         function setupRestartButtonMonitor() {
             console.log("Setting up enhanced restart button monitor v3");
@@ -524,6 +507,11 @@
                             setTimeout(function() {
                                 addAggressiveRestartButtonListeners();
                                 window.forceShowRestartButton(); // Force show button
+                                
+                                // On game over, check if we should show the leaderboard submit button
+                                if (currentState === "gameOver") {
+                                    updateLeaderboardButtonVisibility();
+                                }
                             }, 100);
                         }
                     }
@@ -556,6 +544,11 @@
                                 console.log(`[Attempt ${restartButtonShowAttempts}] Refreshing restart button`);
                                 addAggressiveRestartButtonListeners();
                             }
+                            
+                            // Also check leaderboard button visibility periodically
+                            if (currentState === "gameOver" && restartButtonShowAttempts % 5 === 0) {
+                                updateLeaderboardButtonVisibility();
+                            }
                         } else {
                             // If button doesn't exist, check if we should create it
                             if (restartButtonShowAttempts % 20 === 0) {
@@ -587,12 +580,146 @@
                         if (restartButton) {
                             restartButton.style.display = 'none';
                         }
+                        
+                        // Also hide the leaderboard submit button
+                        const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                        if (leaderboardBtn) {
+                            leaderboardBtn.style.display = 'none';
+                        }
                     }
                 } catch (e) {
                     console.error("Error in restart button monitor:", e);
                 }
             }, 50); // Check every 50ms for maximum responsiveness
         }
+        
+        // Function to update leaderboard submit button visibility based on game state
+        function updateLeaderboardButtonVisibility() {
+            try {
+                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                if (!leaderboardBtn) {
+                    console.error("Leaderboard submit button not found!");
+                    return;
+                }
+                
+                // Only show the button on game over state and when score hasn't been submitted
+                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
+                    console.log("Showing leaderboard submit button for mobile");
+                    
+                    // Position it appropriately - near the end of the screen, 
+                    // but not overlapping with the restart button
+                    leaderboardBtn.style.display = 'block';
+                    leaderboardBtn.style.top = '40%'; // Position above the restart button
+                    leaderboardBtn.style.zIndex = '10001';
+                    leaderboardBtn.style.opacity = '1';
+                    leaderboardBtn.style.visibility = 'visible';
+                } else {
+                    leaderboardBtn.style.display = 'none';
+                }
+            } catch (e) {
+                console.error("Error updating leaderboard button visibility:", e);
+            }
+        }
+        
+        // Function to submit score to leaderboard from mobile
+        function submitToLeaderboard() {
+            console.log("Mobile submit to leaderboard button clicked");
+            try {
+                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
+                    // Call the game's leaderboard form display function
+                    if (typeof window.showLeaderboardForm === 'function') {
+                        window.showLeaderboardForm();
+                        window.gameState = "enteringScore";
+                        
+                        // Hide the leaderboard submit button
+                        const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                        if (leaderboardBtn) {
+                            leaderboardBtn.style.display = 'none';
+                        }
+                        
+                        console.log("Successfully opened leaderboard submission form from mobile");
+                    } else {
+                        console.error("showLeaderboardForm function not found in game!");
+                    }
+                } else {
+                    console.log("Not in correct state for leaderboard submission: gameState=", 
+                               window.gameState, "leaderboardScoreSubmitted=", window.leaderboardScoreSubmitted);
+                }
+            } catch (e) {
+                console.error("Error in submitToLeaderboard:", e);
+            }
+        }
+        
+        // Initialize mobile controls and button monitoring
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOMContentLoaded - Setting up mobile detection");
+            
+            // Make mobile controls visible on mobile devices
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                ('ontouchstart' in window) ||
+                (navigator.maxTouchPoints > 0)) {
+                console.log("Mobile device detected via DOMContentLoaded");
+                document.getElementById('mobileControls').style.display = 'block';
+                
+                // Set up game state monitoring for restart button visibility
+                setupRestartButtonMonitor();
+                
+                // Set up aggressive restart button event monitoring
+                addAggressiveRestartButtonListeners();
+                
+                // Set up aggressive leaderboard button event monitoring
+                addLeaderboardButtonListeners();
+                
+                // Set up periodic event listener refresh
+                setInterval(function() {
+                    addAggressiveRestartButtonListeners();
+                    addLeaderboardButtonListeners();
+                }, 5000);
+                
+                // Check if restart button is working
+                setTimeout(testRestartButton, 2000);
+            }
+            
+            // Add global event listener for restart button
+            document.addEventListener('touchstart', function(e) {
+                const restartButton = document.getElementById('restartButton');
+                if (restartButton && e.target === restartButton) {
+                    console.log("Restart button touched via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    restartGame();
+                }
+                
+                // Check if it's the leaderboard submit button
+                const leaderboardButton = document.getElementById('submitLeaderboardBtn');
+                if (leaderboardButton && e.target === leaderboardButton) {
+                    console.log("Leaderboard submit button touched via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitToLeaderboard();
+                }
+            }, {capture: true, passive: false});
+            
+            document.addEventListener('click', function(e) {
+                const restartButton = document.getElementById('restartButton');
+                if (restartButton && e.target === restartButton) {
+                    console.log("Restart button clicked via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    restartGame();
+                }
+                
+                // Check if it's the leaderboard submit button
+                const leaderboardButton = document.getElementById('submitLeaderboardBtn');
+                if (leaderboardButton && e.target === leaderboardButton) {
+                    console.log("Leaderboard submit button clicked via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitToLeaderboard();
+                }
+            }, {capture: true, passive: false});
+        });
         
         // Function to test that restart button properly triggers game restart
         function testRestartButton() {
@@ -765,6 +892,54 @@
             
             console.log("Aggressive restart button event listeners added");
         }
+        
+        // Function to ensure leaderboard button has proper event listeners
+        function addLeaderboardButtonListeners() {
+            console.log("Adding leaderboard button event listeners");
+            const submitButton = document.getElementById('submitLeaderboardBtn');
+            
+            if (!submitButton) {
+                console.warn("Leaderboard submit button not found for event binding");
+                return;
+            }
+            
+            // Clean slate - remove any existing event listeners
+            try {
+                submitButton.replaceWith(submitButton.cloneNode(true));
+            } catch (e) {
+                console.warn("Could not clone leaderboard button:", e);
+            }
+            
+            // Get fresh reference after clone
+            const freshButton = document.getElementById('submitLeaderboardBtn');
+            
+            // All possible event types that could trigger a button
+            const eventTypes = [
+                'click', 'mousedown', 'mouseup', 'touchstart', 'touchend',
+                'pointerdown', 'pointerup', 'MSPointerDown', 'MSPointerUp'
+            ];
+            
+            // Add listeners for all event types
+            eventTypes.forEach(function(eventType) {
+                // Capturing phase
+                freshButton.addEventListener(eventType, function(e) {
+                    console.log(`Leaderboard button ${eventType} event captured`);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // For start events, call submitToLeaderboard()
+                    if (eventType === 'click' || eventType === 'touchstart' || 
+                        eventType === 'mousedown' || eventType === 'pointerdown' || 
+                        eventType === 'MSPointerDown') {
+                        submitToLeaderboard();
+                    }
+                    
+                    return false;
+                }, { capture: true, passive: false });
+            });
+            
+            console.log("Leaderboard button event listeners added");
+        }
     </script>
 </head>
 <body>
@@ -786,6 +961,16 @@
              class="control-area"
              style="font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
              RETURN TO TITLE
+        </div>
+        <!-- Leaderboard submission button for mobile -->
+        <div id="submitLeaderboardBtn"
+             onclick="submitToLeaderboard(); return false;"
+             onmousedown="event.preventDefault(); event.stopPropagation(); return false;"
+             onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchmove="event.preventDefault(); event.stopPropagation(); return false;">
+             SUBMIT SCORE
         </div>
     </div>
     
