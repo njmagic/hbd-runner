@@ -2951,8 +2951,11 @@ function touchStarted() {
     if (touchX >= rightRect.left && touchX <= rightRect.right &&
         touchY >= rightRect.top && touchY <= rightRect.bottom) {
       // Simulate Z key press for shooting
+      console.log("Shoot button pressed");
+      
+      // Force shoot using the Z key press logic
       if (activePowerUps.beamShot > 0) {
-        // Beam shot logic (copied from keyPressed)
+        // Beam shot logic
         let beam = {
           x: player.x + 32,
           y: player.y - 16,
@@ -2982,7 +2985,7 @@ function touchStarted() {
           shootEffects.push(effect);
         }
       } else if (activePowerUps.rapidFire > 0) {
-        // Rapid fire logic (copied from keyPressed)
+        // Rapid fire logic
         for (let i = -1; i <= 1; i++) {
           let projectile = {
             x: player.x + 32,
@@ -3012,13 +3015,14 @@ function touchStarted() {
         }
       } else {
         // Normal single projectile
-        projectiles.push({
+        let projectile = {
           x: player.x + 32,
           y: player.y - 16,
           vx: 12,
           vy: 0,
           isRed: true
-        });
+        };
+        projectiles.push(projectile);
         
         // Normal shooting effect
         for (let i = 0; i < 5; i++) {
@@ -3063,13 +3067,19 @@ function touchEnded() {
   
   // Track touch duration
   const touchDuration = millis() - touchStartTime;
+  console.log("Touch ended after: " + touchDuration + "ms");
+  
+  // Only process in playing state
+  if (gameState !== "playing") return true;
   
   // Handle left control (jump/duck control)
   if (isJumping) {
     isJumping = false;
+    console.log("Jump control released");
   }
   
   if (isDucking && player.state === "ducking") {
+    console.log("Duck control released, returning to running");
     isDucking = false;
     player.state = "running";
   }
@@ -3094,21 +3104,23 @@ function touchMoved() {
   const leftControl = document.getElementById('leftControl');
   const leftRect = leftControl.getBoundingClientRect();
   
-  // Check if touch is within left control area and has been held long enough
+  // Check if touch is within left control area
   if (touchX >= leftRect.left && touchX <= leftRect.right &&
       touchY >= leftRect.top && touchY <= leftRect.bottom) {
     
-    // Detect if touch has been held in place long enough to trigger duck
+    // Detect if touch has been held long enough to trigger duck
     const touchDuration = millis() - touchStartTime;
+    console.log("Touch duration: " + touchDuration);
     
     if (touchDuration > longPressThreshold && player.state === "running") {
+      console.log("Duck triggered by long press");
       player.state = "ducking";
       isDucking = true;
       isJumping = false; // Cancel any jump that might have been triggered
     }
   }
   
-  // Prevent default
+  // Prevent default to avoid browser gestures
   return false;
 }
 

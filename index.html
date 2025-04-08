@@ -16,6 +16,10 @@
             height: 100vh;
             touch-action: none; /* Prevent browser handling of touch gestures */
         }
+        /* Prevent double-tap to zoom */
+        * { 
+            touch-action: manipulation;
+        }
         canvas {
             display: block;
             position: absolute;
@@ -51,12 +55,34 @@
             bottom: 10px;
             width: 40%;
             height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #leftControl::after {
+            content: "TAP: JUMP\AHOLD: DUCK";
+            white-space: pre;
+            color: white;
+            opacity: 0.5;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-align: center;
         }
         #rightControl {
             right: 10px;
             bottom: 10px;
             width: 80px;
             height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #rightControl::after {
+            content: "SHOOT";
+            color: white;
+            opacity: 0.5;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
         }
         #pauseButton {
             right: 10px;
