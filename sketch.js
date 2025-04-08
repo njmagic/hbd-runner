@@ -2915,53 +2915,184 @@ function mousePressed() {
 
 // Mobile touch controls
 function touchStarted() {
-  console.log("touchStarted event triggered");
+  // Don't do anything if not on a mobile device
+  if (!isMobileDevice) return;
   
-  // If on game over screen, check for leaderboard button touch
+  // Prevent default touch behavior to avoid zooming or scrolling
+  if (touches[0]) {
+    touches[0].preventDefault = function() {};
+  }
+  
+  // Debug mobile detection
+  console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
+  
+  // Get touch position relative to the page, not the canvas
+  // Using clientX/Y directly for overlay control elements
+  const touchX = (touches[0] ? touches[0].clientX : mouseX);
+  const touchY = (touches[0] ? touches[0].clientY : mouseY);
+  
+  console.log(`Touch at page coordinates: ${touchX}, ${touchY}`);
+  
+  // Record timing for long press detection
+  touchStartTime = millis();
+  touchStartY = touchY;
+  
+  // Handle start button on title screen
+  if (showTitleScreen) {
+    console.log("Touch detected on title screen");
+    
+    // Get start button dimensions
+    const startBtn = document.getElementById('startButton');
+    if (!startBtn) {
+      console.error("Start button element not found");
+      return false;
+    }
+    
+    startBtn.style.display = 'block'; // Make sure it's visible
+    
+    // Start the game (same logic as pressing space)
+    showTitleScreen = false;
+    gameState = "playing";
+    
+    // Reset game elements (same as in keyPressed function)
+    score = 0;
+    enemiesKilled = 0;
+    enemies = [];
+    obstacles = [];
+    projectiles = [];
+    shootEffects = [];
+    powerUps = [];
+    slowMotion = false;
+    slowMotionTimer = 0;
+    scrollSpeed = normalScrollSpeed;
+    screenFlash = 0;
+    
+    // Reset player position
+    player.y = groundY;
+    player.vy = 0;
+    player.state = "running";
+    
+    // Reset offsets
+    groundOffset = 0;
+    backgroundOffset = 0;
+    midgroundOffset = 0;
+    foregroundOffset = 0;
+    
+    lastEnemySpawnTime = 0;
+    forceEnemySpawnCounter = 0;
+    lastPowerUpTime = 0;
+    
+    // Hide the start button
+    startBtn.style.display = 'none';
+    
+    console.log("Game started");
+    return false; // Prevent default
+  }
+  
+  // Only process gameplay touches when in the playing state
+  if (gameState === "playing") {
+    // Get control area elements
+    const leftControl = document.getElementById('leftControl');
+    const rightControl = document.getElementById('rightControl');
+    
+    if (!leftControl || !rightControl) {
+      console.error("Control elements not found");
+      return false;
+    }
+    
+    // Debug the control elements
+    console.log("Left control:", leftControl.id, "Right control:", rightControl.id);
+    
+    const leftRect = leftControl.getBoundingClientRect();
+    const rightRect = rightControl.getBoundingClientRect();
+    
+    // Debug the control element positions
+    console.log("Left rect bounds:", 
+                "left=" + leftRect.left, 
+                "right=" + leftRect.right, 
+                "top=" + leftRect.top, 
+                "bottom=" + leftRect.bottom);
+    console.log("Right rect bounds:", 
+                "left=" + rightRect.left, 
+                "right=" + rightRect.right, 
+                "top=" + rightRect.top, 
+                "bottom=" + rightRect.bottom);
+    console.log("Touch position:", touchX, touchY);
+    
+    // Check if touching the shoot button (right control)
+    // Using direct coordinate comparison
+    if (touchX >= rightRect.left && touchX <= rightRect.right &&
+        touchY >= rightRect.top && touchY <= rightRect.bottom) {
+      console.log("✓ SHOOT button touched at", touchX, touchY);
+      
+      // Strong visual feedback
+      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.7)";
+      rightControl.style.transform = "scale(0.95)";
+      
+      // Call the shoot function
+      mobileShoot();
+      return false; // Prevent default
+    }
+    
+    // Check if touching the left control area (for jump/duck)
+    if (touchX >= leftRect.left && touchX <= leftRect.right &&
+        touchY >= leftRect.top && touchY <= leftRect.bottom) {
+      console.log("✓ JUMP/DUCK control touched at", touchX, touchY);
+      
+      // Visual feedback
+      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+      leftControl.style.transform = "scale(0.95)";
+      
+      // Trigger jump immediately on tap
+      mobileJump();
+      isJumping = true;
+      isDucking = false;
+      return false; // Prevent default
+    }
+  }
+  
+  // Special case: if we're on the game over screen and have the leaderboard button visible
   if (gameState === "gameOver" && !leaderboardScoreSubmitted) {
-    // Define button dimensions (must match the ones in drawGameOverScreen)
+    // Define button dimensions (same as in mousePressed)
     let buttonWidth = 300;
     let buttonHeight = 45;
     
-    // Calculate the same button position as in drawGameOverScreen
-    let buttonY = height/2 + 65 + 35; // Position closer to hashtag text
+    // Calculate button position (same as in drawGameOverScreen)
+    let buttonY = height/2 + 65 + 35;
     
-    // Check if the touch is on the button
+    // Check if touch is on the leaderboard button
     if (touches.length > 0) {
-      let touch = touches[0]; // Get the first touch
-      
+      const touch = touches[0];
       if (touch.x > width/2 - buttonWidth/2 && 
           touch.x < width/2 + buttonWidth/2 && 
           touch.y > buttonY - buttonHeight/2 && 
           touch.y < buttonY + buttonHeight/2) {
         
-        console.log("Leaderboard button touched via touchStarted");
+        console.log("Leaderboard button touched in game over screen");
         showLeaderboardForm();
         gameState = "enteringScore";
-        
-        // Prevent default behavior to avoid scrolling
         return false;
       }
     }
   }
   
-  // Add enhanced detection for the leaderboard form buttons on mobile
+  // Support for leaderboard form buttons on mobile
   if (gameState === "enteringScore" && isMobileDevice) {
-    // Get the form element positions
+    // Get form element positions
     const submitButton = document.getElementById('submitScore');
     const cancelButton = document.getElementById('cancelSubmit');
     
     if (submitButton && cancelButton && touches.length > 0) {
       const touch = touches[0];
       
-      // Get button positions
+      // Get button positions relative to the viewport
       const submitRect = submitButton.getBoundingClientRect();
       const cancelRect = cancelButton.getBoundingClientRect();
       
       // Check if touch is on submit button
-      if (touch.x >= submitRect.left && touch.x <= submitRect.right &&
-          touch.y >= submitRect.top && touch.y <= submitRect.bottom) {
-        console.log("Submit button touched via touchStarted");
+      if (touchX >= submitRect.left && touchX <= submitRect.right &&
+          touchY >= submitRect.top && touchY <= submitRect.bottom) {
+        console.log("Submit button touched");
         
         // Validate and submit score
         const playerNameInput = document.getElementById('playerName');
@@ -2984,9 +3115,9 @@ function touchStarted() {
       }
       
       // Check if touch is on cancel button
-      if (touch.x >= cancelRect.left && touch.x <= cancelRect.right &&
-          touch.y >= cancelRect.top && touch.y <= cancelRect.bottom) {
-        console.log("Cancel button touched via touchStarted");
+      if (touchX >= cancelRect.left && touchX <= cancelRect.right &&
+          touchY >= cancelRect.top && touchY <= cancelRect.bottom) {
+        console.log("Cancel button touched");
         hideLeaderboardForm();
         gameState = "gameOver";
         return false;
@@ -2994,61 +3125,7 @@ function touchStarted() {
     }
   }
   
-  // Continue with normal touch processing for other game elements
-  
-  // If playing, handle touch controls
-  if (gameState === "playing") {
-    // Logic for the play-state touch controls
-    
-    // Left half of screen = jump, right half = shoot
-    if (touches.length > 0) {
-      let touch = touches[0];
-      
-      if (touch.x < width/2) {
-        // Check if it's a slide/duck gesture
-        touchStartY = touch.y;
-        touchStartTime = millis();
-        
-        // On touch left side of screen, jump unless we're already in the air
-        if (player.state !== "jumping" && player.state !== "falling") {
-          player.vy = -jumpForce;
-          player.state = "jumping";
-          
-          // Create dust effect on jump
-          createJumpDustEffect();
-        }
-      } else {
-        // On touch right side of screen, shoot
-        shootProjectile();
-      }
-      
-      return false; // Prevent default
-    }
-  }
-  
-  // When on the title screen, touch anywhere to start
-  if (gameState === "start" && showTitleScreen) {
-    gameState = "playing";
-    showTitleScreen = false;
-    
-    // Reset everything
-    score = 0;
-    obstacles = [];
-    enemies = [];
-    
-    // Reset player
-    player.y = groundY;
-    player.vy = 0;
-    player.state = "running";
-    
-    // Reset environment
-    groundOffset = 0;
-    backgroundOffset = 0;
-    
-    return false; // Prevent default
-  }
-  
-  return false;
+  return false; // Prevent default for all touches to avoid zooming/scrolling
 }
 
 function touchEnded() {
