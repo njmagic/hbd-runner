@@ -349,27 +349,49 @@
         function restartGame() {
             console.log("Restart game clicked on mobile");
             
-            // Make sure we have access to the game object
-            if (!window.player) {
-                console.error("Player object not found - trying alternate approach");
-                // Try to trigger the R key press programmatically
+            try {
+                // First, explicitly set showTitleScreen to true to return to title screen
+                window.showTitleScreen = true;
+                
+                // Use the same approach as the R key handler in the main game
+                window.gameState = "start";
+                
+                // Reset game state and variables
+                resetGameState();
+                
+                // Force redraw on next frame to refresh the screen
+                if (typeof window.loop === 'function') {
+                    window.loop();
+                }
+                
+                console.log("Game restarted successfully from mobile button");
+                
+                // Hide the restart button
+                document.getElementById('restartButton').style.display = 'none';
+            } catch (error) {
+                console.error("Error in mobile restart:", error);
+                
+                // Fallback: try to simulate R key press directly
+                console.log("Attempting fallback restart method...");
                 if (typeof window.keyPressed === 'function') {
-                    // Create a synthetic R key press
                     const originalKey = window.key;
+                    const originalKeyCode = window.keyCode;
                     window.key = 'r';
+                    window.keyCode = 82; // R key code
                     window.keyPressed();
                     window.key = originalKey;
-                    return;
+                    window.keyCode = originalKeyCode;
                 }
             }
-            
-            // Set game states directly
-            window.showTitleScreen = true; 
-            window.gameState = "start";
-            
-            // Reset everything
+        }
+        
+        // Helper function to reset game state
+        function resetGameState() {
+            // Reset basic game elements
             window.score = 0;
             window.enemiesKilled = 0;
+            
+            // Clear game objects
             window.enemies = [];
             window.obstacles = [];
             window.projectiles = [];
@@ -383,34 +405,38 @@
                 window.activePowerUps.rapidFire = 0;
             }
             
-            // Reset game state
+            // Reset game mechanics
             window.slowMotion = false;
             window.slowMotionTimer = 0;
-            if (window.normalScrollSpeed) {
-                window.scrollSpeed = window.normalScrollSpeed;
-            }
+            window.scrollSpeed = window.normalScrollSpeed || 5;
             window.screenFlash = 0;
             
-            // Reset player
-            if (window.player && window.groundY !== undefined) {
-                window.player.y = window.groundY;
+            // Reset player if it exists
+            if (window.player) {
+                window.player.y = window.groundY || height - 80;
                 window.player.vy = 0;
                 window.player.state = "running";
             }
             
-            // Reset environment
+            // Reset environment offsets
             window.groundOffset = 0;
             window.backgroundOffset = 0;
             window.midgroundOffset = 0;
             window.foregroundOffset = 0;
             
-            // Reset leaderboard submission status
+            // Reset spawn timers
+            window.lastEnemySpawnTime = 0;
+            window.forceEnemySpawnCounter = 0;
+            window.lastPowerUpTime = 0;
+            
+            // Reset leaderboard state
             window.leaderboardScoreSubmitted = false;
             
-            // Hide the restart button
-            document.getElementById('restartButton').style.display = 'none';
-            
-            console.log("Game restarted from mobile button");
+            // Make sure the start button is visible on title screen
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.style.display = 'block';
+            }
         }
         
         // Initialize once page is loaded

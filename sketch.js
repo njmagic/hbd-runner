@@ -1449,6 +1449,7 @@ function draw() {
       const restartButton = document.getElementById('restartButton');
       if (restartButton) {
         restartButton.style.display = 'block';
+        restartButton.style.zIndex = '1100'; // Ensure it's above other elements
         console.log("Mobile restart button shown on game over");
       } else {
         console.error("Restart button element not found in DOM");
@@ -1456,6 +1457,20 @@ function draw() {
     }
     
     return; // Skip all other game logic to prevent updating game elements
+  } else if (gameState === "start" && showTitleScreen) {
+    // Hide restart button when on title screen
+    if (isMobileDevice) {
+      const restartButton = document.getElementById('restartButton');
+      if (restartButton) {
+        restartButton.style.display = 'none';
+      }
+      
+      // Show the start button on title screen
+      const startButton = document.getElementById('startButton');
+      if (startButton) {
+        startButton.style.display = 'block';
+      }
+    }
   } else {
     // Hide restart button when not in game over state
     if (isMobileDevice) {
@@ -4789,6 +4804,7 @@ function showLeaderboardForm() {
     const restartButton = document.getElementById('restartButton');
     if (restartButton) {
       restartButton.style.display = 'none';
+      console.log("Mobile restart button hidden when showing leaderboard form");
     }
   }
   
