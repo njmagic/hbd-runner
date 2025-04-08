@@ -1703,5 +1703,51 @@
         // Run now and again after a delay in case it wasn't created yet
         setTimeout(enhanceStartButton, 1000);
         setTimeout(enhanceStartButton, 2000);
+        
+        // DIRECT BUTTON FIX - Add this at the end to ensure it runs after everything else
+        // Give the page time to load
+        setTimeout(function() {
+            // Get the start button
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                console.log("🔥 APPLYING DIRECT START BUTTON FIX");
+                
+                // Boost its z-index and visibility
+                startButton.style.zIndex = '9999999';
+                startButton.style.opacity = '1';
+                startButton.style.visibility = 'visible';
+                
+                // Create a direct click handler that doesn't rely on p5.js
+                const directStartHandler = function(e) {
+                    console.log("🚀 START BUTTON CLICKED VIA DIRECT HANDLER");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Hide the button first
+                    startButton.style.display = 'none';
+                    
+                    // Call startGame directly
+                    startGame();
+                    
+                    return false;
+                };
+                
+                // Clean up any existing handlers to prevent duplicates
+                startButton.replaceWith(startButton.cloneNode(true));
+                
+                // Get the refreshed element
+                const refreshedButton = document.getElementById('startButton');
+                
+                // Add all possible event types
+                ['touchstart', 'touchend', 'mousedown', 'mouseup', 'click'].forEach(function(eventType) {
+                    refreshedButton.addEventListener(eventType, directStartHandler, {capture: true, passive: false});
+                });
+                
+                // Force display it
+                refreshedButton.style.display = 'block';
+                
+                console.log("🔥 DIRECT START BUTTON FIX APPLIED");
+            }
+        }, 500);
     });
 </script>
