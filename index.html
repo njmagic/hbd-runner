@@ -19,6 +19,12 @@
         /* Prevent double-tap to zoom */
         * { 
             touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         canvas {
             display: block;
@@ -31,6 +37,7 @@
             max-width: 100%;
             max-height: 100vh;
             object-fit: contain;
+            touch-action: none !important;
         }
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
@@ -162,6 +169,24 @@
                 }
             }, 200);
         });
+        
+        // Prevent pinch zoom
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Prevent double-tap zoom
+        let lastTapTime = 0;
+        document.addEventListener('touchend', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            if (tapLength < 500 && tapLength > 0) {
+                e.preventDefault();
+            }
+            lastTapTime = currentTime;
+        }, { passive: false });
     </script>
 </head>
 <body>
