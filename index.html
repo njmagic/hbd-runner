@@ -263,6 +263,42 @@
             transform: translateX(-50%) scale(0.95);
             animation: none; /* Stop pulsing when pressed */
         }
+        /* Ensure mobile form has proper styling */
+        @media (max-width: 768px), (pointer: coarse) {
+            #leaderboardForm {
+                width: 90% !important;
+                max-width: 320px !important;
+                padding: 25px !important;
+                border: 3px solid rgba(255, 255, 255, 0.9) !important;
+                border-radius: 15px !important;
+                box-shadow: 0 0 30px rgba(0, 0, 0, 0.8) !important;
+                background-color: rgba(30, 30, 30, 0.95) !important;
+                z-index: 10000001 !important;
+            }
+            
+            #leaderboardForm input {
+                height: 50px !important;
+                font-size: 18px !important;
+                padding: 10px 15px !important;
+                margin-bottom: 15px !important;
+                border-radius: 8px !important;
+            }
+            
+            #leaderboardForm button {
+                height: 60px !important;
+                font-size: 20px !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+                margin: 10px 0 !important;
+                border-radius: 8px !important;
+            }
+            
+            #submitScore {
+                background-color: #d32f2f !important;
+                color: white !important;
+                border: 2px solid #ff5252 !important;
+            }
+        }
     </style>
     <script src="libraries/p5.min.js"></script>
     <!-- Add Supabase JS Client -->
@@ -587,65 +623,55 @@
                     console.log("SHOWING leaderboard submit button for mobile!");
                     
                     // Force display and positioning properties with !important flags
-                    leaderboardBtn.style.cssText = `
-                        display: block !important;
-                        position: fixed !important;
-                        top: 40% !important; 
-                        left: 50% !important;
-                        transform: translate(-50%, -50%) !important;
-                        width: 300px !important;
-                        height: 100px !important;
-                        line-height: 100px !important;
-                        font-size: 26px !important;
-                        text-align: center !important;
-                        font-family: 'Courier New', monospace !important;
-                        color: white !important;
-                        font-weight: bold !important;
-                        background-color: rgba(220, 40, 40, 0.95) !important;
-                        border: 5px solid rgba(255, 255, 255, 0.95) !important;
-                        border-radius: 12px !important;
-                        z-index: 999999 !important;
-                        pointer-events: auto !important;
-                        box-shadow: 0 0 40px rgba(255, 100, 100, 0.9) !important;
-                        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9) !important;
-                        cursor: pointer !important;
-                        text-transform: uppercase !important;
-                        letter-spacing: 2px !important;
-                        opacity: 1 !important;
-                        visibility: visible !important;
-                        animation: pulseLarge 1.5s infinite alternate !important;
-                    `;
+                    leaderboardBtn.setAttribute('style', 
+                        'display: block !important; ' +
+                        'position: fixed !important; ' +
+                        'top: 40% !important; ' +
+                        'left: 50% !important; ' +
+                        'transform: translate(-50%, -50%) !important; ' +
+                        'z-index: 999999 !important; ' +
+                        'width: 300px !important; ' +
+                        'height: 100px !important; ' +
+                        'line-height: 100px !important; ' +
+                        'text-align: center !important; ' +
+                        'background-color: rgba(220, 40, 40, 0.95) !important; ' +
+                        'border: 5px solid rgba(255, 255, 255, 0.95) !important; ' +
+                        'border-radius: 12px !important; ' +
+                        'font-family: \'Courier New\', monospace !important; ' +
+                        'color: white !important; ' +
+                        'font-size: 26px !important; ' +
+                        'font-weight: bold !important; ' +
+                        'pointer-events: auto !important; ' +
+                        'box-shadow: 0 0 40px rgba(255, 100, 100, 0.9) !important; ' +
+                        'text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9) !important; ' +
+                        'cursor: pointer !important; ' +
+                        'text-transform: uppercase !important; ' +
+                        'letter-spacing: 2px !important; ' +
+                        'opacity: 1 !important; ' +
+                        'visibility: visible !important; ' +
+                        'animation: pulseLarge 1.5s infinite alternate !important;'
+                    );
                     
-                    // Add class to ensure it gets proper styling
-                    if (!leaderboardBtn.className.includes("control-area")) {
-                        leaderboardBtn.className += " control-area";
+                    // Ensure it's above the canvas and can receive events
+                    leaderboardBtn.style.pointerEvents = 'auto';
+                    
+                    // Ensure button has latest event handlers
+                    addLeaderboardButtonListeners(leaderboardBtn);
+                    
+                    // Also ensure our brute force button is visible as a fallback
+                    const bruteForceButton = document.getElementById('brute-force-mobile-button');
+                    if (bruteForceButton) {
+                        bruteForceButton.style.display = 'block';
                     }
-                    
-                    // Force visibility again after a short delay (for more stubborn browsers)
-                    setTimeout(() => {
-                        leaderboardBtn.style.display = 'block !important';
-                        leaderboardBtn.style.visibility = 'visible !important';
-                        leaderboardBtn.style.opacity = '1 !important';
-                        
-                        // Call to ensure event listeners are working
-                        addLeaderboardButtonListeners();
-                        
-                        // Debugging info
-                        const computedStyle = window.getComputedStyle(leaderboardBtn);
-                        console.log("Submit button computed styles:", {
-                            display: computedStyle.display,
-                            position: computedStyle.position,
-                            zIndex: computedStyle.zIndex,
-                            visibility: computedStyle.visibility,
-                            opacity: computedStyle.opacity,
-                            top: computedStyle.top,
-                            left: computedStyle.left
-                        });
-                    }, 100);
                 } else {
-                    console.log("Hiding leaderboard button - gameState:", window.gameState, 
-                              "leaderboardScoreSubmitted:", window.leaderboardScoreSubmitted);
+                    console.log("HIDING leaderboard submit button (game state or submission status)");
                     leaderboardBtn.style.display = 'none';
+                    
+                    // Also hide brute force button
+                    const bruteForceButton = document.getElementById('brute-force-mobile-button');
+                    if (bruteForceButton) {
+                        bruteForceButton.style.display = 'none';
+                    }
                 }
             } catch (e) {
                 console.error("Error updating leaderboard button visibility:", e);
@@ -654,179 +680,150 @@
         
         // Function to create the leaderboard button if it doesn't exist
         function createLeaderboardButton() {
-            try {
-                console.log("Attempting to create mobile leaderboard button");
+            console.log("Creating leaderboard button element");
+            
+            // Create button if it doesn't exist
+            let leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+            
+            if (!leaderboardBtn) {
+                // Create a new button element
+                leaderboardBtn = document.createElement('div');
+                leaderboardBtn.id = 'submitLeaderboardBtn';
+                leaderboardBtn.innerText = 'SUBMIT SCORE';
+                
+                // Add to mobile controls
                 const mobileControls = document.getElementById('mobileControls');
-                if (!mobileControls) {
-                    console.error("Mobile controls container not found!");
-                    return;
+                if (mobileControls) {
+                    mobileControls.appendChild(leaderboardBtn);
+                    console.log("Leaderboard button added to mobile controls");
+                } else {
+                    // Fallback to body if mobile controls not found
+                    document.body.appendChild(leaderboardBtn);
+                    console.log("Leaderboard button added to body (fallback)");
                 }
-                
-                // Check if it already exists (double-check)
-                if (document.getElementById('submitLeaderboardBtn')) {
-                    console.log("Button already exists, no need to create");
-                    return;
-                }
-                
-                // Create new button
-                const newButton = document.createElement('div');
-                newButton.id = 'submitLeaderboardBtn';
-                newButton.className = 'control-area';
-                newButton.innerText = 'SUBMIT SCORE';
-                
-                // Set inline styles to ensure visibility
-                newButton.style.cssText = `
-                    display: block !important;
-                    position: fixed !important;
-                    top: 40% !important; 
-                    left: 50% !important;
-                    transform: translate(-50%, -50%) !important;
-                    width: 300px !important;
-                    height: 100px !important;
-                    line-height: 100px !important;
-                    font-size: 26px !important;
-                    text-align: center !important;
-                    font-family: 'Courier New', monospace !important;
-                    color: white !important;
-                    font-weight: bold !important;
-                    background-color: rgba(220, 40, 40, 0.95) !important;
-                    border: 5px solid rgba(255, 255, 255, 0.95) !important;
-                    border-radius: 12px !important;
-                    z-index: 999999 !important;
-                    pointer-events: auto !important;
-                    box-shadow: 0 0 40px rgba(255, 100, 100, 0.9) !important;
-                    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9) !important;
-                    cursor: pointer !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 2px !important;
-                    opacity: 1 !important;
-                    visibility: visible !important;
-                    animation: pulseLarge 1.5s infinite alternate !important;
-                `;
-                
-                // Add event handlers with multiple methods for maximum compatibility
-                newButton.onclick = function(e) {
-                    console.log('Leaderboard button clicked');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                    return false;
-                };
-                
-                newButton.ontouchstart = function(e) {
-                    console.log('Leaderboard button touched');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                    return false;
-                };
-                
-                // Add additional event handlers for better mobile compatibility
-                newButton.addEventListener('touchstart', function(e) {
-                    console.log('Leaderboard button touchstart via addEventListener');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                    return false;
-                }, {capture: true, passive: false});
-                
-                newButton.addEventListener('click', function(e) {
-                    console.log('Leaderboard button click via addEventListener');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                    return false;
-                }, {capture: true, passive: false});
-                
-                // Append to mobile controls
-                mobileControls.appendChild(newButton);
-                console.log("Created new leaderboard button and added to DOM");
-                
-                // Initially hide the button until game over
-                newButton.style.display = 'none';
-                
-                // Check if it was actually added
-                setTimeout(() => {
-                    const addedButton = document.getElementById('submitLeaderboardBtn');
-                    if (addedButton) {
-                        console.log("Confirmed button was successfully added to DOM");
-                        // Set up event listeners
-                        addLeaderboardButtonListeners();
-                    } else {
-                        console.error("Button was not successfully added to DOM!");
-                        // Try a different approach - add directly to body as a fallback
-                        document.body.appendChild(newButton.cloneNode(true));
-                        console.log("Attempted fallback button addition to body");
-                    }
-                }, 100);
-            } catch (e) {
-                console.error("Error creating leaderboard button:", e);
             }
+            
+            // Add event listeners
+            addLeaderboardButtonListeners(leaderboardBtn);
+            
+            return leaderboardBtn;
         }
         
         // Function to submit score to leaderboard from mobile
         function submitToLeaderboard() {
             console.log("Mobile submit to leaderboard button clicked");
             try {
-                // Ensure game is in game over state and not already submitted
-                console.log("Current game state:", window.gameState, "Score submitted:", window.leaderboardScoreSubmitted);
-                
-                // For extra compatibility, try to check if there's a score to submit based on score value
-                const hasNonZeroScore = window.score > 0;
-                console.log("Player has non-zero score:", hasNonZeroScore, "Score value:", window.score);
-                
-                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                    // Call the game's leaderboard form display function
-                    if (typeof window.showLeaderboardForm === 'function') {
-                        console.log("Calling game's native showLeaderboardForm function");
-                        window.showLeaderboardForm();
-                        window.gameState = "enteringScore";
-                        
-                        // Hide the leaderboard submit button
-                        const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                        if (leaderboardBtn) {
-                            leaderboardBtn.style.display = 'none';
-                        }
-                        
-                        console.log("Successfully opened leaderboard submission form from mobile");
-                    } else {
-                        console.error("showLeaderboardForm function not found in game! Attempting direct state change");
-                        // Fallback for if the function isn't available - try direct state change
-                        window.gameState = "enteringScore";
-                        
-                        // Show the leaderboard form directly as a fallback
-                        const leaderboardForm = document.getElementById('leaderboardForm');
-                        if (leaderboardForm) {
-                            console.log("Showing leaderboard form directly as fallback");
-                            leaderboardForm.style.display = 'block';
-                            leaderboardForm.style.zIndex = '99999';
-                            
-                            // Hide the button
-                            const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                            if (leaderboardBtn) {
-                                leaderboardBtn.style.display = 'none';
-                            }
-                        } else {
-                            console.error("Could not find leaderboard form to show as fallback");
-                        }
-                    }
-                } else {
-                    console.log("Not in correct state for leaderboard submission or score already submitted.");
-                    console.log("gameState=", window.gameState, "leaderboardScoreSubmitted=", window.leaderboardScoreSubmitted);
-                    
-                    // Extra safety check - if game is over but for some reason flag isn't set right
-                    if (window.gameState === "gameOver" && hasNonZeroScore) {
-                        console.log("Game appears to be over with score, but submission flag may be wrong. Forcing form display.");
-                        // Try to show the form anyway
-                        if (typeof window.showLeaderboardForm === 'function') {
-                            window.showLeaderboardForm();
-                            window.gameState = "enteringScore";
-                        }
-                    }
+                // Extra safety check - hide the submit button
+                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                if (leaderboardBtn) {
+                    leaderboardBtn.style.display = 'none';
                 }
+                
+                // Hide brute force button too
+                const bruteForceButton = document.getElementById('brute-force-mobile-button');
+                if (bruteForceButton) {
+                    bruteForceButton.style.display = 'none';
+                }
+                
+                // Get the leaderboard form element
+                const form = document.getElementById('leaderboardForm');
+                if (!form) {
+                    console.error("Leaderboard form element not found!");
+                    return;
+                }
+                
+                // Set game state directly
+                window.gameState = "enteringScore";
+                
+                // Make form fully visible with high z-index
+                form.style.display = 'block';
+                form.style.opacity = '1';
+                form.style.visibility = 'visible';
+                form.style.zIndex = '10000001';
+                
+                // Enhance the form for mobile devices
+                enhanceFormForMobile(form);
+                
+                // Store score for submission
+                window.pendingScore = window.score;
+                
+                console.log("Leaderboard form displayed via direct manipulation");
+                
+                // Focus on name input after a short delay
+                setTimeout(() => {
+                    const nameInput = document.getElementById('playerName');
+                    if (nameInput) {
+                        nameInput.focus();
+                        console.log("Focus set on name input field");
+                    }
+                }, 300);
             } catch (e) {
                 console.error("Error in submitToLeaderboard:", e);
+                
+                // As a last resort, try calling the game's native function
+                if (typeof window.showLeaderboardForm === 'function') {
+                    console.log("Falling back to game's native showLeaderboardForm");
+                    window.showLeaderboardForm();
+                    window.gameState = "enteringScore";
+                }
             }
+        }
+        
+        // Enhance the form for better mobile experience
+        function enhanceFormForMobile(form) {
+            // Get form elements
+            const nameInput = document.getElementById('playerName');
+            const emailInput = document.getElementById('playerEmail');
+            const submitButton = document.getElementById('submitScore');
+            const cancelButton = document.getElementById('cancelSubmit');
+            
+            if (!nameInput || !emailInput || !submitButton || !cancelButton) {
+                console.error("Form elements not found for enhancement");
+                return;
+            }
+            
+            // Enhance form appearance for mobile
+            form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
+            form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
+            form.style.borderRadius = '15px';
+            form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
+            form.style.padding = '25px';
+            
+            // Enhance inputs for mobile
+            const enhanceInput = (input) => {
+                input.style.height = '50px';
+                input.style.fontSize = '18px';
+                input.style.padding = '10px 15px';
+                input.style.marginBottom = '15px';
+                input.style.borderRadius = '8px';
+                input.style.border = '2px solid #555';
+            };
+            
+            enhanceInput(nameInput);
+            enhanceInput(emailInput);
+            
+            // Make buttons more tappable
+            const enhanceButton = (button, isSubmit) => {
+                button.style.height = '60px';
+                button.style.fontSize = '20px';
+                button.style.fontWeight = 'bold';
+                button.style.textTransform = 'uppercase';
+                button.style.letterSpacing = '1px';
+                button.style.margin = '10px 0';
+                button.style.borderRadius = '8px';
+                button.style.border = '2px solid #555';
+                
+                if (isSubmit) {
+                    button.style.backgroundColor = '#d32f2f';
+                    button.style.color = 'white';
+                    button.style.border = '2px solid #ff5252';
+                } else {
+                    button.style.backgroundColor = '#333';
+                }
+            };
+            
+            enhanceButton(submitButton, true);
+            enhanceButton(cancelButton, false);
         }
         
         // Initialize mobile controls and button monitoring
@@ -997,7 +994,7 @@
             console.log("Leaderboard button should now be visible with enhanced properties");
             
             // Call to add event listeners
-            addLeaderboardButtonListeners();
+            addLeaderboardButtonListeners(leaderboardBtn);
             
             // Double check visibility after a short delay
             setTimeout(function() {
@@ -1012,82 +1009,52 @@
         };
         
         // Function to ensure leaderboard button has proper event listeners
-        function addLeaderboardButtonListeners() {
-            console.log("Adding enhanced leaderboard button event listeners");
-            const submitButton = document.getElementById('submitLeaderboardBtn');
-            
-            if (!submitButton) {
-                console.warn("Leaderboard submit button not found for event binding");
+        function addLeaderboardButtonListeners(button) {
+            const leaderboardBtn = button || document.getElementById('submitLeaderboardBtn');
+            if (!leaderboardBtn) {
+                console.error("Cannot add listeners: Leaderboard button not found");
                 return;
             }
             
-            // Clean slate - remove any existing event listeners (by cloning if possible)
-            try {
-                const parent = submitButton.parentNode;
-                const newButton = submitButton.cloneNode(true);
-                parent.replaceChild(newButton, submitButton);
-                
-                // Verify styles are maintained on the new button
-                newButton.style.cssText = submitButton.style.cssText;
-                
-                console.log("Successfully replaced button with clone to remove existing listeners");
-            } catch (e) {
-                console.warn("Could not clone button:", e);
+            console.log("Adding enhanced event listeners to leaderboard button");
+            
+            // Remove any existing listeners first
+            const newButton = leaderboardBtn.cloneNode(true);
+            if (leaderboardBtn.parentNode) {
+                leaderboardBtn.parentNode.replaceChild(newButton, leaderboardBtn);
             }
             
-            // Get fresh reference after clone
-            const freshButton = document.getElementById('submitLeaderboardBtn');
-            if (!freshButton) {
-                console.error("Button disappeared during clone operation!");
-                return;
-            }
+            // Add all possible event types for maximum compatibility
+            const eventTypes = ['click', 'touchstart', 'mousedown', 'pointerdown', 'touchend', 'mouseup'];
             
-            // All possible event types to cover all devices and browsers
-            const eventTypes = [
-                'click', 'mousedown', 'mouseup', 'touchstart', 'touchend',
-                'pointerdown', 'pointerup', 'MSPointerDown', 'MSPointerUp'
-            ];
-            
-            // Add listeners for all event types
-            eventTypes.forEach(function(eventType) {
-                // Capturing phase
-                freshButton.addEventListener(eventType, function(e) {
-                    console.log(`Leaderboard button ${eventType} event captured`);
+            eventTypes.forEach(eventType => {
+                newButton.addEventListener(eventType, function(e) {
+                    console.log(`Leaderboard button ${eventType} event triggered`);
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    // For start events, call submitToLeaderboard()
-                    if (eventType === 'click' || eventType === 'touchstart' || 
-                        eventType === 'mousedown' || eventType === 'pointerdown' || 
-                        eventType === 'MSPointerDown') {
-                        submitToLeaderboard();
-                    }
+                    // Provide visual feedback
+                    this.style.transform = 'translate(-50%, -50%) scale(0.95)';
+                    this.style.backgroundColor = 'rgba(180, 20, 20, 0.95)';
+                    
+                    // Call the submission function
+                    submitToLeaderboard();
+                    
+                    // Restore button appearance after a short delay
+                    setTimeout(() => {
+                        this.style.transform = 'translate(-50%, -50%) scale(1)';
+                        this.style.backgroundColor = 'rgba(220, 40, 40, 0.95)';
+                    }, 150);
                     
                     return false;
-                }, { capture: true, passive: false });
-                
-                // Bubbling phase for extra coverage
-                freshButton.addEventListener(eventType, function(e) {
-                    console.log(`Leaderboard button ${eventType} event bubbled`);
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // For start events, call submitToLeaderboard()
-                    if (eventType === 'click' || eventType === 'touchstart' || 
-                        eventType === 'mousedown' || eventType === 'pointerdown' || 
-                        eventType === 'MSPointerDown') {
-                        submitToLeaderboard();
-                    }
-                    
-                    return false;
-                }, { capture: false, passive: false });
+                }, {capture: true, passive: false});
             });
             
-            // Add inline click handler as well for maximum compatibility
-            freshButton.setAttribute('onclick', "submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;");
-            freshButton.setAttribute('ontouchstart', "submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;");
+            // Add support for accessibility
+            newButton.setAttribute('role', 'button');
+            newButton.setAttribute('aria-label', 'Submit your score to the leaderboard');
             
-            console.log("Enhanced leaderboard button event listeners added");
+            return newButton;
         }
         
         // Add patch for game loop to ensure buttons are shown

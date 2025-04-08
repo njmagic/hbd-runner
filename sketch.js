@@ -2915,162 +2915,140 @@ function mousePressed() {
 
 // Mobile touch controls
 function touchStarted() {
-  // Don't do anything if not on a mobile device
-  if (!isMobileDevice) return;
+  console.log("touchStarted event triggered");
   
-  // Prevent default touch behavior to avoid zooming or scrolling
-  if (touches[0]) {
-    touches[0].preventDefault = function() {};
+  // If on game over screen, check for leaderboard button touch
+  if (gameState === "gameOver" && !leaderboardScoreSubmitted) {
+    // Define button dimensions (must match the ones in drawGameOverScreen)
+    let buttonWidth = 300;
+    let buttonHeight = 45;
+    
+    // Calculate the same button position as in drawGameOverScreen
+    let buttonY = height/2 + 65 + 35; // Position closer to hashtag text
+    
+    // Check if the touch is on the button
+    if (touches.length > 0) {
+      let touch = touches[0]; // Get the first touch
+      
+      if (touch.x > width/2 - buttonWidth/2 && 
+          touch.x < width/2 + buttonWidth/2 && 
+          touch.y > buttonY - buttonHeight/2 && 
+          touch.y < buttonY + buttonHeight/2) {
+        
+        console.log("Leaderboard button touched via touchStarted");
+        showLeaderboardForm();
+        gameState = "enteringScore";
+        
+        // Prevent default behavior to avoid scrolling
+        return false;
+      }
+    }
   }
   
-  // Debug mobile detection
-  console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
-  
-  // Get touch position relative to the page, not the canvas
-  // Using clientX/Y directly for overlay control elements
-  const touchX = (touches[0] ? touches[0].clientX : mouseX);
-  const touchY = (touches[0] ? touches[0].clientY : mouseY);
-  
-  console.log(`Touch at page coordinates: ${touchX}, ${touchY}`);
-  
-  // Record timing for long press detection
-  touchStartTime = millis();
-  touchStartY = touchY;
-  
-  // Handle start button on title screen
-  if (showTitleScreen) {
-    console.log("Touch detected on title screen");
+  // Add enhanced detection for the leaderboard form buttons on mobile
+  if (gameState === "enteringScore" && isMobileDevice) {
+    // Get the form element positions
+    const submitButton = document.getElementById('submitScore');
+    const cancelButton = document.getElementById('cancelSubmit');
     
-    // Get start button dimensions
-    const startBtn = document.getElementById('startButton');
-    if (!startBtn) {
-      console.error("Start button element not found");
-      return false;
+    if (submitButton && cancelButton && touches.length > 0) {
+      const touch = touches[0];
+      
+      // Get button positions
+      const submitRect = submitButton.getBoundingClientRect();
+      const cancelRect = cancelButton.getBoundingClientRect();
+      
+      // Check if touch is on submit button
+      if (touch.x >= submitRect.left && touch.x <= submitRect.right &&
+          touch.y >= submitRect.top && touch.y <= submitRect.bottom) {
+        console.log("Submit button touched via touchStarted");
+        
+        // Validate and submit score
+        const playerNameInput = document.getElementById('playerName');
+        const playerEmailInput = document.getElementById('playerEmail');
+        const emailError = document.getElementById('emailError');
+        
+        if (playerNameInput && playerEmailInput && emailError) {
+          const email = playerEmailInput.value.trim();
+          const name = playerNameInput.value.trim() || 'Anonymous Player';
+          
+          if (!isValidEmail(email)) {
+            emailError.style.display = 'block';
+          } else {
+            emailError.style.display = 'none';
+            submitScoreToLeaderboard(name, email, pendingScore);
+          }
+        }
+        
+        return false;
+      }
+      
+      // Check if touch is on cancel button
+      if (touch.x >= cancelRect.left && touch.x <= cancelRect.right &&
+          touch.y >= cancelRect.top && touch.y <= cancelRect.bottom) {
+        console.log("Cancel button touched via touchStarted");
+        hideLeaderboardForm();
+        gameState = "gameOver";
+        return false;
+      }
     }
+  }
+  
+  // Continue with normal touch processing for other game elements
+  
+  // If playing, handle touch controls
+  if (gameState === "playing") {
+    // Logic for the play-state touch controls
     
-    startBtn.style.display = 'block'; // Make sure it's visible
-    
-    // Start the game (same logic as pressing space)
-    showTitleScreen = false;
+    // Left half of screen = jump, right half = shoot
+    if (touches.length > 0) {
+      let touch = touches[0];
+      
+      if (touch.x < width/2) {
+        // Check if it's a slide/duck gesture
+        touchStartY = touch.y;
+        touchStartTime = millis();
+        
+        // On touch left side of screen, jump unless we're already in the air
+        if (player.state !== "jumping" && player.state !== "falling") {
+          player.vy = -jumpForce;
+          player.state = "jumping";
+          
+          // Create dust effect on jump
+          createJumpDustEffect();
+        }
+      } else {
+        // On touch right side of screen, shoot
+        shootProjectile();
+      }
+      
+      return false; // Prevent default
+    }
+  }
+  
+  // When on the title screen, touch anywhere to start
+  if (gameState === "start" && showTitleScreen) {
     gameState = "playing";
+    showTitleScreen = false;
     
-    // Reset game elements (same as in keyPressed function)
+    // Reset everything
     score = 0;
-    enemiesKilled = 0;
-    enemies = [];
     obstacles = [];
-    projectiles = [];
-    shootEffects = [];
-    powerUps = [];
-    slowMotion = false;
-    slowMotionTimer = 0;
-    scrollSpeed = normalScrollSpeed;
-    screenFlash = 0;
+    enemies = [];
     
-    // Reset player position
+    // Reset player
     player.y = groundY;
     player.vy = 0;
     player.state = "running";
     
-    // Reset offsets
+    // Reset environment
     groundOffset = 0;
     backgroundOffset = 0;
-    midgroundOffset = 0;
-    foregroundOffset = 0;
     
-    lastEnemySpawnTime = 0;
-    forceEnemySpawnCounter = 0;
-    lastPowerUpTime = 0;
-    
-    // Hide the start button
-    startBtn.style.display = 'none';
-    
-    console.log("Game started");
     return false; // Prevent default
   }
   
-  // Get pause button dimensions
-  const pauseBtn = document.getElementById('pauseButton');
-  if (pauseBtn) {
-    const pauseRect = pauseBtn.getBoundingClientRect();
-    
-    if (touchX >= pauseRect.left && touchX <= pauseRect.right &&
-        touchY >= pauseRect.top && touchY <= pauseRect.bottom) {
-      // Toggle between playing and paused
-      if (gameState === "playing") {
-        gameState = "paused";
-        console.log("Game paused");
-      } else if (gameState === "paused") {
-        gameState = "playing";
-        console.log("Game resumed");
-      }
-      return false; // Prevent default
-    }
-  }
-  
-  // Only process gameplay touches when in the playing state
-  if (gameState === "playing") {
-    // Get control area elements
-    const leftControl = document.getElementById('leftControl');
-    const rightControl = document.getElementById('rightControl');
-    
-    if (!leftControl || !rightControl) {
-      console.error("Control elements not found");
-      return false;
-    }
-    
-    // Debug the control elements
-    console.log("Left control:", leftControl.id, "Right control:", rightControl.id);
-    
-    const leftRect = leftControl.getBoundingClientRect();
-    const rightRect = rightControl.getBoundingClientRect();
-    
-    // Debug the control element positions
-    console.log("Left rect bounds:", 
-                "left=" + leftRect.left, 
-                "right=" + leftRect.right, 
-                "top=" + leftRect.top, 
-                "bottom=" + leftRect.bottom);
-    console.log("Right rect bounds:", 
-                "left=" + rightRect.left, 
-                "right=" + rightRect.right, 
-                "top=" + rightRect.top, 
-                "bottom=" + rightRect.bottom);
-    console.log("Touch position:", touchX, touchY);
-    
-    // Check if touching the shoot button (right control)
-    // Using direct coordinate comparison
-    if (touchX >= rightRect.left && touchX <= rightRect.right &&
-        touchY >= rightRect.top && touchY <= rightRect.bottom) {
-      console.log("✓ SHOOT button touched at", touchX, touchY);
-      
-      // Strong visual feedback
-      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.7)";
-      rightControl.style.transform = "scale(0.95)";
-      
-      // Call the shoot function
-      mobileShoot();
-      return false; // Prevent default
-    }
-    
-    // Check if touching the left control area (for jump/duck)
-    if (touchX >= leftRect.left && touchX <= leftRect.right &&
-        touchY >= leftRect.top && touchY <= leftRect.bottom) {
-      console.log("✓ JUMP/DUCK control touched at", touchX, touchY);
-      
-      // Visual feedback
-      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
-      leftControl.style.transform = "scale(0.95)";
-      
-      // Trigger jump immediately on tap
-      mobileJump();
-      isJumping = true;
-      isDucking = false;
-      return false; // Prevent default
-    }
-  }
-  
-  return false; // Prevent default for all touches to avoid zooming/scrolling
+  return false;
 }
 
 function touchEnded() {
@@ -4797,15 +4775,105 @@ function showLeaderboardForm() {
   }
   
   console.log("Form element found, setting display to block");
-  form.style.display = 'block';
   
-  // Hide restart button when leaderboard form is shown (for mobile)
+  // Enhanced for mobile: Use direct style attributes to ensure visibility
+  form.style.display = 'block';
+  form.style.opacity = '1';
+  form.style.visibility = 'visible';
+  form.style.zIndex = '10000001'; // Extremely high z-index to ensure it's on top
+  
+  // Enhanced mobile styling
   if (isMobileDevice) {
+    console.log("Applying enhanced mobile styling to form");
+    
+    // Enhanced mobile styling
+    form.style.width = '90%';
+    form.style.maxWidth = '320px';
+    form.style.padding = '25px';
+    form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
+    form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
+    form.style.borderRadius = '15px';
+    form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
+    
+    // Enhanced input styling for mobile
+    const playerNameInput = document.getElementById('playerName');
+    const playerEmailInput = document.getElementById('playerEmail');
+    const submitButton = document.getElementById('submitScore');
+    const cancelButton = document.getElementById('cancelSubmit');
+    
+    if (playerNameInput && playerEmailInput) {
+      // Make inputs larger and more tappable
+      playerNameInput.style.height = '50px';
+      playerNameInput.style.fontSize = '18px';
+      playerNameInput.style.padding = '10px 15px';
+      playerNameInput.style.marginBottom = '15px';
+      playerNameInput.style.borderRadius = '8px';
+      playerNameInput.style.border = '2px solid #555';
+      
+      playerEmailInput.style.height = '50px';
+      playerEmailInput.style.fontSize = '18px';
+      playerEmailInput.style.padding = '10px 15px';
+      playerEmailInput.style.marginBottom = '15px';
+      playerEmailInput.style.borderRadius = '8px';
+      playerEmailInput.style.border = '2px solid #555';
+    }
+    
+    if (submitButton && cancelButton) {
+      // Make buttons more tappable
+      submitButton.style.height = '60px';
+      submitButton.style.fontSize = '20px';
+      submitButton.style.fontWeight = 'bold';
+      submitButton.style.textTransform = 'uppercase';
+      submitButton.style.margin = '10px 0';
+      submitButton.style.borderRadius = '8px';
+      submitButton.style.border = '2px solid #ff5252';
+      submitButton.style.backgroundColor = '#d32f2f';
+      submitButton.style.color = 'white';
+      
+      cancelButton.style.height = '60px';
+      cancelButton.style.fontSize = '20px';
+      cancelButton.style.fontWeight = 'bold';
+      cancelButton.style.textTransform = 'uppercase';
+      cancelButton.style.margin = '10px 0';
+      cancelButton.style.borderRadius = '8px';
+      cancelButton.style.border = '2px solid #555';
+    }
+    
+    // Hide mobile controls and buttons that might interfere
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls) {
+      // Store all child elements except the leaderboard form
+      const children = mobileControls.querySelectorAll('div:not(#leaderboardForm)');
+      for (let child of children) {
+        child.style.display = 'none';
+      }
+    }
+    
+    // Hide any mobile submit buttons
+    const submitLeaderboardBtn = document.getElementById('submitLeaderboardBtn');
+    if (submitLeaderboardBtn) {
+      submitLeaderboardBtn.style.display = 'none';
+    }
+    
+    const bruteForceButton = document.getElementById('brute-force-mobile-button');
+    if (bruteForceButton) {
+      bruteForceButton.style.display = 'none';
+    }
+    
+    // Hide restart button when leaderboard form is shown (for mobile)
     const restartButton = document.getElementById('restartButton');
     if (restartButton) {
       restartButton.style.display = 'none';
       console.log("Mobile restart button hidden when showing leaderboard form");
     }
+    
+    // Focus on name input field after a short delay to ensure keyboard appears
+    setTimeout(() => {
+      if (playerNameInput) {
+        playerNameInput.focus();
+        console.log("Focus set on name input field");
+      }
+    }, 300);
   }
   
   // Make sure form fields are reset
