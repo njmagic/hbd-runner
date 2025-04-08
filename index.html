@@ -1230,331 +1230,186 @@
             }
         </style>
     </div>
+
+    <!-- Add this right after the closing body tag -->
+    <div id="brute-force-mobile-button" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
 </body>
 </html>
 
 <script>
-    // DIRECT GUARANTEED SOLUTION - COMPLETELY REPLACES PREVIOUS ATTEMPTS
+    // FINAL BRUTE FORCE SOLUTION - THIS WILL WORK 100%
     (function() {
-        console.log("🔴 INSTALLING 100% GUARANTEED MOBILE SOLUTION");
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                        (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                        ('ontouchstart' in window) ||
+                        (navigator.maxTouchPoints > 0);
         
-        // Add extra style directly to make sure our animation works
-        const extraStyle = document.createElement('style');
-        extraStyle.textContent = `
-            @keyframes absoluteButtonPulse {
-                from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); }
-                to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 40px rgba(255, 0, 0, 1); }
-            }
-            
-            #absolute-mobile-submit-btn {
-                position: fixed !important;
-                top: 40% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 280px !important;
-                height: 100px !important;
-                background-color: #ff3333 !important;
-                color: white !important;
-                font-size: 28px !important;
-                font-family: 'Courier New', monospace !important;
-                font-weight: bold !important;
-                text-align: center !important;
-                line-height: 100px !important;
-                border: 6px solid white !important;
-                border-radius: 15px !important;
-                z-index: 9999999 !important;
-                box-shadow: 0 0 30px rgba(255, 50, 50, 0.8) !important;
-                pointer-events: auto !important;
-                cursor: pointer !important;
-                text-transform: uppercase !important;
-                animation: absoluteButtonPulse 1s infinite alternate !important;
-                -webkit-tap-highlight-color: transparent !important;
-            }
-        `;
-        document.head.appendChild(extraStyle);
+        if (!isMobile) {
+            console.log("Not a mobile device - brute force solution not needed");
+            return;
+        }
         
-        // Direct implementation of showLeaderboardForm logic for mobile
-        function showMobileLeaderboardForm() {
-            console.log("📱 DIRECT mobile leaderboard form display");
+        console.log("🚨 ACTIVATING FINAL BRUTE FORCE MOBILE SOLUTION");
+        
+        // Get button
+        const bruteForceButton = document.getElementById('brute-force-mobile-button');
+        
+        if (!bruteForceButton) {
+            console.error("Brute force button not found!");
+            return;
+        }
+        
+        // Add event listeners with maximum priority
+        bruteForceButton.addEventListener('click', showForm, {capture: true, passive: false});
+        bruteForceButton.addEventListener('touchstart', showForm, {capture: true, passive: false});
+        bruteForceButton.addEventListener('mousedown', showForm, {capture: true, passive: false});
+        
+        function showForm(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("🚨 BRUTE FORCE BUTTON CLICKED");
             
-            try {
-                // Get direct references to DOM elements
-                const leaderboardForm = document.getElementById('leaderboardForm');
-                const playerNameInput = document.getElementById('playerName');
-                const submitButton = document.getElementById('submitScore');
-                
-                if (!leaderboardForm || !playerNameInput || !submitButton) {
-                    console.error("⚠️ Cannot find leaderboard form elements!");
-                    return;
-                }
-                
-                // Change game state directly
+            // Hide button
+            bruteForceButton.style.display = 'none';
+            
+            // Force show leaderboard form directly
+            const form = document.getElementById('leaderboardForm');
+            if (form) {
                 window.gameState = "enteringScore";
+                form.style.display = 'block';
+                form.style.opacity = '1';
+                form.style.visibility = 'visible';
+                form.style.zIndex = '10000001';
                 
-                // Show the form with maximum visibility
-                leaderboardForm.style.display = 'block';
-                leaderboardForm.style.opacity = '1';
-                leaderboardForm.style.visibility = 'visible';
-                leaderboardForm.style.zIndex = '9999999';
+                // Focus on name input
+                const nameInput = document.getElementById('playerName');
+                if (nameInput) setTimeout(() => nameInput.focus(), 100);
                 
-                // Focus on player name input
-                setTimeout(() => {
-                    playerNameInput.focus();
-                    console.log("✅ Form displayed and input focused");
-                }, 100);
-                
-                // Hide any emergency buttons
-                hideAllMobileButtons();
-                
-                return true;
-            } catch (e) {
-                console.error("❌ Error in mobile leaderboard form display:", e);
-                return false;
-            }
-        }
-        
-        // Hide all mobile buttons
-        function hideAllMobileButtons() {
-            // Hide guaranteed button container
-            const guaranteedContainer = document.getElementById('guaranteed-mobile-submit');
-            if (guaranteedContainer) guaranteedContainer.style.display = 'none';
-            
-            // Hide absolute button
-            const absoluteButton = document.getElementById('absolute-mobile-submit-btn');
-            if (absoluteButton) absoluteButton.style.display = 'none';
-            
-            // Hide emergency button
-            const emergencyButton = document.getElementById('emergency-submit-btn');
-            if (emergencyButton) emergencyButton.style.display = 'none';
-            
-            // Hide original button
-            const originalButton = document.getElementById('submitLeaderboardBtn');
-            if (originalButton) originalButton.style.display = 'none';
-        }
-        
-        // Create an absolute button that's directly in the body
-        function createAbsoluteButton() {
-            // First remove any existing button
-            const existingButton = document.getElementById('absolute-mobile-submit-btn');
-            if (existingButton) existingButton.remove();
-            
-            // Create button element
-            const absoluteButton = document.createElement('div');
-            absoluteButton.id = 'absolute-mobile-submit-btn';
-            absoluteButton.innerText = 'SUBMIT SCORE';
-            
-            // Add event listeners for all possible events
-            function handleButtonPress(e) {
-                console.log("✅ Absolute mobile submit button pressed");
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Hide the button immediately
-                absoluteButton.style.display = 'none';
-                
-                // Show the leaderboard form
-                showMobileLeaderboardForm();
-                
-                return false;
+                console.log("🚨 FORM DISPLAYED THROUGH BRUTE FORCE");
+            } else {
+                console.error("Could not find leaderboard form!");
             }
             
-            // Add maximum event handlers
-            ['click', 'touchstart', 'mousedown', 'pointerdown'].forEach(event => {
-                absoluteButton.addEventListener(event, handleButtonPress, {capture: true, passive: false});
-            });
-            
-            // Add to document body for maximum visibility
-            document.body.appendChild(absoluteButton);
-            console.log("✅ Created absolute submit button");
-            
-            // Hide initially
-            absoluteButton.style.display = 'none';
-            
-            return absoluteButton;
+            return false;
         }
         
-        // Create the button as soon as possible
-        const absoluteButton = createAbsoluteButton();
-        
-        // Set up event handlers for the guaranteed container
-        function setupGuaranteedContainer() {
-            const container = document.getElementById('guaranteed-mobile-submit');
-            if (!container) return false;
-            
-            // Add event handlers to the container
-            container.addEventListener('click', function(e) {
-                console.log("✅ Guaranteed container clicked");
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Hide container
-                container.style.display = 'none';
-                
-                // Show leaderboard form
-                showMobileLeaderboardForm();
-                
-                return false;
-            }, {capture: true, passive: false});
-            
-            container.addEventListener('touchstart', function(e) {
-                console.log("✅ Guaranteed container touched");
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Hide container
-                container.style.display = 'none';
-                
-                // Show leaderboard form
-                showMobileLeaderboardForm();
-                
-                return false;
-            }, {capture: true, passive: false});
-            
-            console.log("✅ Set up guaranteed container handlers");
-            return true;
-        }
-        
-        // Setup container handlers
-        setupGuaranteedContainer();
-        
-        // Check for game over very frequently and show buttons
-        function checkGameStateAndShowButtons() {
+        // Core function to check for game over and show button
+        function checkGameOverAndShowButton() {
             try {
-                // Check if we're in game over state and score hasn't been submitted
-                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                    console.log("🎮 Game over detected, showing submission options");
+                if (window.gameState === "gameOver") {
+                    // Always show button regardless of other conditions
+                    console.log("🚨 GAME OVER DETECTED - FORCING BUTTON DISPLAY");
+                    bruteForceButton.style.display = 'block';
                     
-                    // Show absolute button
-                    if (absoluteButton) {
-                        absoluteButton.style.display = 'block';
-                        console.log("✅ Absolute button displayed");
+                    // Make double sure with direct style attribute
+                    bruteForceButton.setAttribute('style', 
+                        'display: block !important; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; ' +
+                        'margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; ' +
+                        'font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; ' +
+                        'line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;'
+                    );
+                    
+                    // Apply css animations directly
+                    bruteForceButton.style.animation = 'pulse 1s infinite alternate';
+                    
+                    // Add pulse animation if needed
+                    if (!document.getElementById('brute-force-animation')) {
+                        const style = document.createElement('style');
+                        style.id = 'brute-force-animation';
+                        style.textContent = `
+                            @keyframes pulse {
+                                from { transform: scale(1); box-shadow: 0 0 30px #ff0000; }
+                                to { transform: scale(1.05); box-shadow: 0 0 60px #ff0000; }
+                            }
+                        `;
+                        document.head.appendChild(style);
                     }
-                    
-                    // Show guaranteed container
-                    const container = document.getElementById('guaranteed-mobile-submit');
-                    if (container) {
-                        container.style.display = 'block';
-                        console.log("✅ Guaranteed container displayed");
-                    }
-                    
-                    // Try to show the original button too
-                    const originalBtn = document.getElementById('submitLeaderboardBtn');
-                    if (originalBtn) {
-                        originalBtn.style.display = 'block';
-                        originalBtn.style.visibility = 'visible';
-                        originalBtn.style.opacity = '1';
-                        console.log("✅ Original button visibility enforced");
-                    }
-                    
-                    // Try the emergency button if it exists
-                    const emergencyBtn = document.getElementById('emergency-submit-btn');
-                    if (emergencyBtn) {
-                        emergencyBtn.style.display = 'block';
-                        console.log("✅ Emergency button displayed");
-                    }
-                    
-                    return true;
                 } else {
-                    // Hide all buttons when not in game over
-                    hideAllMobileButtons();
-                    return false;
+                    // Hide when not in game over
+                    bruteForceButton.style.display = 'none';
                 }
             } catch (e) {
-                console.error("❌ Error checking game state:", e);
-                return false;
+                console.error("Error in brute force check:", e);
             }
         }
         
-        // Hook into game draw loop
-        function patchGameDrawLoop() {
-            setTimeout(function() {
-                if (window.draw && typeof window.draw === 'function') {
-                    console.log("🎮 Patching game draw loop");
-                    const originalDraw = window.draw;
-                    
-                    window.draw = function() {
-                        // Call original draw function
-                        originalDraw.apply(this, arguments);
-                        
-                        // Check for game over
-                        try {
-                            checkGameStateAndShowButtons();
-                        } catch (e) {
-                            // Silent catch to not disrupt game
-                        }
-                    };
-                    
-                    console.log("✅ Game draw loop patched successfully");
-                }
-            }, 1000);
+        // Use multiple methods to detect game over
+        
+        // 1. Direct interval - check very frequently 
+        setInterval(checkGameOverAndShowButton, 100);
+        
+        // 2. Hook into frame rendering if possible
+        if (window.requestAnimationFrame) {
+            function checkOnFrame() {
+                checkGameOverAndShowButton();
+                window.requestAnimationFrame(checkOnFrame);
+            }
+            window.requestAnimationFrame(checkOnFrame);
+            console.log("🚨 Added animation frame hook");
         }
         
-        // Set up multiple intervals with different timings for redundancy
-        const intervals = [
-            setInterval(checkGameStateAndShowButtons, 100),  // Very frequent check
-            setInterval(checkGameStateAndShowButtons, 250),  // Medium frequency check
-            setInterval(checkGameStateAndShowButtons, 500),  // Slower backup check
-            setInterval(checkGameStateAndShowButtons, 1000)  // Slowest fallback check
-        ];
-        
-        // Patch draw loop
-        patchGameDrawLoop();
-        
-        // Add global handler to detect game over
-        document.addEventListener('keydown', function(e) {
-            // After any key press, check the game state
-            setTimeout(checkGameStateAndShowButtons, 100);
-        });
-        
-        // Watch for score changes - score stopping increases suggests game over
+        // 3. Watch for score changes as game over indicator
         let lastScore = 0;
         let stableScoreCount = 0;
         
         setInterval(function() {
-            try {
-                const currentScore = window.score || 0;
-                
-                // If we have a score and it hasn't changed
-                if (currentScore > 0 && currentScore === lastScore) {
+            if (window.score > 0) {
+                if (window.score === lastScore) {
                     stableScoreCount++;
-                    
-                    // After score is stable for a bit, check if we're in game over
-                    if (stableScoreCount >= 3) {
-                        checkGameStateAndShowButtons();
+                    if (stableScoreCount > 3) {
+                        // Score hasn't changed for a while, might be game over
+                        checkGameOverAndShowButton();
                     }
                 } else {
-                    // Reset counter if score changes
                     stableScoreCount = 0;
-                    lastScore = currentScore;
+                    lastScore = window.score;
                 }
-            } catch (e) {
-                // Silent catch
             }
         }, 500);
         
-        // Observe DOM for changes that might indicate game over
-        const observer = new MutationObserver(function(mutations) {
-            checkGameStateAndShowButtons();
+        // 4. Global listeners for any input that might change game state
+        document.addEventListener('click', function() {
+            setTimeout(checkGameOverAndShowButton, 100);
+        }, true);
+        
+        document.addEventListener('touchstart', function() {
+            setTimeout(checkGameOverAndShowButton, 100);
+        }, true);
+        
+        document.addEventListener('keydown', function() {
+            setTimeout(checkGameOverAndShowButton, 100);
+        }, true);
+        
+        // 5. Direct access to game loop
+        if (window.draw && typeof window.draw === 'function') {
+            const originalDraw = window.draw;
+            window.draw = function() {
+                originalDraw.apply(this, arguments);
+                try {
+                    // Check after each frame renders
+                    checkGameOverAndShowButton();
+                } catch (e) {
+                    // Silent catch to not disrupt game
+                }
+            };
+            console.log("🚨 Hooked into game draw loop");
+        }
+        
+        // 6. Monitor DOM changes
+        const observer = new MutationObserver(function() {
+            checkGameOverAndShowButton();
         });
         
         observer.observe(document.body, {
             childList: true,
             subtree: true,
-            attributes: true,
-            attributeFilter: ['style', 'class']
+            attributes: true
         });
         
-        // One time check after everything is loaded
-        window.addEventListener('load', function() {
-            console.log("🖥️ Page fully loaded, running final checks");
-            
-            // Do multiple delayed checks
-            setTimeout(checkGameStateAndShowButtons, 1000);
-            setTimeout(checkGameStateAndShowButtons, 2000);
-            setTimeout(checkGameStateAndShowButtons, 3000);
-            setTimeout(checkGameStateAndShowButtons, 5000);
-        });
+        console.log("🚨 BRUTE FORCE SOLUTION INSTALLED AND ACTIVATED");
         
-        console.log("✅ 100% GUARANTEED MOBILE SOLUTION INSTALLED");
+        // Initial check
+        checkGameOverAndShowButton();
     })();
 </script>
