@@ -185,6 +185,23 @@
             margin-top: 5px;
             display: none;
         }
+        /* Add restart button styling */
+        #restartButton {
+            display: none; /* Hidden by default, shown only on game over */
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 60px;
+            text-align: center;
+            line-height: 60px;
+            font-family: 'Courier New', monospace;
+            color: white;
+            font-size: 18px;
+            background-color: rgba(220, 30, 30, 0.7); /* Red tint to match game theme */
+            z-index: 1100; /* Ensure it's above other elements */
+        }
     </style>
     <script src="libraries/p5.min.js"></script>
     <!-- Add Supabase JS Client -->
@@ -317,6 +334,50 @@
             console.log("Game started via click");
         }
         
+        /* Add restart game function for mobile */
+        function restartGame() {
+            console.log("Restart game clicked on mobile");
+            window.showTitleScreen = true; // Go back to title screen on restart
+            window.gameState = "start";
+            
+            // Reset everything (same logic as in keyPressed function)
+            window.score = 0;
+            window.enemiesKilled = 0;
+            window.enemies = [];
+            window.obstacles = [];
+            window.projectiles = [];
+            window.shootEffects = [];
+            window.powerUps = [];
+            
+            // Reset power-ups
+            window.activePowerUps.shield = 0;
+            window.activePowerUps.beamShot = 0;
+            window.activePowerUps.rapidFire = 0;
+            
+            // Reset game state
+            window.slowMotion = false;
+            window.slowMotionTimer = 0;
+            window.scrollSpeed = window.normalScrollSpeed;
+            window.screenFlash = 0;
+            
+            // Reset player
+            window.player.y = window.groundY;
+            window.player.vy = 0;
+            window.player.state = "running";
+            
+            // Reset environment
+            window.groundOffset = 0;
+            window.backgroundOffset = 0;
+            window.midgroundOffset = 0;
+            window.foregroundOffset = 0;
+            
+            // Reset leaderboard submission status
+            window.leaderboardScoreSubmitted = false;
+            
+            // Hide the restart button after clicking
+            document.getElementById('restartButton').style.display = 'none';
+        }
+        
         // Initialize once page is loaded
         document.addEventListener('DOMContentLoaded', function() {
             console.log("DOMContentLoaded - Setting up mobile detection");
@@ -341,6 +402,8 @@
         <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
         <div id="pauseButton" class="control-area" onclick="togglePause()" onmousedown="togglePause()" ontouchstart="togglePause()">II</div>
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
+        <!-- Add restart button for mobile -->
+        <div id="restartButton" class="control-area" onclick="restartGame()" onmousedown="restartGame()" ontouchstart="restartGame()">RESTART GAME</div>
     </div>
     
     <!-- Leaderboard form -->

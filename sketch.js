@@ -1443,7 +1443,24 @@ function draw() {
   if (gameState === "gameOver") {
     // Create a proper game over screen that fully covers the game
     drawGameOverScreen();
+    
+    // Show restart button on mobile devices
+    if (isMobileDevice) {
+      const restartButton = document.getElementById('restartButton');
+      if (restartButton) {
+        restartButton.style.display = 'block';
+      }
+    }
+    
     return; // Skip all other game logic to prevent updating game elements
+  } else {
+    // Hide restart button when not in game over state
+    if (isMobileDevice) {
+      const restartButton = document.getElementById('restartButton');
+      if (restartButton) {
+        restartButton.style.display = 'none';
+      }
+    }
   }
   
   // If in leaderboard state, only draw the leaderboard screen
@@ -4762,6 +4779,14 @@ function showLeaderboardForm() {
   
   console.log("Form element found, setting display to block");
   form.style.display = 'block';
+  
+  // Hide restart button when leaderboard form is shown (for mobile)
+  if (isMobileDevice) {
+    const restartButton = document.getElementById('restartButton');
+    if (restartButton) {
+      restartButton.style.display = 'none';
+    }
+  }
   
   // Make sure form fields are reset
   const playerNameInput = document.getElementById('playerName');
