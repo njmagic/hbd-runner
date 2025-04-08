@@ -189,29 +189,34 @@
         #restartButton {
             display: none; /* Hidden by default, shown only on game over */
             position: absolute;
-            bottom: 90px; /* Position near bottom of screen */
+            top: 60%; /* Position in lower half of screen for thumb access */
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
-            height: 60px;
+            width: 220px; /* Wider for better touch target */
+            height: 80px; /* Taller for better touch target */
             text-align: center;
-            line-height: 60px;
+            line-height: 80px;
             font-family: 'Courier New', monospace; /* Match game style */
             color: white;
-            font-size: 18px;
+            font-size: 22px; /* Larger font */
             font-weight: bold;
-            background-color: rgba(220, 30, 30, 0.8);
-            border: 3px solid rgba(255, 255, 255, 0.8);
+            background-color: rgba(220, 30, 30, 0.85);
+            border: 4px solid rgba(255, 255, 255, 0.9);
             z-index: 9999; /* Ensure it's above everything */
             pointer-events: auto;
-            box-shadow: 0 0 15px rgba(255, 50, 50, 0.4);
-            text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.8);
-            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 50, 50, 0.6);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+            user-select: none; /* Prevent text selection */
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         
         /* Active state for restart button */
         #restartButton:active {
-            background-color: rgba(255, 80, 80, 0.9);
+            background-color: rgba(255, 100, 100, 0.95);
             transform: translateX(-50%) scale(0.95);
         }
     </style>
@@ -348,27 +353,113 @@
         
         /* Add restart game function for mobile - simulates R key press */
         function restartGame() {
-            console.log("Restart button clicked - simulating R key press");
+            console.log("Restart button clicked - using multiple approaches to simulate R key");
             
-            // Create a synthetic keyboard event for the 'R' key
-            // This uses the game's existing logic to handle restart
+            // APPROACH 1: Direct simulation of keyPressed function
             if (typeof window.keyPressed === 'function') {
                 // Store original key values
                 const originalKey = window.key;
                 const originalKeyCode = window.keyCode;
                 
-                // Simulate R key
+                // Set all the properties that would be set during a real keypress
                 window.key = 'r';
                 window.keyCode = 82; // R key code
                 
-                // Call the game's key handler
+                // Also set global p5.js key variables
+                try {
+                    window._lastKeyPressed = 'r';
+                    window.keyIsPressed = true;
+                } catch(e) {
+                    console.log("Could not set some p5 properties:", e);
+                }
+                
+                // Call the game's key handler with direct access pattern
                 window.keyPressed();
                 
-                // Restore original key values
-                window.key = originalKey;
-                window.keyCode = originalKeyCode;
+                // APPROACH 2: Create and dispatch an actual keyboard event
+                try {
+                    const keyEvent = new KeyboardEvent('keydown', {
+                        key: 'r',
+                        code: 'KeyR',
+                        keyCode: 82,
+                        which: 82,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    document.dispatchEvent(keyEvent);
+                    
+                    // Fire keypress event too
+                    const keypressEvent = new KeyboardEvent('keypress', { 
+                        key: 'r',
+                        code: 'KeyR',
+                        keyCode: 82,
+                        which: 82,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    document.dispatchEvent(keypressEvent);
+                } catch(e) {
+                    console.log("Could not dispatch keyboard event:", e);
+                }
                 
-                console.log("R key simulation completed");
+                // APPROACH 3: Direct game state manipulation (last resort)
+                try {
+                    if (window.gameState === "gameOver" || window.gameState === "leaderboard") {
+                        window.showTitleScreen = true;
+                        window.gameState = "start";
+                        
+                        // Reset score and game variables as the original code would
+                        window.score = 0;
+                        window.enemiesKilled = 0;
+                        window.enemies = [];
+                        window.obstacles = [];
+                        window.projectiles = [];
+                        window.shootEffects = [];
+                        window.powerUps = [];
+                        
+                        // Reset other game states
+                        if (window.activePowerUps) {
+                            window.activePowerUps.shield = 0;
+                            window.activePowerUps.beamShot = 0;
+                            window.activePowerUps.rapidFire = 0;
+                        }
+                        
+                        // Reset player position
+                        if (window.player) {
+                            window.player.y = window.groundY || 0;
+                            window.player.vy = 0;
+                            window.player.state = "running";
+                        }
+                        
+                        console.log("Direct game state manipulation applied");
+                    }
+                } catch(e) {
+                    console.log("Direct state manipulation failed:", e);
+                }
+                
+                // Restore original key values
+                setTimeout(function() {
+                    window.key = originalKey;
+                    window.keyCode = originalKeyCode;
+                    window.keyIsPressed = false;
+                    
+                    // Fire keyup event to complete the sequence
+                    try {
+                        const keyupEvent = new KeyboardEvent('keyup', { 
+                            key: 'r',
+                            code: 'KeyR',
+                            keyCode: 82,
+                            which: 82,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        document.dispatchEvent(keyupEvent);
+                    } catch(e) {
+                        console.log("Could not dispatch keyup event:", e);
+                    }
+                    
+                    console.log("R key simulation completed");
+                }, 100);
             } else {
                 console.error("keyPressed function not available");
             }
@@ -430,7 +521,10 @@
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
         <!-- Restart button for mobile -->
         <div id="restartButton" class="control-area" 
-             onclick="restartGame()">PRESS R TO RESTART</div>
+             onclick="restartGame()" 
+             onmousedown="restartGame()" 
+             ontouchstart="restartGame(); event.preventDefault();" 
+             ontouchend="event.preventDefault();">RESTART GAME</div>
     </div>
     
     <!-- Leaderboard form -->
