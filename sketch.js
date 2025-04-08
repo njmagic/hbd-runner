@@ -98,12 +98,21 @@ let controlsVisible = false;
 function setup() {
   createCanvas(800, 400);
   
-  // Detect mobile devices
-  isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // Detect mobile devices more robustly
+  isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                  (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+  
   if (isMobileDevice) {
     console.log("Mobile device detected, enabling touch controls");
     document.getElementById('mobileControls').style.display = 'block';
     controlsVisible = true;
+    
+    // Add HTML event listener for preventing zoom
+    document.addEventListener('touchmove', function(e) {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
     
     // Ensure proper canvas sizing on mobile
     windowResized();
@@ -2873,20 +2882,24 @@ function touchStarted() {
   // Don't do anything if not on a mobile device
   if (!isMobileDevice) return;
   
-  // Get touch position relative to the canvas
-  const canvasRect = document.querySelector('canvas').getBoundingClientRect();
-  const touchX = (touches[0] ? touches[0].clientX : mouseX) - canvasRect.left;
-  const touchY = (touches[0] ? touches[0].clientY : mouseY) - canvasRect.top;
+  // Prevent default touch behavior to avoid zooming or scrolling
+  if (touches[0]) {
+    touches[0].preventDefault = function() {};
+  }
   
-  // Scale touch coordinates to match the game's internal 800x400 resolution
-  const scaledTouchX = (touchX / canvasRect.width) * 800;
-  const scaledTouchY = (touchY / canvasRect.height) * 400;
+  // Debug mobile detection
+  console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
   
-  console.log(`Touch at: ${scaledTouchX}, ${scaledTouchY} (${touchX}, ${touchY})`);
+  // Get touch position relative to the page, not the canvas
+  // Using clientX/Y directly for overlay control elements
+  const touchX = (touches[0] ? touches[0].clientX : mouseX);
+  const touchY = (touches[0] ? touches[0].clientY : mouseY);
+  
+  console.log(`Touch at page coordinates: ${touchX}, ${touchY}`);
   
   // Record timing for long press detection
   touchStartTime = millis();
-  touchStartY = scaledTouchY;
+  touchStartY = touchY;
   
   // Handle start button on title screen
   if (showTitleScreen) {
@@ -2896,8 +2909,10 @@ function touchStarted() {
     const startBtn = document.getElementById('startButton');
     if (!startBtn) {
       console.error("Start button element not found");
-      return true;
+      return false;
     }
+    
+    startBtn.style.display = 'block'; // Make sure it's visible
     
     // Start the game (same logic as pressing space)
     showTitleScreen = false;
@@ -2942,11 +2957,9 @@ function touchStarted() {
   const pauseBtn = document.getElementById('pauseButton');
   if (pauseBtn) {
     const pauseRect = pauseBtn.getBoundingClientRect();
-    const relativeX = (touches[0] ? touches[0].clientX : mouseX);
-    const relativeY = (touches[0] ? touches[0].clientY : mouseY);
     
-    if (relativeX >= pauseRect.left && relativeX <= pauseRect.right &&
-        relativeY >= pauseRect.top && relativeY <= pauseRect.bottom) {
+    if (touchX >= pauseRect.left && touchX <= pauseRect.right &&
+        touchY >= pauseRect.top && touchY <= pauseRect.bottom) {
       // Toggle between playing and paused
       if (gameState === "playing") {
         gameState = "paused";
@@ -2967,41 +2980,53 @@ function touchStarted() {
     
     if (!leftControl || !rightControl) {
       console.error("Control elements not found");
-      return true;
+      return false;
     }
     
     // Debug the control elements
-    console.log("Left control:", leftControl, "Right control:", rightControl);
+    console.log("Left control:", leftControl.id, "Right control:", rightControl.id);
     
     const leftRect = leftControl.getBoundingClientRect();
     const rightRect = rightControl.getBoundingClientRect();
     
     // Debug the control element positions
-    console.log("Left rect:", leftRect.left, leftRect.right, leftRect.top, leftRect.bottom);
-    console.log("Right rect:", rightRect.left, rightRect.right, rightRect.top, rightRect.bottom);
-    
-    // Use clientX and clientY directly without canvas offset for overlay elements
-    const relativeX = (touches[0] ? touches[0].clientX : mouseX);
-    const relativeY = (touches[0] ? touches[0].clientY : mouseY);
-    
-    console.log("Touch position relative to page:", relativeX, relativeY);
+    console.log("Left rect bounds:", 
+                "left=" + leftRect.left, 
+                "right=" + leftRect.right, 
+                "top=" + leftRect.top, 
+                "bottom=" + leftRect.bottom);
+    console.log("Right rect bounds:", 
+                "left=" + rightRect.left, 
+                "right=" + rightRect.right, 
+                "top=" + rightRect.top, 
+                "bottom=" + rightRect.bottom);
+    console.log("Touch position:", touchX, touchY);
     
     // Check if touching the shoot button (right control)
-    if (relativeX >= rightRect.left && relativeX <= rightRect.right &&
-        relativeY >= rightRect.top && relativeY <= rightRect.bottom) {
-      console.log("Shoot button touched - executing mobileShoot()");
+    // Using direct coordinate comparison
+    if (touchX >= rightRect.left && touchX <= rightRect.right &&
+        touchY >= rightRect.top && touchY <= rightRect.bottom) {
+      console.log("✓ SHOOT button touched at", touchX, touchY);
       
-      // Visual feedback for shoot button press
-      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.5)";
+      // Strong visual feedback
+      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.7)";
+      rightControl.style.transform = "scale(0.95)";
       
+      // Call the shoot function
       mobileShoot();
       return false; // Prevent default
     }
     
     // Check if touching the left control area (for jump/duck)
-    if (relativeX >= leftRect.left && relativeX <= leftRect.right &&
-        relativeY >= leftRect.top && relativeY <= leftRect.bottom) {
-      console.log("Left control touched - starting jump");
+    if (touchX >= leftRect.left && touchX <= leftRect.right &&
+        touchY >= leftRect.top && touchY <= leftRect.bottom) {
+      console.log("✓ JUMP/DUCK control touched at", touchX, touchY);
+      
+      // Visual feedback
+      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
+      leftControl.style.transform = "scale(0.95)";
+      
+      // Trigger jump immediately on tap
       mobileJump();
       isJumping = true;
       isDucking = false;
@@ -3009,18 +3034,15 @@ function touchStarted() {
     }
   }
   
-  // Allow default behavior for touches outside control areas
-  return true;
+  return false; // Prevent default for all touches to avoid zooming/scrolling
 }
 
 function touchEnded() {
   // Don't do anything if not on a mobile device
-  if (!isMobileDevice) return;
+  if (!isMobileDevice) return false;
   
-  // Only process in playing state
-  if (gameState !== "playing") return;
-  
-  console.log("Touch ended - checking states");
+  // Only process in playing state if needed
+  console.log("Touch ended - resetting control appearance");
   
   // Get control elements for visual feedback
   const leftControl = document.getElementById('leftControl');
@@ -3028,34 +3050,40 @@ function touchEnded() {
   
   if (leftControl) {
     // Reset control appearance
-    leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+    leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+    leftControl.style.transform = "scale(1)";
   }
   
   if (rightControl) {
     // Reset shoot button appearance after touch
-    rightControl.style.backgroundColor = "rgba(255, 100, 100, 0.25)";
+    rightControl.style.backgroundColor = "rgba(255, 80, 80, 0.35)";
+    rightControl.style.transform = "scale(1)";
   }
   
-  // Handle ducking state
-  if (isDucking) {
-    console.log("Ending duck state");
-    isDucking = false;
+  // Handle ducking state only if in playing state
+  if (gameState === "playing") {
+    if (isDucking) {
+      console.log("Ending duck state");
+      isDucking = false;
+      
+      // Only return to running if still in ducking state
+      // (might have changed due to jumping or other actions)
+      if (player.state === "ducking") {
+        console.log("Returning player to running state");
+        player.state = "running";
+      }
+    }
     
-    // Only return to running if still in ducking state
-    // (might have changed due to jumping or other actions)
-    if (player.state === "ducking") {
-      console.log("Returning player to running state");
-      player.state = "running";
+    // Update jump tracking
+    if (isJumping) {
+      console.log("Ending jump tracking");
+      isJumping = false;
+      // Note: We don't change player.state here since jumping
+      // should continue until player lands naturally
     }
   }
   
-  // Update jump tracking
-  if (isJumping) {
-    console.log("Ending jump tracking");
-    isJumping = false;
-    // Note: We don't change player.state here since jumping
-    // should continue until player lands naturally
-  }
+  return false; // Prevent default
 }
 
 // Handle touch movement (for duck detection)
@@ -3069,38 +3097,41 @@ function touchMoved() {
   // Get control area dimensions
   const leftControl = document.getElementById('leftControl');
   if (!leftControl) {
-    console.error("Left control element not found");
+    console.error("Left control element not found in touchMoved");
     return false;
   }
   
   const leftRect = leftControl.getBoundingClientRect();
   
-  // Get current touch position
-  const relativeX = (touches[0] ? touches[0].clientX : mouseX);
-  const relativeY = (touches[0] ? touches[0].clientY : mouseY);
+  // Get current touch position (using page coordinates)
+  const touchX = (touches[0] ? touches[0].clientX : mouseX);
+  const touchY = (touches[0] ? touches[0].clientY : mouseY);
   
   // Check if touch is within left control area
-  if (relativeX >= leftRect.left && relativeX <= leftRect.right &&
-      relativeY >= leftRect.top && relativeY <= leftRect.bottom) {
+  if (touchX >= leftRect.left && touchX <= leftRect.right &&
+      touchY >= leftRect.top && touchY <= leftRect.bottom) {
     
     // Calculate how long the touch has been held
     const touchDuration = millis() - touchStartTime;
     console.log("Touch duration for duck: " + touchDuration + "ms");
     
+    // Reduce the long press threshold for better responsiveness
+    const longPressThresholdForDucking = 300; // ms (was 500)
+    
     // If held long enough, trigger duck
-    if (touchDuration > longPressThreshold && !isDucking) {
-      console.log("Long press detected - ducking");
+    if (touchDuration > longPressThresholdForDucking && !isDucking) {
+      console.log("✓ DUCK activated - Long press detected");
       mobileDuck();
       isDucking = true;
       isJumping = false;
       
       // Highlight the control area to provide visual feedback
-      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.4)";
+      leftControl.style.border = "2px solid rgba(255, 255, 255, 0.6)";
     }
   }
   
-  // Prevent default browser behaviors like scrolling
-  return false;
+  return false; // Prevent default behavior
 }
 
 // Visual effect for enemy defeat - enhance the death effects
@@ -4897,6 +4928,9 @@ function windowResized() {
 function mobileShoot() {
   console.log("Mobile shoot function called");
   
+  // Force debug info at top of frame
+  console.log("%c MOBILE SHOOT TRIGGERED ", "background: #f00; color: white; font-size: 14px;");
+  
   // Make sure we're in the playing state
   if (gameState !== "playing") {
     console.log("Not shooting - game state is not 'playing'");
@@ -4904,8 +4938,10 @@ function mobileShoot() {
   }
   
   // Debug info
+  console.log("Player position:", player.x, player.y);
   console.log("Player state:", player.state);
   console.log("Active power-ups:", activePowerUps);
+  console.log("Current projectiles:", projectiles.length);
   
   // Direct implementation of shooting logic, exactly as in keyPressed for the 'z' key
   if (activePowerUps.beamShot > 0) {
@@ -4999,6 +5035,9 @@ function mobileShoot() {
       shootEffects.push(effect);
     }
   }
+  
+  // Log the result after shooting
+  console.log("After shooting - projectiles:", projectiles.length);
 }
 
 // Dedicated mobile ducking function
