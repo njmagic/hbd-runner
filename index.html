@@ -189,29 +189,39 @@
         #restartButton {
             display: none; /* Hidden by default, shown only on game over */
             position: absolute;
-            top: 70px; /* Moved from bottom to top */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 220px; /* Slightly wider */
-            height: 70px; /* Slightly taller for better touch target */
+            top: 50%; /* Center vertically */
+            left: 50%; /* Center horizontally */
+            transform: translate(-50%, -50%);
+            width: 280px; /* Even larger */
+            height: 100px; /* Taller for better visibility */
             text-align: center;
-            line-height: 70px;
-            font-family: 'Courier New', monospace;
+            line-height: 100px;
+            font-family: 'Arial', sans-serif;
             color: white;
-            font-size: 22px; /* Larger font */
+            font-size: 32px; /* Much larger font */
             font-weight: bold;
-            background-color: rgba(220, 30, 30, 0.8); /* Slightly more opaque */
-            border: 3px solid rgba(255, 100, 100, 0.9); /* More visible border */
-            z-index: 1100; /* Ensure it's above other elements */
+            background-color: rgba(255, 50, 50, 0.85); /* Brighter red */
+            border: 5px solid rgba(255, 255, 255, 0.9); /* Bright white border */
+            z-index: 9999; /* Ensure it's above everything */
             pointer-events: auto; /* Explicitly enable touch events */
-            box-shadow: 0 0 20px rgba(255, 50, 50, 0.3); /* Glow effect */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); /* Text shadow for better readability */
+            box-shadow: 0 0 30px rgba(255, 50, 50, 0.7); /* Stronger glow */
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.8); /* Stronger text shadow */
+            cursor: pointer;
+            border-radius: 15px; /* Rounded corners */
+            animation: pulse 1.5s infinite; /* Add pulsing animation */
+        }
+        
+        /* Pulsing animation for restart button */
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
         }
         
         /* Active state for restart button */
         #restartButton:active {
-            transform: translateX(-50%) scale(0.95);
-            background-color: rgba(255, 50, 50, 0.9);
+            background-color: rgba(255, 100, 100, 0.95);
+            transform: translate(-50%, -50%) scale(0.95);
         }
     </style>
     <script src="libraries/p5.min.js"></script>
@@ -347,36 +357,42 @@
         
         /* Add restart game function for mobile */
         function restartGame() {
-            console.log("Restart game clicked on mobile - using direct approach");
+            console.log("Restart game clicked on mobile - forcing hard reload");
             
-            // Direct approach: forcefully rewrite critical game state variables
-            window.gameState = "start";
-            window.showTitleScreen = true;
+            // Add a timestamp to force a complete cache refresh
+            const timestamp = new Date().getTime();
             
-            // Force the start button to show
-            document.getElementById('startButton').style.display = 'block';
-            
-            // Hide the restart button
-            document.getElementById('restartButton').style.display = 'none';
-            
-            // Force game restart by setting up the initial game state directly
-            window.score = 0;
-            window.enemiesKilled = 0;
-            
-            // Clear game arrays by direct replacement
-            window.enemies = [];
-            window.obstacles = [];
-            window.projectiles = [];
-            window.shootEffects = [];
-            window.powerUps = [];
-            
-            // Force a reload of the page as last resort
-            window.location.reload();
+            // Force a hard reload with cache bypass and direct title screen parameter
+            window.location.href = window.location.pathname + "?restart=" + timestamp + "#title";
         }
         
         // Initialize once page is loaded
         document.addEventListener('DOMContentLoaded', function() {
             console.log("DOMContentLoaded - Setting up mobile detection");
+            
+            // Check for restart parameter in URL to force title screen
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('restart')) {
+                console.log("Restart parameter detected, forcing title screen");
+                // Force the game to start in title screen mode
+                window.showTitleScreen = true;
+                window.gameState = "start";
+                
+                // Force reset of all arrays
+                window.enemies = [];
+                window.obstacles = [];
+                window.projectiles = [];
+                window.shootEffects = [];
+                window.powerUps = [];
+                
+                // Make sure start button is visible
+                setTimeout(function() {
+                    const startButton = document.getElementById('startButton');
+                    if (startButton) {
+                        startButton.style.display = 'block';
+                    }
+                }, 100);
+            }
             
             // Make mobile controls visible on mobile devices
             if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
@@ -393,17 +409,29 @@
         
         // Function to monitor game state and ensure restart button shows correctly
         function setupRestartButtonMonitor() {
-            console.log("Setting up restart button monitor (simplified)");
+            console.log("Setting up aggressive restart button monitor");
             
-            // Check game state every 300ms to ensure visibility updates
+            // Monitor every 100ms for maximum responsiveness
             setInterval(function() {
-                // Direct check for game over state without any complex logic
-                if (window.gameState === "gameOver") {
-                    document.getElementById('restartButton').style.display = 'block';
-                } else {
-                    document.getElementById('restartButton').style.display = 'none';
+                try {
+                    // Direct check for game over state
+                    if (window.gameState === "gameOver") {
+                        const restartButton = document.getElementById('restartButton');
+                        if (restartButton) {
+                            restartButton.style.display = 'block';
+                            restartButton.style.zIndex = '9999'; // Make sure it's on top
+                        }
+                    } else {
+                        // Only hide if not in game over state
+                        const restartButton = document.getElementById('restartButton');
+                        if (restartButton) {
+                            restartButton.style.display = 'none';
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error in restart button monitor:", e);
                 }
-            }, 300);
+            }, 100); // Check very frequently
         }
     </script>
 </head>
@@ -418,9 +446,11 @@
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
         <!-- Restart button for mobile -->
         <div id="restartButton" class="control-area" 
-             onclick="restartGame(); return false;" 
-             onmousedown="restartGame(); return false;" 
-             ontouchstart="restartGame(); return false;">PLAY AGAIN</div>
+             onclick="restartGame(); event.preventDefault(); event.stopPropagation(); return false;" 
+             onmousedown="restartGame(); event.preventDefault(); event.stopPropagation(); return false;" 
+             ontouchstart="restartGame(); event.preventDefault(); event.stopPropagation(); return false;">
+             RESTART GAME
+        </div>
     </div>
     
     <!-- Leaderboard form -->
