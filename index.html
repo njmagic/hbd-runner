@@ -383,6 +383,57 @@
         
         function startGame() {
             console.log("Start game clicked");
+            
+            // Give focus back to the canvas for proper game input
+            try {
+                const canvasElement = document.querySelector('canvas');
+                if (canvasElement) {
+                    canvasElement.focus();
+                }
+            } catch (e) {
+                console.error("Error focusing canvas:", e);
+            }
+            
+            // Rather than directly manipulate game variables, let's trigger the native touchStarted
+            // function in the game code by simulating a touch event on the canvas
+            try {
+                const canvasElement = document.querySelector('canvas');
+                if (canvasElement) {
+                    console.log("Simulating touch on canvas to start game");
+                    
+                    // Hide start button first to avoid interference
+                    document.getElementById('startButton').style.display = 'none';
+                    
+                    // Set a small delay to ensure canvas is ready
+                    setTimeout(function() {
+                        // Set these core game state variables using the sketch.js style
+                        window.showTitleScreen = false;
+                        window.gameState = "playing";
+                        
+                        // Directly call the native game touchStarted if available
+                        if (typeof window.touchStarted === 'function') {
+                            // This will properly invoke all game initialization
+                            window.touchStarted();
+                            console.log("Called native touchStarted function");
+                        }
+                        
+                        console.log("Game started via simulated touch event");
+                    }, 50);
+                } else {
+                    console.error("Canvas element not found for touch event");
+                    // Fallback to direct variable manipulation if we can't find the canvas
+                    directlyStartGame();
+                }
+            } catch (e) {
+                console.error("Error simulating touch event:", e);
+                // Fallback to direct approach
+                directlyStartGame();
+            }
+        }
+        
+        // Fallback function that uses the direct approach if simulation fails
+        function directlyStartGame() {
+            console.log("Using direct approach to start game");
             window.showTitleScreen = false;
             window.gameState = "playing";
             
@@ -418,8 +469,6 @@
             
             // Hide the start button
             document.getElementById('startButton').style.display = 'none';
-            
-            console.log("Game started via click");
         }
         
         /* Add restart game function for mobile - direct implementation of R key functionality */
@@ -1161,7 +1210,11 @@
     <div id="mobileControls">
         <div id="leftControl" class="control-area" onclick="mobileJump()" onmousedown="mobileJump()" ontouchstart="mobileJump()"></div>
         <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
-        <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
+        <div id="startButton" class="control-area" 
+             style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" 
+             onclick="event.preventDefault(); event.stopPropagation(); startGame(); return false;" 
+             onmousedown="event.preventDefault(); event.stopPropagation(); startGame(); return false;" 
+             ontouchstart="event.preventDefault(); event.stopPropagation(); startGame(); return false;">TAP TO START</div>
         <!-- Leaderboard submission button for mobile - enhanced version -->
         <div id="submitLeaderboardBtn"
              onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
@@ -1378,5 +1431,93 @@
         
         // Initial check
         checkGameOverAndShowButton();
+    })();
+    
+    // Add reliable mobile startup helper
+    (function() {
+        // Only run on mobile
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && 
+            !(window.matchMedia && window.matchMedia("(max-width: 768px)").matches)) {
+            return;
+        }
+        
+        console.log("Setting up mobile game startup helper");
+        
+        // Wait for game to initialize
+        setTimeout(function() {
+            // Add touchstart event directly to canvas for maximum compatibility
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                console.log("Adding direct canvas touch listeners for game start");
+                
+                // This makes sure that when the title screen is showing and the canvas is touched,
+                // the game starts properly without freezing
+                canvas.addEventListener('touchstart', function(e) {
+                    // Only trigger if we're on the title screen
+                    if (window.showTitleScreen && window.gameState === "start") {
+                        console.log("Canvas touched on title screen - starting game");
+                        // Prevent default behavior
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // First set game state directly - belt and suspenders approach
+                        window.showTitleScreen = false;
+                        window.gameState = "playing";
+                        
+                        // Make sure start button is hidden
+                        const startButton = document.getElementById('startButton');
+                        if (startButton) startButton.style.display = 'none';
+                        
+                        // Then call touchStarted directly if available
+                        if (typeof window.touchStarted === 'function') {
+                            window.touchStarted();
+                        }
+                        
+                        console.log("Game started via direct canvas touch");
+                    }
+                }, {capture: true, passive: false});
+                
+                // Check if the start button exists, and if not, create it
+                if (!document.getElementById('startButton')) {
+                    console.log("Creating start button element");
+                    const startButton = document.createElement('div');
+                    startButton.id = 'startButton';
+                    startButton.className = 'control-area';
+                    startButton.innerText = 'TAP TO START';
+                    startButton.setAttribute('style', 'display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: "Courier New", monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);');
+                    
+                    // Add event handlers
+                    ['click', 'mousedown', 'touchstart'].forEach(function(eventType) {
+                        startButton.addEventListener(eventType, function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startGame();
+                            return false;
+                        }, {capture: true, passive: false});
+                    });
+                    
+                    // Add to mobile controls
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.appendChild(startButton);
+                        console.log("Start button added to mobile controls");
+                    }
+                }
+            }
+            
+            // Ensure that if game state changes to "start" with showTitleScreen,
+            // we show the start button
+            const checkTitleScreen = setInterval(function() {
+                if (window.gameState === "start" && window.showTitleScreen) {
+                    const startButton = document.getElementById('startButton');
+                    if (startButton && startButton.style.display !== 'block') {
+                        console.log("Setting start button visible based on game state");
+                        startButton.style.display = 'block';
+                    }
+                }
+            }, 100);
+            
+            console.log("Mobile game startup helper installed");
+        }, 1000);
     })();
 </script>
