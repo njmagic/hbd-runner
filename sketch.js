@@ -1449,6 +1449,9 @@ function draw() {
       const restartButton = document.getElementById('restartButton');
       if (restartButton) {
         restartButton.style.display = 'block';
+        console.log("Mobile restart button shown on game over");
+      } else {
+        console.error("Restart button element not found in DOM");
       }
     }
     
@@ -1457,8 +1460,9 @@ function draw() {
     // Hide restart button when not in game over state
     if (isMobileDevice) {
       const restartButton = document.getElementById('restartButton');
-      if (restartButton) {
+      if (restartButton && restartButton.style.display === 'block') {
         restartButton.style.display = 'none';
+        console.log("Mobile restart button hidden");
       }
     }
   }

@@ -189,18 +189,29 @@
         #restartButton {
             display: none; /* Hidden by default, shown only on game over */
             position: absolute;
-            bottom: 50px;
+            top: 70px; /* Moved from bottom to top */
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
-            height: 60px;
+            width: 220px; /* Slightly wider */
+            height: 70px; /* Slightly taller for better touch target */
             text-align: center;
-            line-height: 60px;
+            line-height: 70px;
             font-family: 'Courier New', monospace;
             color: white;
-            font-size: 18px;
-            background-color: rgba(220, 30, 30, 0.7); /* Red tint to match game theme */
+            font-size: 22px; /* Larger font */
+            font-weight: bold;
+            background-color: rgba(220, 30, 30, 0.8); /* Slightly more opaque */
+            border: 3px solid rgba(255, 100, 100, 0.9); /* More visible border */
             z-index: 1100; /* Ensure it's above other elements */
+            pointer-events: auto; /* Explicitly enable touch events */
+            box-shadow: 0 0 20px rgba(255, 50, 50, 0.3); /* Glow effect */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); /* Text shadow for better readability */
+        }
+        
+        /* Active state for restart button */
+        #restartButton:active {
+            transform: translateX(-50%) scale(0.95);
+            background-color: rgba(255, 50, 50, 0.9);
         }
     </style>
     <script src="libraries/p5.min.js"></script>
@@ -337,10 +348,26 @@
         /* Add restart game function for mobile */
         function restartGame() {
             console.log("Restart game clicked on mobile");
-            window.showTitleScreen = true; // Go back to title screen on restart
+            
+            // Make sure we have access to the game object
+            if (!window.player) {
+                console.error("Player object not found - trying alternate approach");
+                // Try to trigger the R key press programmatically
+                if (typeof window.keyPressed === 'function') {
+                    // Create a synthetic R key press
+                    const originalKey = window.key;
+                    window.key = 'r';
+                    window.keyPressed();
+                    window.key = originalKey;
+                    return;
+                }
+            }
+            
+            // Set game states directly
+            window.showTitleScreen = true; 
             window.gameState = "start";
             
-            // Reset everything (same logic as in keyPressed function)
+            // Reset everything
             window.score = 0;
             window.enemiesKilled = 0;
             window.enemies = [];
@@ -350,20 +377,26 @@
             window.powerUps = [];
             
             // Reset power-ups
-            window.activePowerUps.shield = 0;
-            window.activePowerUps.beamShot = 0;
-            window.activePowerUps.rapidFire = 0;
+            if (window.activePowerUps) {
+                window.activePowerUps.shield = 0;
+                window.activePowerUps.beamShot = 0;
+                window.activePowerUps.rapidFire = 0;
+            }
             
             // Reset game state
             window.slowMotion = false;
             window.slowMotionTimer = 0;
-            window.scrollSpeed = window.normalScrollSpeed;
+            if (window.normalScrollSpeed) {
+                window.scrollSpeed = window.normalScrollSpeed;
+            }
             window.screenFlash = 0;
             
             // Reset player
-            window.player.y = window.groundY;
-            window.player.vy = 0;
-            window.player.state = "running";
+            if (window.player && window.groundY !== undefined) {
+                window.player.y = window.groundY;
+                window.player.vy = 0;
+                window.player.state = "running";
+            }
             
             // Reset environment
             window.groundOffset = 0;
@@ -374,8 +407,10 @@
             // Reset leaderboard submission status
             window.leaderboardScoreSubmitted = false;
             
-            // Hide the restart button after clicking
+            // Hide the restart button
             document.getElementById('restartButton').style.display = 'none';
+            
+            console.log("Game restarted from mobile button");
         }
         
         // Initialize once page is loaded
@@ -402,8 +437,8 @@
         <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
         <div id="pauseButton" class="control-area" onclick="togglePause()" onmousedown="togglePause()" ontouchstart="togglePause()">II</div>
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
-        <!-- Add restart button for mobile -->
-        <div id="restartButton" class="control-area" onclick="restartGame()" onmousedown="restartGame()" ontouchstart="restartGame()">RESTART GAME</div>
+        <!-- Restart button for mobile -->
+        <div id="restartButton" class="control-area" onclick="restartGame()" onmousedown="restartGame()" ontouchstart="restartGame()">PLAY AGAIN</div>
     </div>
     
     <!-- Leaderboard form -->
