@@ -350,53 +350,115 @@
             console.log("Restart game clicked on mobile");
             
             try {
-                // First, explicitly set showTitleScreen to true to return to title screen
-                window.showTitleScreen = true;
-                
-                // Use the same approach as the R key handler in the main game
+                // First explicitly set game state to "start"
                 window.gameState = "start";
                 
-                // Reset game state and variables
+                // Then explicitly set showTitleScreen to true
+                window.showTitleScreen = true;
+                
+                // Reset all game elements
                 resetGameState();
                 
-                // Force redraw on next frame to refresh the screen
-                if (typeof window.loop === 'function') {
-                    window.loop();
+                // Force the title screen to show immediately
+                const startButton = document.getElementById('startButton');
+                if (startButton) {
+                    startButton.style.display = 'block';
+                }
+                
+                // Ensure the restart button is hidden
+                const restartButton = document.getElementById('restartButton');
+                if (restartButton) {
+                    restartButton.style.display = 'none';
+                }
+                
+                // This forces a redraw and ensures the title screen displays
+                if (typeof window.drawTitleScreen === 'function') {
+                    window.drawTitleScreen();
                 }
                 
                 console.log("Game restarted successfully from mobile button");
-                
-                // Hide the restart button
-                document.getElementById('restartButton').style.display = 'none';
             } catch (error) {
                 console.error("Error in mobile restart:", error);
                 
-                // Fallback: try to simulate R key press directly
-                console.log("Attempting fallback restart method...");
-                if (typeof window.keyPressed === 'function') {
-                    const originalKey = window.key;
-                    const originalKeyCode = window.keyCode;
-                    window.key = 'r';
-                    window.keyCode = 82; // R key code
-                    window.keyPressed();
-                    window.key = originalKey;
-                    window.keyCode = originalKeyCode;
+                // Fallback approach: simulate R key press
+                console.log("Attempting fallback restart method via simulated key press...");
+                try {
+                    // Directly execute the same code that the R key would trigger
+                    window.showTitleScreen = true;
+                    window.gameState = "start";
+                    
+                    // Reset all game variables exactly as the keyPressed handler would
+                    window.score = 0;
+                    window.enemiesKilled = 0;
+                    window.enemies = [];
+                    window.obstacles = [];
+                    window.projectiles = [];
+                    window.shootEffects = [];
+                    window.powerUps = [];
+                    
+                    // Reset power-ups
+                    if (window.activePowerUps) {
+                        window.activePowerUps.shield = 0;
+                        window.activePowerUps.beamShot = 0;
+                        window.activePowerUps.rapidFire = 0;
+                    }
+                    
+                    // Reset game mechanics
+                    window.slowMotion = false;
+                    window.slowMotionTimer = 0;
+                    if (window.normalScrollSpeed) {
+                        window.scrollSpeed = window.normalScrollSpeed;
+                    }
+                    window.screenFlash = 0;
+                    
+                    // Reset player
+                    if (window.player) {
+                        window.player.y = window.groundY || window.height - 80;
+                        window.player.vy = 0;
+                        window.player.state = "running";
+                    }
+                    
+                    // Reset environment
+                    window.groundOffset = 0;
+                    window.backgroundOffset = 0;
+                    window.midgroundOffset = 0;
+                    window.foregroundOffset = 0;
+                    
+                    // Reset leaderboard state
+                    window.leaderboardScoreSubmitted = false;
+                    
+                    console.log("Fallback restart completed");
+                } catch (secondError) {
+                    console.error("Both restart methods failed:", secondError);
                 }
             }
         }
         
         // Helper function to reset game state
         function resetGameState() {
-            // Reset basic game elements
+            // First ensure we're in title screen mode
+            window.showTitleScreen = true;
+            window.gameState = "start";
+            
+            // Reset score and statistics
             window.score = 0;
             window.enemiesKilled = 0;
             
-            // Clear game objects
-            window.enemies = [];
-            window.obstacles = [];
-            window.projectiles = [];
-            window.shootEffects = [];
-            window.powerUps = [];
+            // Clear all game objects
+            window.enemies = window.enemies || [];
+            window.enemies.length = 0;
+            
+            window.obstacles = window.obstacles || [];
+            window.obstacles.length = 0;
+            
+            window.projectiles = window.projectiles || [];
+            window.projectiles.length = 0;
+            
+            window.shootEffects = window.shootEffects || [];
+            window.shootEffects.length = 0;
+            
+            window.powerUps = window.powerUps || [];
+            window.powerUps.length = 0;
             
             // Reset power-ups
             if (window.activePowerUps) {
@@ -411,14 +473,14 @@
             window.scrollSpeed = window.normalScrollSpeed || 5;
             window.screenFlash = 0;
             
-            // Reset player if it exists
+            // Reset player position and state
             if (window.player) {
-                window.player.y = window.groundY || height - 80;
+                window.player.y = window.groundY || window.height - 80;
                 window.player.vy = 0;
                 window.player.state = "running";
             }
             
-            // Reset environment offsets
+            // Reset environment positions
             window.groundOffset = 0;
             window.backgroundOffset = 0;
             window.midgroundOffset = 0;
@@ -432,11 +494,26 @@
             // Reset leaderboard state
             window.leaderboardScoreSubmitted = false;
             
-            // Make sure the start button is visible on title screen
+            // Ensure mobile-specific UI is in the correct state
+            // Hide restart button
+            const restartButton = document.getElementById('restartButton');
+            if (restartButton) {
+                restartButton.style.display = 'none';
+            }
+            
+            // Show start button
             const startButton = document.getElementById('startButton');
             if (startButton) {
                 startButton.style.display = 'block';
             }
+            
+            // Make sure leaderboard form is hidden
+            const leaderboardForm = document.getElementById('leaderboardForm');
+            if (leaderboardForm) {
+                leaderboardForm.style.display = 'none';
+            }
+            
+            console.log("Game state reset completed, title screen ready");
         }
         
         // Initialize once page is loaded
@@ -450,8 +527,48 @@
                 (navigator.maxTouchPoints > 0)) {
                 console.log("Mobile device detected via DOMContentLoaded");
                 document.getElementById('mobileControls').style.display = 'block';
+                
+                // Set up game state monitoring for restart button visibility
+                setupRestartButtonMonitor();
             }
         });
+        
+        // Function to monitor game state and ensure restart button shows correctly
+        function setupRestartButtonMonitor() {
+            // Check game state every 500ms to ensure visibility updates
+            const restartMonitorInterval = setInterval(function() {
+                if (window.gameState === "gameOver") {
+                    const restartButton = document.getElementById('restartButton');
+                    if (restartButton && restartButton.style.display !== 'block') {
+                        restartButton.style.display = 'block';
+                        console.log("Forced restart button visibility in game over state");
+                    }
+                }
+            }, 500);
+            
+            // Add direct event listener for restart button
+            const restartButton = document.getElementById('restartButton');
+            if (restartButton) {
+                // Remove any existing event listeners to prevent duplicates
+                restartButton.removeEventListener('click', restartGame);
+                restartButton.removeEventListener('touchstart', restartGame);
+                
+                // Add fresh event listeners with preventing default behavior
+                restartButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    restartGame();
+                });
+                
+                restartButton.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    restartGame();
+                });
+                
+                console.log("Direct event listeners added to restart button");
+            } else {
+                console.error("Restart button element not found for event binding");
+            }
+        }
     </script>
 </head>
 <body>
