@@ -2881,6 +2881,47 @@ function touchStarted() {
   touchStartTime = millis();
   touchStartY = touchY;
   
+  // Handle start button on title screen
+  if (showTitleScreen) {
+    // Simulate space bar press to start the game
+    console.log("Start button pressed on title screen");
+    showTitleScreen = false;
+    gameState = "playing";
+    
+    // Reset game elements (same as in keyPressed function)
+    score = 0;
+    enemiesKilled = 0;
+    enemies = [];
+    obstacles = [];
+    projectiles = [];
+    shootEffects = [];
+    powerUps = [];
+    slowMotion = false;
+    slowMotionTimer = 0;
+    scrollSpeed = normalScrollSpeed;
+    screenFlash = 0;
+    
+    // Reset player position
+    player.y = groundY;
+    player.vy = 0;
+    player.state = "running";
+    
+    // Reset offsets
+    groundOffset = 0;
+    backgroundOffset = 0;
+    midgroundOffset = 0;
+    foregroundOffset = 0;
+    
+    lastEnemySpawnTime = 0;
+    forceEnemySpawnCounter = 0;
+    lastPowerUpTime = 0;
+    
+    // Hide the start button
+    document.getElementById('startButton').style.display = 'none';
+    
+    return false; // Prevent default
+  }
+  
   // Check pause button
   const pauseBtn = document.getElementById('pauseButton');
   const pauseRect = pauseBtn.getBoundingClientRect();
@@ -3455,6 +3496,12 @@ function drawTitleScreen() {
   text("© Nate Javier", 15, height - 15); // Position in bottom left
   
   pop();
+  
+  // Show mobile start button if on a mobile device
+  if (isMobileDevice) {
+    // Show the start button element
+    document.getElementById('startButton').style.display = 'block';
+  }
 }
 
 // Function to draw a more stable, cake-like birthday cake with 3 candles and cleaner icing
