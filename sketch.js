@@ -2948,44 +2948,58 @@ function touchStarted() {
       return false;
     }
     
-    startBtn.style.display = 'block'; // Make sure it's visible
+    // Make sure it's visible
+    startBtn.style.display = 'block';
     
-    // Start the game (same logic as pressing space)
-    showTitleScreen = false;
-    gameState = "playing";
+    // Get the button's position and dimensions
+    const startBtnRect = startBtn.getBoundingClientRect();
     
-    // Reset game elements (same as in keyPressed function)
-    score = 0;
-    enemiesKilled = 0;
-    enemies = [];
-    obstacles = [];
-    projectiles = [];
-    shootEffects = [];
-    powerUps = [];
-    slowMotion = false;
-    slowMotionTimer = 0;
-    scrollSpeed = normalScrollSpeed;
-    screenFlash = 0;
+    // Check if the touch is within the start button's boundaries
+    if (touchX >= startBtnRect.left && touchX <= startBtnRect.right &&
+        touchY >= startBtnRect.top && touchY <= startBtnRect.bottom) {
+      
+      console.log("Start button touched - starting game");
+      
+      // Start the game (same logic as pressing space)
+      showTitleScreen = false;
+      gameState = "playing";
+      
+      // Reset game elements (same as in keyPressed function)
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      powerUps = [];
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset player position
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      
+      // Reset offsets
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+      
+      lastEnemySpawnTime = 0;
+      forceEnemySpawnCounter = 0;
+      lastPowerUpTime = 0;
+      
+      // Hide the start button
+      startBtn.style.display = 'none';
+      
+      console.log("Game started");
+    } else {
+      console.log("Touch outside start button - ignoring");
+    }
     
-    // Reset player position
-    player.y = groundY;
-    player.vy = 0;
-    player.state = "running";
-    
-    // Reset offsets
-    groundOffset = 0;
-    backgroundOffset = 0;
-    midgroundOffset = 0;
-    foregroundOffset = 0;
-    
-    lastEnemySpawnTime = 0;
-    forceEnemySpawnCounter = 0;
-    lastPowerUpTime = 0;
-    
-    // Hide the start button
-    startBtn.style.display = 'none';
-    
-    console.log("Game started");
     return false; // Prevent default
   }
   
