@@ -108,18 +108,6 @@
             pointer-events: none;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
         }
-        #pauseButton {
-            right: 10px;
-            top: 10px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Courier New', monospace;
-            color: white;
-            font-size: 16px;
-        }
         /* For mobile optimization of leaderboard form */
         #leaderboardForm {
             display: none;
@@ -314,16 +302,7 @@
         }, { passive: false });
 
         // Simple functions for mobile controls
-        function togglePause() {
-            console.log("Toggle pause clicked");
-            if (window.gameState === "playing") {
-                window.gameState = "paused";
-                console.log("Game paused via click");
-            } else if (window.gameState === "paused") {
-                window.gameState = "playing";
-                console.log("Game resumed via click");
-            }
-        }
+        /* Pause toggle function removed */
         
         function startGame() {
             console.log("Start game clicked");
@@ -795,7 +774,6 @@
     <div id="mobileControls">
         <div id="leftControl" class="control-area" onclick="mobileJump()" onmousedown="mobileJump()" ontouchstart="mobileJump()"></div>
         <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
-        <div id="pauseButton" class="control-area" onclick="togglePause()" onmousedown="togglePause()" ontouchstart="togglePause()">II</div>
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
         <!-- Restart button for mobile -->
         <div id="restartButton" 
