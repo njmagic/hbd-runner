@@ -1385,15 +1385,69 @@ function setup() {
 }
 
 function draw() {
-  // Background first
-  background(0);
-  
-  // Different game states
+  // Check if we should show the title screen
   if (showTitleScreen) {
     drawTitleScreen();
-  } else if (gameState === "playing") {
-    // Main gameplay
     
+    // Add direct check for keys in the draw loop too for redundancy
+    if (keyIsPressed && (key === ' ' || keyCode === 32)) {
+      console.log("Key detected in draw loop, transitioning from title screen");
+      showTitleScreen = false;
+      gameState = "playing";
+      
+      // Reset score and other gameplay elements
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      powerUps = []; // Clear power-ups
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset player position
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      
+      // Reset offsets
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+      
+      lastEnemySpawnTime = 0;
+      forceEnemySpawnCounter = 0;
+      lastPowerUpTime = 0;
+    }
+    
+    return; // Skip the rest of the draw function
+  }
+  
+  // If game is over, only draw the game over screen and nothing else
+  if (gameState === "gameOver") {
+    // Create a proper game over screen that fully covers the game
+    drawGameOverScreen();
+    return; // Skip all other game logic to prevent updating game elements
+  }
+  
+  // If in leaderboard state, only draw the leaderboard screen
+  if (gameState === "leaderboard") {
+    drawLeaderboardScreen();
+    return; // Skip all other game logic
+  }
+  
+  // If entering score, still draw the game over screen in the background
+  if (gameState === "enteringScore") {
+    drawGameOverScreen();
+    return; // Skip all other game logic
+  }
+  
+  // Only run the game logic if we're in playing state
+  if (gameState === "playing") {
     // Handle slow motion effect - we're disabling this by just keeping scrollSpeed at normal
     scrollSpeed = normalScrollSpeed;
     
@@ -1414,40 +1468,3344 @@ function draw() {
     if (foregroundOffset >= foregroundGfx.width) foregroundOffset -= foregroundGfx.width;
 
     // Draw gradient sky background - pure black to very dark gray
+    background(0);
     
-    // Add the rest of your game drawing code here
+    // Draw stars - white dots
+    drawTwinklingStars();
     
-    // Add mobile control hints if on mobile device
-    if (isMobileDevice && controlsVisible) {
-      // Subtle control hints
+    // Draw background city skyline
+    image(backgroundGfx, -backgroundOffset, 0);
+    if (backgroundOffset > backgroundGfx.width - width) {
+      image(backgroundGfx, -backgroundOffset + backgroundGfx.width, 0);
+    }
+    
+    // Draw stationary moon - draw it here to be fixed in position
+    drawMoon(600, 80);
+    
+    // Update and draw clouds
+    for (let i = 0; i < clouds.length; i++) {
+      let cloud = clouds[i];
+      cloud.x -= cloud.speed;
+      
+      // Wrap clouds around when they move off-screen
+      if (cloud.x < -100 * cloud.scale) {
+        cloud.x = width + random(0, 100);
+        cloud.y = random(20, 150);
+      }
+      
+      // Draw cloud with varying opacity and scale
       push();
-      noStroke();
-      textAlign(CENTER, CENTER);
-      
-      // Left control area hint
-      fill(255, 100);
-      textSize(14);
-      text("TAP: JUMP\nHOLD: DUCK", width * 0.2, height - 75);
-      
-      // Right control area hint
-      fill(255, 100);
-      textSize(14);
-      text("SHOOT", width * 0.8, height - 40);
+      tint(255, cloud.alpha);
+      image(cloudGfx, cloud.x, cloud.y, 
+            cloudGfx.width * cloud.scale, 
+            cloudGfx.height * cloud.scale);
+      noTint();
       pop();
     }
-  } else if (gameState === "paused") {
-    // Draw the pause screen
-    drawPauseScreen();
-  } else if (gameState === "gameOver") {
-    // Draw the game over screen
-    drawGameOverScreen();
-  } else if (gameState === "enteringScore") {
-    // Draw the game over screen in the background while entering the score
-    drawGameOverScreen();
-  } else if (gameState === "leaderboard") {
-    // Draw the leaderboard screen
-    drawLeaderboardScreen();
+    
+    // Draw midground buildings (wrapping around when needed)
+    image(midgroundGfx, -midgroundOffset, 0);
+    if (midgroundOffset > midgroundGfx.width - width) {
+      image(midgroundGfx, -midgroundOffset + midgroundGfx.width, 0);
+    }
+    
+    // Draw foreground buildings (wrapping around when needed)
+    image(foregroundGfx, -foregroundOffset, 0);
+    if (foregroundOffset > foregroundGfx.width - width) {
+      image(foregroundGfx, -foregroundOffset + foregroundGfx.width, 0);
+    }
+    
+    // Draw street fog - grayscale only (reduced amount)
+    drawStreetFog();
+    
+    // Draw a simple continuous floor at ground level - adjust position
+    let xOffset = -(groundOffset % groundTile.width);
+    for (let x = xOffset - 128; x < width + 128; x += groundTile.width) {
+      // Position the floor so its top edge aligns with groundY
+      image(groundTile, x, groundY);
+    }
+    
+    // Add a solid floor line where player's feet rest
+    push();
+    stroke(60);
+    strokeWeight(1);
+    line(0, groundY, width, groundY);
+    pop();
+    
+    // Draw street reflections - white only (reduced)
+    drawStreetReflections();
+
+    // Update player position (jumping)
+    if (player.state === "jumping") {
+      player.y += player.vy;
+      player.vy += gravity;
+      if (player.y >= groundY) {
+        player.y = groundY;
+        player.vy = 0;
+        player.state = "running";
+      }
+    }
+
+    // Update player animation
+    if (player.state === "running") {
+      player.animTimer++;
+      if (player.animTimer >= 5) {
+        player.animTimer = 0;
+        player.animFrame = (player.animFrame + 1) % 4;
+      }
+    }
+
+    // Draw player shadow
+    drawPlayerShadow();
+
+    // Draw player based on state
+    if (player.state === "running") {
+      image(playerRunningFrames[player.animFrame], player.x, player.y - playerRunningFrames[player.animFrame].height);
+    } else if (player.state === "jumping") {
+      image(playerJumpingFrame, player.x, player.y - playerJumpingFrame.height);
+    } else if (player.state === "ducking") {
+      image(playerDuckingFrame, player.x, player.y - playerDuckingFrame.height);
+    }
+
+    // Update and draw projectiles
+    for (let projectile of projectiles) {
+      push();
+      if (projectile.isBeam) {
+        // Draw beam weapon projectile with red-to-white gradient
+        noStroke();
+        
+        // Outer glow effect - reddish
+        drawingContext.shadowBlur = 15;
+        drawingContext.shadowColor = 'rgba(255, 50, 50, 0.7)';
+        
+        // Main beam - red
+        fill(255, 50, 50, 180); // Red color
+        rect(projectile.x - projectile.width/2, projectile.y - projectile.height/2, projectile.width, projectile.height, 4);
+        
+        // Inner core - white to red gradient effect
+        fill(255, 200, 200, 220);
+        rect(projectile.x - projectile.width/2 + 5, projectile.y - projectile.height/4, projectile.width - 10, projectile.height/2, 2);
+        
+        // Energy particles along beam
+        for (let i = 0; i < 5; i++) {
+          let xPos = projectile.x - projectile.width/2 + 10 + (i * projectile.width/5);
+          let yOffset = sin(frameCount * 0.2 + i) * 2;
+          
+          // Gradient from white to red
+          let redValue = map(i, 0, 4, 255, 200);
+          fill(255, redValue, redValue, 200);
+          ellipse(xPos, projectile.y + yOffset, 4, 4);
+        }
+        
+        drawingContext.shadowBlur = 0; // Reset shadow
+      } else {
+        // Normal projectile with red glow effect
+        translate(projectile.x, projectile.y);
+        
+        drawingContext.shadowBlur = 10;
+        drawingContext.shadowColor = 'rgba(255, 50, 50, 0.8)';
+        
+        // Red projectile
+        fill(255, 40, 40);
+        noStroke();
+        ellipse(0, 0, 8, 8);
+        
+        // White-red core
+        fill(255, 200, 200);
+        ellipse(0, 0, 4, 4);
+        
+        drawingContext.shadowBlur = 0; // Reset shadow
+      }
+      pop();
+    }
+
+    // Update and draw shoot effects
+    for (let i = shootEffects.length - 1; i >= 0; i--) {
+      let effect = shootEffects[i];
+      
+      // Update effect properties
+      effect.alpha -= 15;
+      if (effect.vx !== undefined) {
+        effect.x += effect.vx;
+        effect.y += effect.vy;
+      }
+      
+      // Remove effects that have faded out
+      if (effect.alpha <= 0 || effect.life <= 0) {
+        shootEffects.splice(i, 1);
+        continue;
+      }
+      
+      // Draw effect based on type
+      push();
+      if (effect.isRed) {
+        // Red ink for enemy deaths
+        fill(255, 50, 50, effect.alpha);
+        ellipse(effect.x, effect.y, effect.size, effect.size);
+      } else if (effect.color) {
+        // Use custom color if specified
+        fill(effect.color[0], effect.color[1], effect.color[2], effect.alpha);
+        ellipse(effect.x, effect.y, effect.size, effect.size);
+      } else {
+        // Default white
+        fill(240, effect.alpha);
+        ellipse(effect.x, effect.y, effect.size, effect.size);
+      }
+      pop();
+      
+      // Decrease life counter
+      effect.life--;
+    }
+
+    // Check for collision between player and obstacles/enemies
+    if (screenFlash <= 0) { // Only check collisions when not in hit freeze
+      let playerHitbox = getPlayerHitbox();
+      
+      // Check collision with obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obstacle = obstacles[i];
+        let obstacleHitbox = getObstacleHitbox(obstacle);
+        
+        if (checkCollision(playerHitbox, obstacleHitbox)) {
+          if (activePowerUps.shield > 0) {
+            // Shield protection - destroy obstacle but keep shield active
+            console.log("Shield hit by obstacle - destroying obstacle, shield still active");
+            
+            // Create shield flare effect
+            createShieldFlareEffect();
+            
+            // Remove the obstacle
+            obstacles.splice(i, 1);
+            
+            // Don't trigger game over
+            continue; // Skip to next obstacle
+          } else {
+            // Game over if no shield
+            gameState = "gameOver";
+            // Create dramatic death effect
+            for (let i = 0; i < 30; i++) {
+              let angle = random(0, TWO_PI);
+              let speed = random(2, 5);
+              let effect = {
+                x: player.x,
+                y: player.y - 20,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed,
+                size: random(5, 12),
+                alpha: 255,
+                life: 30,
+                isRed: true // Flag for red particles
+              };
+              shootEffects.push(effect);
+            }
+          }
+        }
+      }
+      
+      // Check collision with enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let enemy = enemies[i];
+        let enemyHitbox = getEnemyHitbox(enemy);
+        let playerHitbox = getPlayerHitbox();
+        
+        if (checkCollision(playerHitbox, enemyHitbox)) {
+          if (activePowerUps.shield > 0) {
+            // Shield protection - destroy enemy but keep shield active
+            console.log("Shield hit by enemy - destroying enemy, shield still active");
+            
+            // Create shield flare effect
+            createShieldFlareEffect();
+            
+            // Create enemy defeat effect
+            createEnemyDefeatEffects(enemy);
+            
+            // Remove the enemy
+            enemies.splice(i, 1);
+            score += 100;
+            enemiesKilled++;
+            
+            // Don't trigger game over
+            continue; // Skip to next enemy
+          } else {
+            // Game over if no shield
+            console.log("Enemy collision without shield - game over");
+            gameState = "gameOver";
+            // Create dramatic death effect
+            for (let j = 0; j < 30; j++) {
+              let angle = random(0, TWO_PI);
+              let speed = random(2, 5);
+              let effect = {
+                x: player.x,
+                y: player.y - 20,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed,
+                size: random(5, 12),
+                alpha: 255,
+                life: 30,
+                isRed: true // Flag for red particles
+              };
+              shootEffects.push(effect);
+            }
+            
+            break; // Exit the loop since game is over
+          }
+        }
+      }
+    } else {
+      // Decrease screen flash timer
+      screenFlash--;
+    }
+
+    // Update slow motion if active
+    if (slowMotion) {
+      slowMotionTimer--;
+      if (slowMotionTimer <= 0) {
+        slowMotion = false;
+        scrollSpeed = normalScrollSpeed;
+      }
+    }
+    
+    // Display score
+    push();
+    fill(255);
+    textSize(20);
+    textAlign(LEFT);
+    
+    // Update score continuously based on distance traveled (like Dino Run)
+    score += 1;
+    
+    // Display the score (no need for Math.floor since we're using integers)
+    text("SCORE: " + Math.floor(score), 20, 30);
+    text("KILLS: " + enemiesKilled, 20, 60);
+    pop();
+
+    // Update and draw enemies with enhanced size and appeal
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let enemy = enemies[i];
+      
+      // Apply different movement patterns based on enemy type
+      if (enemy.type === 'flying') {
+        // Flying enemy moves in a wave pattern
+      enemy.x -= scrollSpeed;
+        enemy.y = enemy.baseY + sin(frameCount * 0.05 + enemy.offset) * 40; // Smoother, larger wave pattern
+        
+        // Add wing flap animation property if it doesn't exist
+        if (enemy.wingPhase === undefined) {
+          enemy.wingPhase = random(0, TWO_PI);
+        }
+        
+        // Update wing flap animation
+        enemy.wingPhase += 0.2;
+      } else if (enemy.type === 'henchman') {
+        // Henchman enemy moves slower but steadily
+        enemy.x -= scrollSpeed * 0.7;
+        
+        // Add weapon glow effect if it doesn't exist
+        if (enemy.glowIntensity === undefined) {
+          enemy.glowIntensity = random(0.6, 1);
+        }
+        
+        // Update weapon glow pulsation
+        enemy.glowIntensity = 0.6 + sin(frameCount * 0.1) * 0.4;
+      } else if (enemy.type === 'ninja') {
+        // Ninja enemy moves faster and rushes toward the player
+        // Give ninja a speed property if it doesn't exist yet
+        if (enemy.speed === undefined) {
+          enemy.speed = random(1.2, 1.6); // Further reduced max speed for better gameplay
+        }
+        
+        // Fast movement toward player
+        enemy.x -= scrollSpeed * enemy.speed;
+        
+        // Add dynamic vertical movement - slight up and down
+        if (enemy.vertOffset === undefined) {
+          enemy.vertOffset = random(0, TWO_PI);
+        }
+        enemy.vertOffset += 0.1;
+        enemy.y = groundY + sin(enemy.vertOffset) * 5; // Slight vertical movement
+        
+        // Occasionally slow down briefly to give player a chance to shoot
+        if (frameCount % 60 < 15) { // Every second, slow down for 1/4 second
+          enemy.x -= scrollSpeed * 0.5; // Move slower during this window
+        }
+        
+        // Add afterimage trail for ninja if it doesn't exist
+        if (enemy.trailOpacity === undefined) {
+          enemy.trailOpacity = [];
+          enemy.trailX = [];
+          for (let t = 0; t < 3; t++) {
+            enemy.trailOpacity.push(60 - t * 20);
+            enemy.trailX.push(enemy.x + t * 10);
+          }
+        }
+        
+        // Update ninja's shadow trail positions
+        for (let t = enemy.trailOpacity.length - 1; t > 0; t--) {
+          enemy.trailX[t] = enemy.trailX[t-1];
+        }
+        enemy.trailX[0] = enemy.x;
+      } else {
+        // Regular enemy
+        enemy.x -= scrollSpeed;
+        
+        // Add eye glow effect if it doesn't exist
+        if (enemy.eyeGlowIntensity === undefined) {
+          enemy.eyeGlowIntensity = random(0.7, 1);
+        }
+        
+        // Update eye glow pulsation
+        enemy.eyeGlowIntensity = 0.7 + sin(frameCount * 0.08) * 0.3;
+      }
+      
+      if (enemy.x < -40) {
+        enemies.splice(i, 1);
+      } else {
+        // Draw shadows for ground-based enemies - larger and more dramatic
+        if (enemy.type !== 'flying') {
+          push();
+          noStroke();
+          fill(0, 0, 0, 40);
+          if (enemy.type === 'henchman') {
+            ellipse(enemy.x + 25, groundY + 2, 45, 6); // Larger shadow for henchman
+          } else {
+            ellipse(enemy.x + 16, groundY + 2, 30, 4); // Slightly larger shadow for regular
+          }
+          pop();
+        }
+        
+        // Draw based on enemy type - position all at ground level with enhanced size
+        if (enemy.type === 'flying') {
+          // Draw flying enemy at 1.25x scale
+          push();
+          
+          // Draw wing flap animation effect
+          let wingOffset = sin(enemy.wingPhase) * 4;
+          
+          // Draw actual enemy image with wing animation
+          imageMode(CENTER);
+          
+          // Draw subtle wing trail
+          push();
+          tint(140, 0, 200, 40);
+          image(enemyGfx.flying, enemy.x + 23, enemy.y + 20, 
+                enemyGfx.flying.width * 1.3, enemyGfx.flying.height * (1.25 + abs(wingOffset/20)));
+          pop();
+          
+          // Draw main enemy
+          image(enemyGfx.flying, enemy.x + 20, enemy.y + 20, 
+                enemyGfx.flying.width * 1.25, enemyGfx.flying.height * (1.25 + abs(wingOffset/40)));
+          
+          // Draw glowing eyes properly aligned with the face
+          noStroke();
+          fill(255, 0, 0, 120 + sin(frameCount * 0.1) * 40);
+          ellipse(enemy.x + 16, enemy.y + 16, 4, 3);
+          ellipse(enemy.x + 24, enemy.y + 16, 4, 3);
+          
+          // Add more dramatic wing effects
+          fill(120, 0, 180, 30 + sin(frameCount * 0.2) * 10);
+          let wingSize = 12 + sin(enemy.wingPhase) * 4;
+          ellipse(enemy.x + 8, enemy.y + 16, wingSize, wingSize/2);
+          ellipse(enemy.x + 32, enemy.y + 16, wingSize, wingSize/2);
+          
+          imageMode(CORNER);
+          pop();
+          
+          // Flying enemy shadow (fainter and stretched based on height)
+          push();
+          noStroke();
+          let shadowSize = map(enemy.y, groundY - 150, groundY, 15, 30);
+          let shadowAlpha = map(enemy.y, groundY - 150, groundY, 10, 40);
+          fill(0, 0, 0, shadowAlpha);
+          ellipse(enemy.x + 20, groundY + 2, shadowSize, 3);
+          pop();
+        } else if (enemy.type === 'henchman') {
+          // Draw henchman enemy
+          push();
+          
+          // Draw health indicators based on remaining health
+          let henchmanGfx = createGraphics(enemyGfx.henchman.width, enemyGfx.henchman.height);
+          henchmanGfx.image(enemyGfx.henchman, 0, 0);
+          
+          // Add health indicators
+          henchmanGfx.noStroke();
+          henchmanGfx.fill(255, 0, 0);
+          
+          // Different health indicators based on health
+          if (enemy.health >= 3) {
+            // Full health - three red dots
+            henchmanGfx.ellipse(10, 15, 4, 4);
+            henchmanGfx.ellipse(20, 15, 4, 4);
+            henchmanGfx.ellipse(30, 15, 4, 4);
+          } else if (enemy.health === 2) {
+            // Two health - two red dots
+            henchmanGfx.ellipse(15, 15, 4, 4);
+            henchmanGfx.ellipse(25, 15, 4, 4);
+          } else if (enemy.health === 1) {
+            // One health - one red dot
+            henchmanGfx.ellipse(20, 15, 4, 4);
+          }
+          
+          // Add weapon glow effect
+          let glowSize = 8 + sin(frameCount * 0.1) * 3;
+          let glowOpacity = 100 + sin(frameCount * 0.1) * 40;
+          let glowColor = enemy.health > 1 ? [255, 0, 0] : [255, 150, 0]; // Red for healthy, orange when damaged
+          
+          henchmanGfx.noStroke();
+          henchmanGfx.fill(glowColor[0], glowColor[1], glowColor[2], glowOpacity * enemy.glowIntensity);
+          henchmanGfx.ellipse(38, 24, glowSize, glowSize);
+          
+          // Enhance eye glow based on health status
+          let eyeColor = enemy.health > 1 ? [255, 0, 0] : [255, 150, 0];
+          let eyeIntensity = 150 + sin(frameCount * 0.1) * 50;
+          henchmanGfx.fill(eyeColor[0], eyeColor[1], eyeColor[2], eyeIntensity);
+          henchmanGfx.ellipse(17, 13, 3, 2);
+          henchmanGfx.ellipse(23, 13, 3, 2);
+          
+          // Draw impact pose when recently hit (flashing red)
+          if (enemy.hitTimer && enemy.hitTimer > 0) {
+            henchmanGfx.fill(255, 0, 0, map(enemy.hitTimer, 10, 0, 100, 0));
+            henchmanGfx.rect(0, 0, henchmanGfx.width, henchmanGfx.height);
+            enemy.hitTimer--;
+          }
+          
+          // Add menacing shadows to enhance appearance
+          henchmanGfx.fill(0, 0, 0, 70);
+          henchmanGfx.rect(10, 10, 20, 2);
+          
+          // Draw henchman enemy 1.5x scale
+          imageMode(CENTER);
+          image(henchmanGfx, enemy.x + 20, groundY - enemyGfx.henchman.height/2, enemyGfx.henchman.width * 1.5, enemyGfx.henchman.height * 1.5);
+          imageMode(CORNER);
+          pop();
+        } else if (enemy.type === 'ninja') {
+          // Draw ninja enemy with shadow trail
+          push();
+          
+          // Draw improved shadow trail
+          imageMode(CENTER);
+          for (let t = enemy.trailOpacity.length - 1; t >= 0; t--) {
+            push();
+            // Use a purple tint for the shadow trail to make it more visually appealing
+            tint(30, 0, 60, enemy.trailOpacity[t]);
+            image(enemyGfx.ninja, enemy.trailX[t] + 16, enemy.y - enemyGfx.ninja.height/2, 
+                  enemyGfx.ninja.width * 1.2, enemyGfx.ninja.height * 1.2);
+            pop();
+          }
+          
+          // Draw blade glint occasionally
+          if (frameCount % 60 < 5) {
+            noStroke();
+            fill(255, map(frameCount % 60, 0, 5, 255, 0));
+            let glintX = enemy.x + 30 + sin(frameCount * 0.5) * 5;
+            let glintY = enemy.y - 32 + cos(frameCount * 0.5) * 3;
+            star(glintX, glintY, 3, 8, 4);
+            
+            // Add additional glow effect around the blade
+            fill(255, 255, 255, map(frameCount % 60, 0, 5, 100, 0));
+            ellipse(glintX, glintY, 10, 10);
+          }
+          
+          // Draw main ninja
+          image(enemyGfx.ninja, enemy.x + 16, enemy.y - enemyGfx.ninja.height/2, 
+                enemyGfx.ninja.width * 1.25, enemyGfx.ninja.height * 1.25);
+          
+          // Add dramatic red eye glow effect
+          noStroke();
+          let eyeGlow = 120 + sin(frameCount * 0.15) * 60;
+          fill(255, 0, 0, eyeGlow);
+          ellipse(enemy.x + 14, enemy.y - 24, 3, 2);
+          ellipse(enemy.x + 18, enemy.y - 24, 3, 2);
+          
+          imageMode(CORNER);
+          pop();
+        } else {
+          // Draw regular enemy with pulsing eyes
+          push();
+          
+          // Draw regular enemy 1.2x scale
+          imageMode(CENTER);
+          image(enemyGfx.regular, enemy.x + 16, groundY - enemyGfx.regular.height/2, 
+                enemyGfx.regular.width * 1.2, enemyGfx.regular.height * 1.2);
+          
+          // Draw pulsing red eyes
+          noStroke();
+          let eyeGlow = 100 + sin(frameCount * 0.1) * 50 * enemy.eyeGlowIntensity;
+          let eyeSize = 3 + sin(frameCount * 0.1) * 1 * enemy.eyeGlowIntensity;
+          
+          fill(255, 0, 0, eyeGlow);
+          // Fix the floating eyes positioning to be aligned with the face
+          ellipse(enemy.x + 14, groundY - 20, eyeSize, eyeSize);
+          ellipse(enemy.x + 18, groundY - 20, eyeSize, eyeSize);
+          
+          // Occasional coat billowing effect
+          if (frameCount % 30 < 15) {
+            noFill();
+            stroke(0, 0, 0, 30);
+            strokeWeight(2);
+            bezier(
+              enemy.x + 10, groundY - 30,
+              enemy.x + 15 + sin(frameCount * 0.1) * 3, groundY - 20,
+              enemy.x + 20 + sin(frameCount * 0.1) * 5, groundY - 15,
+              enemy.x + 25 + sin(frameCount * 0.1) * 8, groundY - 5
+            );
+          }
+          
+          imageMode(CORNER);
+          pop();
+        }
+      }
+    }
+
+    // Update and draw obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+      obstacle.x -= scrollSpeed;
+      if (obstacle.x < -32) {
+        obstacles.splice(i, 1);
+      } else {
+        // Draw shadows for obstacles
+        if (obstacle.type === "ground") {
+          fill(0, 0, 0, 70);
+          ellipse(obstacle.x + 16, groundY + 2, 28, 4);
+          image(groundObstacleGfx, obstacle.x, groundY - groundObstacleGfx.height);
+        } else if (obstacle.type === "flying") {
+          // Flying obstacle shadow
+          let shadowSize = map(obstacle.y, groundY - 150, groundY, 10, 24);
+          let shadowAlpha = map(obstacle.y, groundY - 150, groundY, 20, 60);
+          fill(0, 0, 0, shadowAlpha);
+          ellipse(obstacle.x + 16, groundY + 2, shadowSize, 3);
+          
+          image(flyingObstacleGfx, obstacle.x, obstacle.y);
+        }
+      }
+    }
+    
+    // ENEMY AND OBSTACLE SPAWNING LOGIC
+    // Calculate spawn probability based on score to increase difficulty
+    let difficultyFactor = 1 + (score / 3000); // Increased scaling (was 5000)
+    let groundObstacleChance = 0.01 * difficultyFactor; // Increased from 0.008
+    let flyingObstacleChance = 0.008 * difficultyFactor; // Increased from 0.007
+    let enemyChance = 0.008 * difficultyFactor; // Increased from 0.006
+    
+    // Debug log every 100 frames
+    if (frameCount % 100 === 0) {
+      console.log("Spawn diagnostics:", 
+                 "Score:", score, 
+                 "Difficulty:", difficultyFactor.toFixed(2),
+                 "Enemy chance:", (enemyChance * 100).toFixed(2) + "%",
+                 "Counter:", forceEnemySpawnCounter);
+    }
+    
+    // Reduce minimum distance between obstacles to allow more spawns
+    let minDistanceBetweenObstacles = 100; // Reduced from 120
+    
+    // Check if we can spawn an obstacle (not too close to obstacles)
+    let canSpawnObstacle = true;
+    
+    for (let obstacle of obstacles) {
+      if (obstacle.x > width - minDistanceBetweenObstacles) {
+        canSpawnObstacle = false;
+        break;
+      }
+    }
+    
+    if (canSpawnObstacle) {
+      if (random() < groundObstacleChance) {
+        // 30% chance for tall obstacle that requires ducking
+        let tallObstacle = random() < 0.3;
+        
+        // New: Add a 15% chance for a birthday cake obstacle
+        let isCakeObstacle = random() < 0.15;
+        
+        obstacles.push({ 
+          x: width + random(0, 50), 
+          y: groundY, 
+          type: "ground",
+          tall: tallObstacle, // Flag for tall obstacles that require ducking
+          cake: isCakeObstacle // Flag for cake obstacles
+        });
+        
+        if (isCakeObstacle) {
+          console.log("Spawned birthday cake obstacle at", width);
+        } else {
+          console.log("Spawned regular ground obstacle at", width);
+        }
+      }
+      if (random() < flyingObstacleChance) {
+        // Vary the height more so some require jumping, others require ducking
+        let heightVariation = random(-50, 50);
+        let baseHeight = groundY - 100; // Base flying height
+        
+        obstacles.push({ 
+          x: width + random(0, 50), 
+          y: baseHeight + heightVariation, 
+          type: "flying",
+          // Make the obstacle swing down slightly as it moves
+          swingOffset: random(0, TWO_PI)
+        });
+        console.log("Spawned flying obstacle at height", baseHeight + heightVariation);
+      }
+    }
+    
+    // Check if we can spawn an enemy (not too close to obstacles)
+    let canSpawnEnemy = true;
+    for (let obstacle of obstacles) {
+      if (obstacle.x > width - minDistanceBetweenObstacles) {
+        canSpawnEnemy = false;
+        break;
+      }
+    }
+    
+    // Increment force spawn counter each frame
+    forceEnemySpawnCounter++;
+    
+    // Either spawn based on random chance or force spawn after a certain time
+    if ((canSpawnEnemy && random() < enemyChance) || forceEnemySpawnCounter > 150) { // Force spawn after 2.5 seconds (reduced from 3)
+      // Reset counter
+      forceEnemySpawnCounter = 0;
+      
+      // If we can't spawn due to obstacles but need to force spawn, place enemy further back
+      let enemyX = width;
+      if (!canSpawnEnemy) {
+        enemyX += minDistanceBetweenObstacles; // Place further back if forced spawn during obstacle
+      }
+      
+      // Decide which type of enemy to spawn based on score and randomness
+      let enemyRoll = random();
+      
+      if (score > 800 && enemyRoll < 0.25) {
+        // Henchman enemy - 25% chance after score 800
+        enemies.push({
+          x: enemyX + random(0, 50),
+          y: groundY, // Ground level 
+          type: 'henchman',
+          health: 3, // Henchman takes 3 hits to defeat
+          hitTimer: 0 // For hit effect
+        });
+        console.log("Spawned henchman enemy");
+      } else if (score > 500 && enemyRoll < 0.6) {
+        // Flying enemy - 35% chance after score 500
+        enemies.push({
+          x: enemyX + random(0, 50),
+          y: groundY - 100, // Flying height - higher up from ground
+          baseY: groundY - 100, // Base height for wave pattern
+          offset: random(0, TWO_PI),
+          type: 'flying',
+          wingPhase: random(0, TWO_PI) // For wing animation
+        });
+        console.log("Spawned flying enemy");
+      } else if (score > 300 && enemyRoll < 0.85) {
+        // Ninja enemy - 25% chance after score 300
+        enemies.push({
+          x: enemyX + random(0, 50),
+          y: groundY, // Ground level
+          type: 'ninja',
+          speed: random(1.2, 1.8), // Reduced max speed from 2.2 to 1.8
+          // Add arrays to store trail positions and opacity
+          trailX: [],
+          trailOpacity: []
+        });
+        console.log("Spawned ninja enemy");
+      } else {
+        // Regular enemy - always available
+        enemies.push({
+          x: enemyX + random(0, 50),
+          y: groundY, // Ground level
+          type: 'regular',
+          // Add random intensity for eye glow effect
+          eyeGlowIntensity: random(0.5, 1.5)
+        });
+        console.log("Spawned regular enemy");
+    }
+  }
+
+  // Update power-ups
+  updatePowerUps();
+
+  // Randomly spawn power-ups (less frequently)
+  if (random() < 0.005) { // 0.5% chance per frame
+    spawnPowerUp();
+  }
+
+  // Draw power-ups
+  drawPowerUps();
+
+  // Draw active power-up indicators
+  drawActivePowerUps();
+
+  // Update and check collisions for projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      let projectile = projectiles[i];
+    
+    // Update projectile position
+    projectile.x += projectile.vx;
+    if (projectile.vy) projectile.y += projectile.vy;
+    
+    // Remove if off-screen
+      if (projectile.x > width) {
+        projectiles.splice(i, 1);
+      continue;
+    }
+    
+    // Check collisions with enemies
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      let enemy = enemies[j];
+      let enemyHitbox = getEnemyHitbox(enemy);
+      
+        // Use the collision detection function
+      let collision = checkProjectileEnemyCollision(projectile, enemy);
+      
+      if (collision) {
+        // Handle different enemy types
+        if (enemy.type === "henchman" && enemy.health > 1) {
+          // Tank takes multiple hits
+          enemy.health--;
+          createEnemyHitEffect(enemy); // Small hit effect
+          
+          // Only remove normal projectiles, beams continue
+          if (!projectile.isBeam) {
+            projectiles.splice(i, 1);
+            break; // Break since projectile is gone
+      } else {
+            // For beam, increment hit counter
+            projectile.hits++;
+            // If beam has reached max hits, remove it
+            if (projectile.hits >= projectile.maxHits) {
+              projectiles.splice(i, 1);
+              break; // Break since projectile is gone
+            }
+          }
+        } else {
+          // Regular/flying/ninja enemies die in one hit
+          // Create death effect
+          createEnemyDefeatEffects(enemy);
+          
+          // Award score based on enemy type
+          let scoreGain = 0;
+          switch(enemy.type) {
+            case "flying":
+              scoreGain = 150;
+              break;
+            case "ninja":
+              scoreGain = 200;
+              break;
+            case "henchman":
+              scoreGain = 250;
+              break;
+            default:
+              scoreGain = 100;
+          }
+          
+          score += scoreGain;
+          enemiesKilled++;
+          
+          // Slow motion effect on enemy defeat (not for all enemies)
+          if ((enemy.type === "henchman" || enemy.type === "ninja") && !slowMotion) {
+            slowMotion = true;
+            slowMotionTimer = slowMotionDuration;
+            screenFlash = 20; // Flash on dramatic kills
+          }
+          
+          // Remove the defeated enemy
+          enemies.splice(j, 1);
+          
+          // For beam, increment hit counter but don't remove beam unless max hits reached
+          if (projectile.isBeam) {
+            projectile.hits++;
+            // If beam has reached max hits, remove it
+            if (projectile.hits >= projectile.maxHits) {
+              projectiles.splice(i, 1);
+              break; // Break since projectile is gone
+            }
+          } else {
+            // Remove normal projectile
+            projectiles.splice(i, 1);
+            break; // Break since projectile is gone
+          }
+        }
+      }
+    }
+  }
+
+    // Check player collisions with obstacles and enemies
+    let playerHitbox = getPlayerHitbox();
+    
+    // Check obstacle collisions when the player doesn't have active shield
+    if (activePowerUps.shield <= 0) {
+      for (let obstacle of obstacles) {
+        let obstacleHitbox = getObstacleHitbox(obstacle);
+        if (checkCollision(playerHitbox, obstacleHitbox)) {
+          console.log("Player collision with obstacle", obstacle.type);
+          gameState = "gameOver";
+          break;
+        }
+      }
+    }
+    
+    // Check enemy collisions
+    for (let enemy of enemies) {
+      let enemyHitbox = getEnemyHitbox(enemy);
+      
+      if (checkCollision(playerHitbox, enemyHitbox)) {
+        if (activePowerUps.shield > 0) {
+          // Shield blocks the hit
+          createShieldFlareEffect();
+          
+          // Create dramatic enemy defeat
+          createEnemyDefeatEffects(enemy);
+          
+          // Remove the enemy
+          enemies.splice(enemies.indexOf(enemy), 1);
+          
+          // Reduce shield time
+          activePowerUps.shield = Math.max(0, activePowerUps.shield - 120);
+          
+          // Short slow-mo on shield block
+          slowMotion = true;
+          slowMotionTimer = 20;
+        } else {
+          // Game over on enemy collision
+          console.log("Player collision with enemy", enemy.type);
+          gameState = "gameOver";
+          break;
+        }
+    }
+  }
+
+  // Decrease any active shield flare time
+  if (player.shieldFlareTime && player.shieldFlareTime > 0) {
+    player.shieldFlareTime--;
+    }
+  }
+  
+  // Add mobile control hints if on mobile device - add this at the end of the 'playing' state code
+  if (isMobileDevice && controlsVisible) {
+    // Subtle control hints
+    push();
+    noStroke();
+    textAlign(CENTER, CENTER);
+    
+    // Left control area hint
+    fill(255, 100);
+    textSize(14);
+    text("TAP: JUMP\nHOLD: DUCK", width * 0.2, height - 75);
+    
+    // Right control area hint
+    fill(255, 100);
+    textSize(14);
+    text("SHOOT", width * 0.8, height - 40);
+    pop();
   }
 }
 
-// ... existing code ...
+// Helper function to draw street reflections - white only (reduced)
+function drawStreetReflections() {
+  push();
+  noStroke();
+  // Create more dramatic street reflections
+  for (let i = 0; i < 5; i++) {
+    let x = (i * 200 + frameCount * scrollSpeed * 0.3) % (width + 200) - 100;
+    let y = groundY + 5;
+    let w = 30 + (i % 3) * 15;
+    let h = 1;
+    
+    // Vary opacity based on distance
+    let opacity = map(i, 0, 4, 20, 5);
+    fill(255, opacity);
+    rect(x, y, w, h);
+  }
+  pop();
+}
+
+// Helper function to draw player shadow - pure black
+function drawPlayerShadow() {
+  push();
+  noStroke();
+  
+  // Ground-level shadow
+  if (player.state === "jumping") {
+    // Shadow gets smaller when jumping higher
+    let shadowSize = map(player.y, groundY - 150, groundY, 15, 30);
+    let shadowAlpha = map(player.y, groundY - 150, groundY, 40, 80);
+    fill(0, shadowAlpha);
+    ellipse(player.x + 16, groundY + 2, shadowSize, 4); // Slightly below ground line
+  } else if (player.state === "ducking") {
+    // Wider shadow when ducking
+    fill(0, 80);
+    ellipse(player.x + 16, groundY + 2, 35, 4); // Slightly below ground line
+  } else {
+    // Normal shadow
+    fill(0, 80);
+    ellipse(player.x + 16, groundY + 2, 30, 4); // Slightly below ground line
+  }
+  
+  pop();
+}
+
+// Helper functions for collision detection
+function getPlayerHitbox() {
+  // Adjust hitbox based on player state
+  if (player.state === "ducking") {
+    // Smaller hitbox when ducking
+    return {
+      x: player.x + 10,
+      y: player.y - 10,
+      width: 24,
+      height: 20,
+      type: "player"
+    };
+  } else if (player.state === "jumping") {
+    // Jumping hitbox - smaller and higher up
+    return {
+      x: player.x + 10,
+      y: player.y - 30, // Higher position
+      width: 24,
+      height: 30, // Smaller height
+      type: "player"
+    };
+  } else {
+    // Normal running hitbox
+    return {
+      x: player.x + 10,
+      y: player.y - 30,
+      width: 24,
+      height: 60,
+      type: "player"
+    };
+  }
+}
+
+function getObstacleHitbox(obstacle) {
+  if (obstacle.type === "ground") {
+    // Check if it's a birthday cake obstacle
+    if (obstacle.cake) {
+      // Special hitbox for birthday cake - make it a bit narrower than visual
+      // to be more forgiving and match the cake's visual shape
+      return {
+        x: obstacle.x - 25, // Centered on the cake
+        y: obstacle.y - 35, // Match cake height
+        width: 50,         // Cake width
+        height: 35,        // Cake height
+        type: "ground_obstacle"
+      };
+    }
+    else if (obstacle.tall) {
+      // Taller hitbox for obstacles that require ducking
+      return {
+        x: obstacle.x + 10,
+        y: obstacle.y - 70, // Higher hitbox for tall obstacles
+        width: 25,         // Reduced width from 30 to 25
+        height: 70,
+        type: "ground_obstacle"
+      };
+    } else {
+      // Regular ground obstacle hitbox - reduced width and offset for easier landing
+      return {
+        x: obstacle.x + 12,  // Moved hitbox slightly to the right (was 10)
+        y: obstacle.y - 25,  // Slightly higher
+        width: 20,          // Reduced width from 30 to 20
+        height: 25,         // Maintained reduced height
+        type: "ground_obstacle"
+      };
+    }
+  } else if (obstacle.type === "flying") {
+    // Flying obstacle hitbox - adjusted for variable height
+    let yAdjust = obstacle.swingOffset ? sin(frameCount * 0.05 + obstacle.swingOffset) * 10 : 0;
+    return {
+      x: obstacle.x + 10,
+      y: obstacle.y - 15 + yAdjust,
+      width: 25,           // Reduced from 30 to 25
+      height: 25,          // Maintained reduced height
+      type: "flying_obstacle"
+    };
+  }
+}
+
+function getEnemyHitbox(enemy) {
+  if (enemy.type === 'flying') {
+    // Flying enemy hitbox
+    return { x: enemy.x, y: enemy.y - 16, width: 32, height: 16, type: "enemy" };
+  } else if (enemy.type === 'henchman') {
+    // Henchman enemy hitbox
+    return { x: enemy.x, y: groundY - 40, width: 40, height: 40, type: "enemy" };
+  } else if (enemy.type === 'ninja') {
+    // Ninja enemy hitbox - increased height and width to make them easier to hit
+    return { 
+      x: enemy.x, 
+      y: enemy.y - 25, // Increased vertical coverage
+      width: 38,      // Widened from 32
+      height: 30,     // Increased from 16
+      type: "enemy" 
+    };
+  } else {
+    // Regular enemy hitbox
+    return { x: enemy.x, y: groundY - 32, width: 32, height: 32, type: "enemy" };
+  }
+}
+
+function checkCollision(rect1, rect2) {
+  // Basic rectangle collision
+  let collision = rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+  
+  // Special case for jumping over obstacles
+  if (collision && rect1.type === "player" && rect2.type === "ground_obstacle") {
+    // If player is falling (positive vy) and their feet are near the top of the obstacle
+    // Allow landing on top of the obstacle instead of colliding
+    let playerBottom = rect1.y + rect1.height;
+    let obstacleTop = rect2.y;
+    
+    if (player.vy > 0 && playerBottom < obstacleTop + 10) {
+      // Player is landing on top of obstacle - prevent collision and place on top
+      player.y = obstacleTop - rect1.height + 1;
+      player.vy = 0;
+      player.state = "running";
+      return false; // No collision - player lands on obstacle
+    }
+  }
+  
+  return collision;
+}
+
+// Handle user input
+function keyPressed() {
+  // Debug logging
+  console.log("Key pressed:", key, "KeyCode:", keyCode, "Current game state:", gameState, "ShowTitleScreen:", showTitleScreen);
+  
+  // Handle title screen input - ONLY SPACEBAR starts the game
+  if (showTitleScreen) {
+    if (key === ' ' || keyCode === 32) { // Only space bar
+      console.log("Space bar detected on title screen, starting game");
+      showTitleScreen = false;
+      gameState = "playing"; // Set directly to playing since we skip the start state
+      // Reset score and other gameplay elements
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      powerUps = []; // Clear power-ups
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset player position
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      
+      // Reset offsets
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+      
+      lastEnemySpawnTime = 0;
+      forceEnemySpawnCounter = 0;
+      lastPowerUpTime = 0;
+      
+      return;
+    }
+  }
+  
+  if (gameState === "playing") {
+    if (key === ' ' || keyCode === UP_ARROW) {
+      if (player.state === "running") {
+        player.vy = jumpStrength;
+        player.state = "jumping";
+      }
+    } else if (keyCode === DOWN_ARROW) {
+      if (player.state === "running") {
+        player.state = "ducking";
+      }
+    } else if (key === 'z' || key === 'Z') {
+      if (activePowerUps.beamShot > 0) {
+        // Beam shot - wider projectile that can hit multiple enemies
+        let beam = {
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: 16, // Faster than normal shots
+          vy: 0,
+          width: 80, // Long beam
+          height: 12, // Wider than normal shots
+          isBeam: true,
+          hits: 0, // Track how many enemies this beam has hit
+          maxHits: 3 // Can hit up to 3 enemies
+        };
+        projectiles.push(beam);
+        
+        // Beam visual effect - now red
+        for (let i = 0; i < 8; i++) {
+          let offset = random(-5, 5);
+          let effect = {
+            x: player.x + 32 + random(0, 40),
+            y: player.y - 16 + offset,
+            vx: 8 + random(0, 4),
+            vy: offset * 0.1,
+            size: random(4, 8),
+            alpha: 255,
+            life: 10,
+            color: [255, 50, 50] // Red color for beam effects
+          };
+          shootEffects.push(effect);
+        }
+      } else if (activePowerUps.rapidFire > 0) {
+        // Rapid fire - shoot multiple projectiles with spread
+        for (let i = -1; i <= 1; i++) {
+          let projectile = {
+            x: player.x + 32,
+            y: player.y - 16 + (i * 5),
+            vx: 12,
+            vy: i * 0.5, // Slight spread
+            isRed: true // Flag for red projectiles
+          };
+          projectiles.push(projectile);
+        }
+        
+        // Enhanced shooting effect for rapid fire - now red
+        for (let i = 0; i < 12; i++) {
+          let angle = random(-PI/3, PI/3);
+          let speed = random(2, 6);
+          let particle = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(3, 7),
+            alpha: 255,
+            life: 8,
+            isRed: true // Flag for red particles
+          };
+          shootEffects.push(particle);
+        }
+      } else {
+        // Normal single projectile - now red
+        projectiles.push({
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: 12,
+          vy: 0,
+          isRed: true // Flag for red projectiles
+        });
+        
+        // Normal shooting effect - now red
+        let shootEffect = {
+          x: player.x + 32,
+          y: player.y - 16,
+          size: 20,
+          alpha: 255,
+          life: 15,
+          isRed: true // Flag for red effect
+        };
+        shootEffects.push(shootEffect);
+        
+        // Add additional particles - now red
+        for (let i = 0; i < 5; i++) {
+          let angle = random(-PI/4, PI/4);
+          let speed = random(2, 4);
+          let particle = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(4, 8),
+            alpha: 255,
+            life: 10,
+            isRed: true // Flag for red particles
+          };
+          shootEffects.push(particle);
+        }
+      }
+    } else if (key === 'g' || key === 'G') {
+      // Debug key to force game over
+      console.log("Forcing game over for testing");
+      gameState = "gameOver";
+    }
+  } else if (gameState === "gameOver") {
+    // ONLY use R key to restart from game over
+    if (key === 'r' || key === 'R') {
+      console.log("R key pressed, restarting game");
+      showTitleScreen = true; // Go back to title screen on restart
+      gameState = "start";
+      
+      // Reset everything
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      powerUps = [];
+      
+      // Reset power-ups
+      activePowerUps.shield = 0;
+      activePowerUps.beamShot = 0;
+      activePowerUps.rapidFire = 0;
+      
+      // Reset game state
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset player
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      
+      // Reset environment
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+      
+      // Reset leaderboard submission status
+      leaderboardScoreSubmitted = false;
+    } 
+    // Remove L key handling as we're now using a clickable button
+  } else if (gameState === "enteringScore") {
+    // When entering score, only handle Escape to cancel
+    if (key === 'escape' || keyCode === 27) {
+      console.log("Escape key pressed while entering score, returning to game over screen");
+      gameState = "gameOver";
+      hideLeaderboardForm();
+    }
+    // All other keys should work normally for typing in the form
+  } else if (gameState === "leaderboard") {
+    // Allow going back to game over screen from leaderboard
+    if (key === 'escape' || keyCode === 27) {
+      console.log("Escape key pressed, returning to game over screen");
+      gameState = "gameOver";
+      hideLeaderboardForm();
+    } else if (key === 'r' || key === 'R') {
+      // Allow restarting directly from leaderboard
+      console.log("R key pressed in leaderboard state, restarting game");
+      showTitleScreen = true; // Go back to title screen on restart
+      gameState = "start";
+      hideLeaderboardForm(); // Make sure form is hidden
+      
+      // Reset everything
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      powerUps = [];
+      
+      // Reset power-ups
+      activePowerUps.shield = 0;
+      activePowerUps.beamShot = 0;
+      activePowerUps.rapidFire = 0;
+      
+      // Reset game state
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset player
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      
+      // Reset environment
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+      
+      // Reset leaderboard submission status
+      leaderboardScoreSubmitted = false;
+    } else {
+      console.log("Key pressed in leaderboard state but not handled:", key);
+    }
+  }
+}
+
+function keyReleased() {
+  if (keyCode === DOWN_ARROW) {
+    if (player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+}
+
+// Handle mouse clicks
+function mousePressed() {
+  // Check for button clicks in the game over state
+  if (gameState === "gameOver") {
+    // Define button dimensions (must match the ones in drawGameOverScreen)
+    let buttonWidth = 300;
+    let buttonHeight = 45;
+    
+    // Calculate the same button position as in drawGameOverScreen
+    let buttonY = height/2 + 65 + 35; // Position closer to hashtag text
+    
+    // Check if the button was clicked
+    if (mouseX > width/2 - buttonWidth/2 && 
+        mouseX < width/2 + buttonWidth/2 && 
+        mouseY > buttonY - buttonHeight/2 && 
+        mouseY < buttonY + buttonHeight/2) {
+      
+      // Different behavior based on submission status
+      if (!leaderboardScoreSubmitted) {
+        console.log("Leaderboard button clicked: opening submission form");
+        showLeaderboardForm();
+        gameState = "enteringScore";
+      } else {
+        console.log("Leaderboard button clicked: viewing leaderboard");
+        gameState = "leaderboard";
+      }
+    }
+  }
+}
+
+// Mobile touch controls
+function touchStarted() {
+  // Don't do anything if not on a mobile device
+  if (!isMobileDevice) return;
+  
+  // Get touch position
+  const touchX = touches[0] ? touches[0].x : mouseX;
+  const touchY = touches[0] ? touches[0].y : mouseY;
+  
+  // Record timing for long press detection
+  touchStartTime = millis();
+  touchStartY = touchY;
+  
+  // Check pause button
+  const pauseBtn = document.getElementById('pauseButton');
+  const pauseRect = pauseBtn.getBoundingClientRect();
+  
+  if (touchX >= pauseRect.left && touchX <= pauseRect.right &&
+      touchY >= pauseRect.top && touchY <= pauseRect.bottom) {
+    // Toggle between playing and paused
+    if (gameState === "playing") {
+      gameState = "paused";
+    } else if (gameState === "paused") {
+      gameState = "playing";
+    }
+    return false; // Prevent default
+  }
+  
+  // Only process gameplay touches when in the playing state
+  if (gameState === "playing") {
+    // Get left control area dimensions
+    const leftControl = document.getElementById('leftControl');
+    const leftRect = leftControl.getBoundingClientRect();
+    
+    // Get right control (shoot button) dimensions  
+    const rightControl = document.getElementById('rightControl');
+    const rightRect = rightControl.getBoundingClientRect();
+    
+    // Check if touching the shoot button (right control)
+    if (touchX >= rightRect.left && touchX <= rightRect.right &&
+        touchY >= rightRect.top && touchY <= rightRect.bottom) {
+      // Simulate Z key press for shooting
+      if (activePowerUps.beamShot > 0) {
+        // Beam shot logic (copied from keyPressed)
+        let beam = {
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: 16,
+          vy: 0,
+          width: 80,
+          height: 12,
+          isBeam: true,
+          hits: 0,
+          maxHits: 3
+        };
+        projectiles.push(beam);
+        
+        // Beam visual effect
+        for (let i = 0; i < 8; i++) {
+          let offset = random(-5, 5);
+          let effect = {
+            x: player.x + 32 + random(0, 40),
+            y: player.y - 16 + offset,
+            vx: 8 + random(0, 4),
+            vy: offset * 0.1,
+            size: random(4, 8),
+            alpha: 255,
+            life: 10,
+            color: [255, 50, 50]
+          };
+          shootEffects.push(effect);
+        }
+      } else if (activePowerUps.rapidFire > 0) {
+        // Rapid fire logic (copied from keyPressed)
+        for (let i = -1; i <= 1; i++) {
+          let projectile = {
+            x: player.x + 32,
+            y: player.y - 16 + (i * 5),
+            vx: 12,
+            vy: i * 0.5,
+            isRed: true
+          };
+          projectiles.push(projectile);
+        }
+        
+        // Enhanced shooting effect for rapid fire
+        for (let i = 0; i < 12; i++) {
+          let angle = random(-PI/3, PI/3);
+          let speed = random(2, 6);
+          let particle = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(3, 7),
+            alpha: 255,
+            life: 8,
+            isRed: true
+          };
+          shootEffects.push(particle);
+        }
+      } else {
+        // Normal single projectile
+        projectiles.push({
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: 12,
+          vy: 0,
+          isRed: true
+        });
+        
+        // Normal shooting effect
+        for (let i = 0; i < 5; i++) {
+          let angle = random(-PI/4, PI/4);
+          let speed = random(1, 4);
+          let effect = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(2, 5),
+            alpha: 255,
+            life: 8,
+            isRed: true
+          };
+          shootEffects.push(effect);
+        }
+      }
+      return false; // Prevent default
+    }
+    
+    // Check if touching the left control area (for jump/duck)
+    if (touchX >= leftRect.left && touchX <= leftRect.right &&
+        touchY >= leftRect.top && touchY <= leftRect.bottom) {
+      // Start with jump, will be changed to duck if held long enough
+      if (player.state === "running") {
+        player.vy = jumpStrength;
+        player.state = "jumping";
+        isJumping = true;
+      }
+      return false; // Prevent default
+    }
+  }
+  
+  // Allow default behavior for touches outside control areas
+  return true;
+}
+
+function touchEnded() {
+  // Don't do anything if not on a mobile device
+  if (!isMobileDevice) return;
+  
+  // Track touch duration
+  const touchDuration = millis() - touchStartTime;
+  
+  // Handle left control (jump/duck control)
+  if (isJumping) {
+    isJumping = false;
+  }
+  
+  if (isDucking && player.state === "ducking") {
+    isDucking = false;
+    player.state = "running";
+  }
+  
+  // Allow default behavior
+  return true;
+}
+
+// Handle touch movement (for duck detection)
+function touchMoved() {
+  // Don't do anything if not on a mobile device
+  if (!isMobileDevice) return;
+  
+  // Only process in playing state
+  if (gameState !== "playing") return true;
+  
+  // Get current touch position
+  const touchX = touches[0] ? touches[0].x : mouseX;
+  const touchY = touches[0] ? touches[0].y : mouseY;
+  
+  // Get left control area dimensions  
+  const leftControl = document.getElementById('leftControl');
+  const leftRect = leftControl.getBoundingClientRect();
+  
+  // Check if touch is within left control area and has been held long enough
+  if (touchX >= leftRect.left && touchX <= leftRect.right &&
+      touchY >= leftRect.top && touchY <= leftRect.bottom) {
+    
+    // Detect if touch has been held in place long enough to trigger duck
+    const touchDuration = millis() - touchStartTime;
+    
+    if (touchDuration > longPressThreshold && player.state === "running") {
+      player.state = "ducking";
+      isDucking = true;
+      isJumping = false; // Cancel any jump that might have been triggered
+    }
+  }
+  
+  // Prevent default
+  return false;
+}
+
+// Visual effect for enemy defeat - enhance the death effects
+function createEnemyDefeatEffects(enemy) {
+  // Red ink-splatter style particles
+  for (let k = 0; k < 15; k++) {
+    let angle = k * (PI/7.5);
+    let speed = random(2, 4);
+    let effect = {
+      x: enemy.x + 16,
+      y: enemy.y - 16,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(8, 12),
+      alpha: 255,
+      life: 30,
+      isRed: true // Flag for red ink effects
+    };
+    shootEffects.push(effect);
+  }
+  
+  // Dramatic red shadow dispersion
+  for (let k = 0; k < 8; k++) {
+    let angle = random(0, TWO_PI);
+    let distance = random(15, 35);
+    let shadow = {
+      x: enemy.x + 16 + cos(angle) * distance,
+      y: enemy.y - 16 + sin(angle) * distance,
+      vx: cos(angle) * 0.8,
+      vy: sin(angle) * 0.8 + 0.3,
+      size: random(10, 20),
+      alpha: 255,
+      life: 40,
+      isRed: true // Flag for red shadow effects
+    };
+    shootEffects.push(shadow);
+  }
+  
+  // Dramatic flash
+  let flash = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    size: 8,
+    alpha: 200,
+    life: 20,
+    isRed: true
+  };
+  shootEffects.push(flash);
+}
+
+// Create a new function for hit effects (for tank enemies that take multiple hits)
+function createEnemyHitEffect(enemy) {
+  // Small hit effect
+  for (let k = 0; k < 6; k++) {
+    let angle = k * (PI/3);
+    let speed = random(1, 2);
+    let effect = {
+      x: enemy.x + 16,
+      y: enemy.y - 16,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(4, 8),
+      alpha: 255,
+      life: 15
+    };
+    shootEffects.push(effect);
+  }
+  
+  // Small flash
+  let flash = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    size: 3,
+    alpha: 150,
+    life: 8
+  };
+  shootEffects.push(flash);
+}
+
+// In the spawnEnemy function, replace tank with henchman
+function spawnEnemy() {
+  // Remove this entire function as we're using a different approach for spawning enemies
+  // The enemy spawning logic is already implemented in the draw function
+}
+
+// Replace the moon drawing function with a more dramatic art deco version
+function drawMoon(x, y) {
+  push();
+  noStroke();
+  
+  // Add subtle atmospheric glow
+  for (let i = 3; i > 0; i--) {
+    fill(255, 5 * i);
+    ellipse(x, y, 140 + (3-i)*15, 140 + (3-i)*15);
+  }
+  
+  // Main moon body - slightly off-white for a vintage feel
+  fill(250, 250, 245);
+  ellipse(x, y, 120, 120);
+  
+  // Art deco architectural patterns
+  fill(240, 240, 235);
+  
+  // Create a series of concentric geometric shapes
+  let centerX = x;
+  let centerY = y;
+  
+  // Outer ring with 8 segments
+  beginShape();
+  for (let i = 0; i < 8; i++) {
+    let angle = i * PI / 4;
+    let radius = 55;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Middle ring with 6 segments
+  fill(230, 230, 225);
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let angle = i * PI / 3;
+    let radius = 40;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Inner ring with 4 segments
+  fill(220, 220, 215);
+  beginShape();
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let radius = 25;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Central architectural detail
+  fill(210, 210, 205);
+  beginShape();
+  vertex(centerX - 10, centerY - 10);
+  vertex(centerX + 10, centerY - 10);
+  vertex(centerX + 10, centerY + 10);
+  vertex(centerX - 10, centerY + 10);
+  endShape(CLOSE);
+  
+  // Add subtle architectural lines
+  stroke(200, 200, 195, 100);
+  strokeWeight(1);
+  
+  // Vertical lines
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let startRadius = 30;
+    let endRadius = 50;
+    let startX = centerX + cos(angle) * startRadius;
+    let startY = centerY + sin(angle) * startRadius;
+    let endX = centerX + cos(angle) * endRadius;
+    let endY = centerY + sin(angle) * endRadius;
+    line(startX, startY, endX, endY);
+  }
+  
+  // Add subtle shimmer effect
+  if (frameCount % 120 < 60) {
+    fill(255, 20);
+    let shimmerX = x + sin(frameCount * 0.05) * 30;
+    let shimmerY = y + cos(frameCount * 0.05) * 30;
+    ellipse(shimmerX, shimmerY, 15, 15);
+  }
+  
+  pop();
+}
+
+// Add new atmospheric effects to replace rain
+function drawAtmosphericFog() {
+  push();
+  noStroke();
+  // Create more subtle atmospheric fog with fewer shapes
+  for (let i = 0; i < 5; i++) { // Reduced from 12 to 5
+    let x = (i * 200 + frameCount * 0.2) % width;
+    let y = 200 + (i * 40) % 180;
+    let fogSize = 120 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Reduce opacity significantly
+    let baseOpacity = map(y, 200, 380, 8, 3); // Reduced from 15,5 to 8,3
+    let timeVariation = sin(frameCount * 0.01 + i * 0.5) * 2; // Reduced variation
+    fill(255, baseOpacity + timeVariation);
+    
+    // Simplify shape to just an ellipse for better performance
+    ellipse(x, y, fogSize * 1.2, fogSize * 0.7);
+  }
+  pop();
+}
+
+function drawDramaticLighting() {
+  push();
+  noStroke();
+  
+  // Create dramatic light beams with higher opacity
+  for (let i = 0; i < 3; i++) {
+    let x = width/2 + (i - 1) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let width = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Draw light beam with higher opacity
+    fill(255, 30); // Increased from 8 to 30
+    beginShape();
+    vertex(x, 0);
+    vertex(x + width/2, 0);
+    vertex(x + width/2 + cos(angle) * length, height);
+    vertex(x - width/2 + cos(angle) * length, height);
+    vertex(x - width/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Add central spot light
+  fill(255, 40);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  
+  // Add some dust particles in the beams
+  fill(255, 60); // Increased from 20 to 60
+  for (let i = 0; i < 30; i++) { // Increased from 20 to 30
+    let x = width/2 + sin(frameCount * 0.01 + i) * 150;
+    let y = (i * 37 + frameCount * 0.5) % height;
+    let size = 2 + sin(frameCount * 0.05 + i) * 1;
+    ellipse(x, y, size, size);
+  }
+  pop();
+}
+
+// Create a metallic style logo matching RUNNER but larger
+function createLogoGraphics() {
+  logoGfx = createGraphics(400, 200); // Increased size
+  logoGfx.background(0, 0); // Transparent background - no box
+  
+  console.log("Creating HBD logo without bounding box");
+  
+  // Use the same metallic style as RUNNER but larger
+  logoGfx.textAlign(CENTER, CENTER);
+  
+  // Draw metallic backing for HBD
+  for (let i = 0; i < 5; i++) { // Add one more layer for more depth
+    // Metallic backing with gradient
+    let shade = 80 + i * 20; // Create metallic gradient effect
+    logoGfx.fill(shade, shade, shade);
+    logoGfx.noStroke();
+    
+    // Use same text style as RUNNER but larger
+    logoGfx.textSize(120 - i*2); // Increased from 92
+    logoGfx.text("HBD", 200, 100 + i); // Adjusted for new center
+  }
+  
+  // Add main text with white on top
+  logoGfx.fill(240);
+  logoGfx.textSize(118); // Increased from 90
+  logoGfx.text("HBD", 200, 100); // Adjusted for new center
+  
+  // Add highlight to top for metallic feel
+  logoGfx.fill(255);
+  logoGfx.textSize(118); // Increased from 90
+  logoGfx.text("HBD", 200, 98); // Adjusted for new center
+  
+  // Add subtle scan lines for retro effect
+  logoGfx.stroke(255, 15);
+  logoGfx.strokeWeight(1);
+  for (let y = 0; y < 200; y += 4) { // Adjusted for new height
+    logoGfx.line(0, y, 400, y); // Adjusted for new width
+  }
+}
+
+// Draw the title screen with more subtle TV static background and birthday cakes
+function drawTitleScreen() {
+  // Update pulse animation with subtle feel - but only apply to RUNNER
+  titlePulseAmount = sin(frameCount * 0.04) * 0.03;
+  
+  push();
+  
+  // Clean black background
+  background(0);
+  
+  // Add more subtle TV static effect
+  drawSubtleStatic();
+  
+  // Add subtle scan lines
+  stroke(255, 8);
+  strokeWeight(1);
+  for (let y = 0; y < height; y += 4) {
+    line(0, y, width, y);
+  }
+  noStroke();
+  
+  // Add subtle vignette for depth
+  drawSubtleVignette();
+  
+  // Draw the HBD logo WITHOUT pulsing
+  push();
+  translate(width/2, height/3 - 30);
+  // Removed scale with titlePulseAmount to stop pulsing
+  imageMode(CENTER);
+  image(logoGfx, 0, 0);
+  pop();
+  
+  // Draw "RUNNER" subtitle with Metal Slug style - larger size
+  textAlign(CENTER);
+  
+  // Draw metallic backing for RUNNER - larger size
+  for (let i = 0; i < 4; i++) {
+    fill(80 + i * 20); // Create metallic gradient effect
+    textSize(48 - i); // Increased from 38
+    text("RUNNER", width/2, height/3 + 65 + i); // Adjusted position for larger text
+  }
+  
+  // White top for highlight
+  fill(255);
+  textSize(46); // Increased from 36
+  text("RUNNER", width/2, height/3 + 65); // Adjusted position for larger text
+  
+  // Add red accent tagline - Changed text from "SURVIVE OR DIE" to "SOMETHING IS COMING..."
+  fill(220, 30, 30);
+  textSize(14); // Slightly increased from 12
+  text("SOMETHING IS COMING...", width/2, height/3 + 100); // Adjusted position for larger text
+  
+  // Draw birthday cakes in bottom corners
+  drawBirthdayCake(80, height - 80); // Bottom left
+  drawBirthdayCake(width - 80, height - 80); // Bottom right
+  
+  // Draw control instructions in Metal Slug style panel
+  // Moving up the control box by 20px
+  // Panel background
+  fill(40);
+  rect(width/2 - 90, height - 150, 180, 85, 3); // Moved up by 20px
+  
+  // Metal edge effect - top
+  fill(160);
+  rect(width/2 - 90, height - 150, 180, 3); // Moved up by 20px
+  fill(200);
+  rect(width/2 - 90, height - 153, 180, 3); // Moved up by 20px
+  
+  // Metal edge effect - bottom
+  fill(100);
+  rect(width/2 - 90, height - 68, 180, 3); // Moved up by 20px
+  fill(60);
+  rect(width/2 - 90, height - 65, 180, 3); // Moved up by 20px
+  
+  // Corner rivets in Metal Slug style
+  fill(200);
+  ellipse(width/2 - 85, height - 145, 6, 6); // Moved up by 20px
+  ellipse(width/2 + 85, height - 145, 6, 6); // Moved up by 20px
+  ellipse(width/2 - 85, height - 70, 6, 6); // Moved up by 20px
+  ellipse(width/2 + 85, height - 70, 6, 6); // Moved up by 20px
+  
+  // Add instructions with arcade styling
+  fill(220);
+  textSize(14);
+  textAlign(CENTER);
+  text("CONTROLS", width/2, height - 132); // Moved up by 20px
+  
+  textSize(12);
+  fill(170);
+  textAlign(CENTER);
+  text("↑ / SPACE: JUMP", width/2, height - 112); // Moved up by 20px
+  text("↓: DUCK", width/2, height - 92); // Moved up by 20px
+  text("Z: SHOOT", width/2, height - 72); // Moved up by 20px
+  
+  // Pulsing "start" text with arcade blink effect - ONLY mention SPACE key
+  // Slowed down the flashing by using a longer cycle (90 frames instead of 30)
+  // and making the text visible for longer (75 frames out of 90)
+  if (frameCount % 90 < 75) {
+    fill(255);
+    textSize(24);
+    text("PRESS SPACE TO START", width/2, height - 15);
+  }
+  
+  // Add copyright notice in bottom left corner
+  fill(150); // Light gray color
+  textSize(12);
+  textAlign(LEFT);
+  text("© Nate Javier", 15, height - 15); // Position in bottom left
+  
+  pop();
+}
+
+// Function to draw a more stable, cake-like birthday cake with 3 candles and cleaner icing
+function drawBirthdayCake(x, y) {
+  push();
+  
+  // Cake base - stable, refined shape
+  noStroke();
+  fill(210);
+  ellipse(x, y, 70, 24); // Stable base
+  
+  // Simple shading for depth - no random elements
+  fill(230);
+  ellipse(x, y - 1, 64, 20);
+  
+  // Middle layer - stable, clean shape
+  fill(220);
+  rect(x - 28, y - 20, 56, 20, 5, 5, 0, 0);
+  
+  // Top layer - stable, clean shape
+  fill(240);
+  rect(x - 22, y - 35, 44, 15, 5, 5, 0, 0);
+  
+  // Clean, consistent icing details with outer elements removed
+  fill(255);
+  
+  // Top layer icing - removing outer elements
+  for (let i = -16; i <= 16; i += 8) { // Reduced range to remove outer elements
+    let icingX = x + i;
+    arc(icingX, y - 35, 7, 5, PI, TWO_PI);
+  }
+  
+  // Middle layer icing - removing outer elements
+  for (let i = -20; i <= 20; i += 8) { // Reduced range to remove outer elements
+    let icingX = x + i;
+    arc(icingX, y - 20, 8, 5, PI, TWO_PI);
+  }
+  
+  // Bottom layer icing - removing outer elements
+  for (let i = -25; i <= 25; i += 10) { // Reduced range to remove outer elements
+    let icingX = x + i;
+    arc(icingX, y, 9, 6, PI, TWO_PI);
+  }
+  
+  // Decorative element - thin horizontal line on middle layer
+  stroke(255, 120);
+  strokeWeight(1);
+  line(x - 26, y - 10, x + 26, y - 10);
+  noStroke();
+  
+  // Three elegant candles - moved closer to center and perfectly equidistant
+  const candleOffset = 12; // Reduced from 16 to bring candles closer to center
+  
+  // Left candle
+  drawCandle(x - candleOffset, y);
+  
+  // Center candle
+  drawCandle(x, y);
+  
+  // Right candle
+  drawCandle(x + candleOffset, y);
+  
+  pop();
+}
+
+// Helper function to draw a single candle with animated flame
+function drawCandle(x, y) {
+  // Candle base - simple, stable shape
+  fill(235);
+  rect(x - 1.5, y - 45, 3, 10, 1);
+  
+  // Candle top with slight indentation
+  fill(225);
+  ellipse(x, y - 45, 3, 1);
+  
+  // Properly animated floating flames
+  // Base glow
+  fill(255, 60, 40, 80);
+  ellipse(x, y - 47, 6, 3);
+  
+  // Calculate flame animation - using frameCount ensures consistent animation
+  let flameHeight = 5 + sin(frameCount * 0.15) * 1.5;
+  let flameWidth = 3 + cos(frameCount * 0.1) * 0.5;
+  
+  // Main flame body - floating above candle
+  fill(255, 70, 40);
+  ellipse(x, y - 49, flameWidth, flameHeight);
+  
+  // Inner flame
+  fill(255, 170, 50);
+  ellipse(x, y - 49, flameWidth * 0.7, flameHeight * 0.8);
+  
+  // Bright center
+  fill(255, 255, 150);
+  ellipse(x, y - 49.5, flameWidth * 0.4, flameHeight * 0.6);
+}
+
+// Create a more subtle TV static effect with slower movement
+function drawSubtleStatic() {
+  push();
+  noStroke();
+  
+  // Static block size (large but more varied)
+  const blockSize = 14; // Slightly larger blocks
+  
+  // Create large TV static blocks with slower movement
+  for (let x = 0; x < width; x += blockSize) {
+    for (let y = 0; y < height; y += blockSize) {
+      // Create deterministic but varied static - slower movement
+      let n = noise(x * 0.03, y * 0.03, frameCount * 0.005); // Much slower movement
+      
+      if (n > 0.6) { // Higher threshold for fewer blocks
+        // Vary brightness based on noise
+        let brightness = map(n, 0.6, 1, 20, 100); // Lower brightness range
+        fill(brightness, brightness, brightness, 70); // Add transparency
+        
+        // Varied block sizes for more organic feel
+        let blockVariation = blockSize * (0.8 + noise(x, y) * 0.4);
+        rect(x, y, blockVariation, blockVariation);
+      }
+    }
+  }
+  
+  // Add occasional "signal glitch" horizontal lines (more subtle and rare)
+  if (frameCount % 240 < 3) { // Less frequent glitches
+    fill(150, 30); // More transparent
+    let glitchY = (frameCount % height);
+    rect(0, glitchY, width, 2);
+  }
+  
+  pop();
+}
+
+// Create a subtle pixelated snow effect
+function drawPixelSnow() {
+  push();
+  noStroke();
+  
+  // Create a pixelated snow effect with tiny white dots
+  for (let i = 0; i < 200; i++) { // Reduced count for cleaner look
+    // Use deterministic but varied positions
+    let x = ((i * 37) + floor(frameCount * 0.2)) % width;
+    let y = ((i * 53) + floor(frameCount * 0.1)) % height;
+    
+    // Vary the opacity to create depth
+    let opacity = noise(i * 0.1, frameCount * 0.01) * 70 + 30; // Lower opacity
+    
+    // Small white dots for snow
+    fill(255, opacity);
+    rect(x, y, 1, 1);
+  }
+  
+  // Add a few larger snowflakes for variety
+  for (let i = 0; i < 10; i++) { // Reduced count
+    let x = ((i * 157) + floor(frameCount * 0.1)) % width;
+    let y = ((i * 113) + floor(frameCount * 0.15)) % height;
+    let size = noise(i, frameCount * 0.01) * 2 + 1;
+    
+    fill(255, 120); // Lower opacity
+    rect(x, y, size, size);
+  }
+  pop();
+}
+
+// Create a subtle vignette for depth without being distracting
+function drawSubtleVignette() {
+  push();
+  noFill();
+  
+  // Create a very subtle gradient with fewer ellipses
+  for (let i = 0; i < 3; i++) {
+    let alpha = map(i, 0, 2, 40, 15); // Even more subtle
+    stroke(0, alpha);
+    strokeWeight(50);
+    rect(0, 0, width, height, 100);
+  }
+  pop();
+}
+
+// Add vignette effect for title screen
+function drawVignette() {
+  push();
+  noFill();
+  
+  // Create a much more subtle gradient - reduced number of ellipses
+  for (let i = 0; i < 20; i+=5) { // Reduced from 100 iterations to 20, with steps of 5
+    let alpha = map(i, 0, 20, 0, 100); // Reduced max alpha from 150 to 100
+    stroke(0, alpha);
+    strokeWeight(10); // Increased weight to compensate for fewer ellipses
+    ellipse(width/2, height/2, width - i*25, height - i*15); // Larger steps
+  }
+  pop();
+}
+
+// Draw sky gradient for backgrounds
+function drawSkyGradient() {
+  push();
+  // Create a dark noir sky gradient
+  noStroke();
+  // Deep dark blue-black at top
+  fill(5, 5, 15);
+  rect(0, 0, width, height);
+  
+  // Add subtle gradient
+  for (let y = 0; y < height; y += 5) {
+    let alpha = map(y, 0, height, 0, 60);
+    stroke(20, 20, 40, alpha);
+    line(0, y, width, y);
+  }
+  
+  // Add stars
+  fill(255, 200);
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let starX = (i * 43) % width;
+    let starY = (i * 47) % height/2;
+    let starSize = noise(i * 0.1) * 2;
+    ellipse(starX, starY, starSize, starSize);
+    
+    // Add occasional twinkle
+    if (frameCount % 30 === i % 30) {
+      fill(255, 255, 255, 150);
+      ellipse(starX, starY, starSize + 1, starSize + 1);
+      fill(255, 200);
+    }
+  }
+  pop();
+}
+
+// Add a function to convert text to Morse code
+function textToMorse(text) {
+  const morseCode = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 
+    'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 
+    'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+    'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+    'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---', 
+    '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', 
+    '8': '---..', '9': '----.', ' ': '/'
+  };
+  
+  return text.toUpperCase().split('').map(char => morseCode[char] || char).join(' ');
+}
+
+function drawMorseCode(message, x, y) {
+  // Split long messages into multiple lines if needed
+  const words = message.split(' ');
+  const lines = [];
+  let currentLine = '';
+  
+  // Create lines with a reasonable number of words per line
+  for (let i = 0; i < words.length; i++) {
+    if (currentLine.length + words[i].length > 15) { // If adding this word makes line too long
+      lines.push(currentLine.trim());
+      currentLine = words[i];
+    } else {
+      currentLine += ' ' + words[i];
+    }
+  }
+  if (currentLine.trim() !== '') {
+    lines.push(currentLine.trim());
+  }
+  
+  // Draw each line of morse code
+  const lineHeight = 16; // Increased space between lines
+  
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const lineY = y + lineIndex * lineHeight;
+    
+    // Process each word separately to maintain clear word boundaries
+    const lineWords = lines[lineIndex].split(' ');
+    
+    push();
+    noStroke();
+    fill(255, 130); // Slightly increased opacity for better visibility
+    
+    // Position tracking
+    let totalWidth = 0;
+    const wordWidths = [];
+    
+    // First calculate total width needed for all words
+    for (let wordIndex = 0; wordIndex < lineWords.length; wordIndex++) {
+      const word = lineWords[wordIndex];
+      const morse = textToMorse(word);
+      
+      let wordWidth = 0;
+      const dotSize = 2.5;
+      const dashLength = dotSize * 3;
+      const dotSpacing = dotSize * 2; // Space between dots/dashes within a letter
+      const letterSpacing = dotSize * 6; // Space between letters
+      
+      // Add an empty space at the start of each word (except the first)
+      if (wordIndex > 0) {
+        wordWidth += letterSpacing * 2; // Extra space between words
+      }
+      
+      // Process morse code characters to calculate width
+      let currentLetterWidth = 0;
+      let inLetter = false;
+      
+      for (let i = 0; i < morse.length; i++) {
+        const symbol = morse[i];
+        
+        if (symbol === '.') {
+          currentLetterWidth += dotSize;
+          inLetter = true;
+          // Add spacing for the next symbol if it's not the last one in this letter
+          if (i + 1 < morse.length && morse[i + 1] !== ' ') {
+            currentLetterWidth += dotSpacing;
+          }
+        } else if (symbol === '-') {
+          currentLetterWidth += dashLength;
+          inLetter = true;
+          // Add spacing for the next symbol if it's not the last one in this letter
+          if (i + 1 < morse.length && morse[i + 1] !== ' ') {
+            currentLetterWidth += dotSpacing;
+          }
+        } else if (symbol === ' ') {
+          // End of a letter
+          wordWidth += currentLetterWidth;
+          if (inLetter) { // Only add letter spacing if we actually drew something
+            wordWidth += letterSpacing;
+          }
+          currentLetterWidth = 0;
+          inLetter = false;
+        }
+      }
+      
+      // Add the width of the last letter if there is one
+      if (currentLetterWidth > 0) {
+        wordWidth += currentLetterWidth;
+      }
+      
+      wordWidths.push(wordWidth);
+      totalWidth += wordWidth;
+    }
+    
+    // Start at position to center all words
+    let currentX = x - totalWidth / 2;
+    
+    // Now draw each word
+    for (let wordIndex = 0; wordIndex < lineWords.length; wordIndex++) {
+      const word = lineWords[wordIndex];
+      const morse = textToMorse(word);
+      
+      const dotSize = 2.5;
+      const dashLength = dotSize * 3;
+      const dotSpacing = dotSize * 2; // Space between dots/dashes within a letter
+      const letterSpacing = dotSize * 6; // Space between letters
+      
+      // Process each letter in the word
+      let letterStartX = currentX;
+      let inLetter = false;
+      
+      for (let i = 0; i < morse.length; i++) {
+        const symbol = morse[i];
+        
+        if (symbol === '.') {
+          ellipse(currentX, lineY, dotSize, dotSize);
+          currentX += dotSize + dotSpacing;
+          inLetter = true;
+        } else if (symbol === '-') {
+          // Center the dash properly
+          rect(currentX, lineY - dotSize/2, dashLength, dotSize);
+          currentX += dashLength + dotSpacing;
+          inLetter = true;
+        } else if (symbol === ' ') {
+          // Space between letters - remove the last added dotSpacing and add proper letter spacing
+          if (inLetter) {
+            currentX -= dotSpacing; // Remove the last dot spacing
+            currentX += letterSpacing; // Add letter spacing
+          }
+          letterStartX = currentX; // Update for next letter
+          inLetter = false;
+        }
+      }
+      
+      // Add word spacing after each word (except the last)
+      if (wordIndex < lineWords.length - 1) {
+        currentX += letterSpacing; // Extra space between words
+      }
+    }
+    
+    pop();
+  }
+}
+
+// Draw an enhanced game over screen
+function drawGameOverScreen() {
+  // Add debug logging
+  console.log("Drawing game over screen. leaderboardScoreSubmitted:", leaderboardScoreSubmitted);
+  
+  push();
+  
+  // First, draw a completely new background rather than a transparent overlay
+  // This ensures the game doesn't show through
+  background(0); // Solid black background
+  
+  // Draw the sky gradient 
+  drawSkyGradient();
+  
+  // Draw moon
+  drawMoon(width - 120, 100);
+  
+  // Draw static buildings silhouette
+  image(backgroundGfx, -backgroundOffset, 0);
+  if (backgroundOffset > backgroundGfx.width - width) {
+    image(backgroundGfx, -backgroundOffset + backgroundGfx.width, 0);
+  }
+  
+  // Add complete dark overlay to dim everything
+  fill(0, 0, 0, 230); // Almost completely opaque black overlay
+  rect(0, 0, width, height);
+  
+  // Add dramatic lighting effect with reduced detail
+  push();
+  noStroke();
+  
+  // Create dramatic light beams with moderate opacity
+  for (let i = 0; i < 2; i++) {
+    let x = width/2 + (i - 0.5) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let beamWidth = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Draw light beam
+    fill(255, 20);
+    beginShape();
+    vertex(x, 0);
+    vertex(x + beamWidth/2, 0);
+    vertex(x + beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Add central spot light
+  fill(255, 30);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  
+  // Add some dust particles in the beams
+  fill(255, 40);
+  for (let i = 0; i < 15; i++) {
+    let x = width/2 + sin(frameCount * 0.01 + i) * 150;
+    let y = (i * 37 + frameCount * 0.5) % height;
+    let size = 2 + sin(frameCount * 0.05 + i) * 1;
+    ellipse(x, y, size, size);
+  }
+  pop();
+  
+  // Add vignette with simplified approach
+  push();
+  noFill();
+  for (let i = 0; i < 3; i++) {
+    let alpha = map(i, 0, 2, 60, 20);
+    stroke(0, alpha);
+    strokeWeight(40);
+    rect(0, 0, width, height, 100);
+  }
+  pop();
+  
+  // Draw secret morse code message for high scores (3200+)
+  if (score >= 3200) {
+    // Draw morse code for the secret message above the Game Over text
+    drawMorseCode("CHECK THE BOTTOM OF AN UPCOMING NEWSLETTER", width/2, height/3 - 130);
+  }
+  
+  // Draw game over text with film noir style
+  textAlign(CENTER);
+  
+  // "Game Over" with dramatic styling
+  push();
+  translate(width/2, height/3); // Increased Y position (removed the -20 offset)
+  // Add slight rotation for dramatic effect
+  rotate(sin(frameCount * 0.01) * 0.02);
+  
+  // Shadow/glow effect
+  textSize(80);
+  fill(220, 30, 30, 150);
+  text("GAME OVER", 4, 4);
+  
+  // Main text
+  fill(255);
+  text("GAME OVER", 0, 0);
+  pop();
+  
+  // Score display and enemies killed on the same line
+  textSize(32);
+  fill(220, 220, 220);
+  text("FINAL SCORE: " + Math.floor(score) + "   |   ENEMIES: " + enemiesKilled, width/2, height/2);
+  
+  // Comic book promotion (moved up to create more space)
+  push();
+  textSize(16);
+  fill(150);
+  text("A NEW ADVENTURE IS COMING SOON", width/2, height/2 + 40);
+  
+  // Draw a subtle logo (moved up as well)
+  textSize(14);
+  // Flicker effect
+  if (frameCount % 60 < 40) {
+    fill(220, 30, 30, 150);
+  } else {
+    fill(200, 200, 200, 100);
+  }
+  text("#HBD #247COMICS", width/2, height/2 + 65);
+  pop();
+  
+  // Draw leaderboard prompt as a button (more room now)
+  // Show the button regardless of submission status, but change text if already submitted
+      push();
+  // Draw button background with subtle noir styling
+  let buttonWidth = 300;
+  let buttonHeight = 45;
+  
+  // Calculate position to be closer to the hashtag text
+  // The hashtags are at height/2 + 65, leave a comfortable gap of 35px
+  let buttonY = height/2 + 65 + 35;
+  
+  // Button shadow for depth
+  fill(10, 10, 15, 200);
+  noStroke();
+  rect(width/2 - buttonWidth/2 + 3, buttonY - buttonHeight/2 + 3, buttonWidth, buttonHeight, 8);
+  
+  // Button body with elegant dark red gradient (noir style)
+  let buttonColor = color(40, 10, 15, 220); // Darker red shade that fits noir aesthetic
+  fill(buttonColor);
+  stroke(180, 120, 120, 150); // Reddish border
+  strokeWeight(1.5);
+  rect(width/2 - buttonWidth/2, buttonY - buttonHeight/2, buttonWidth, buttonHeight, 8);
+  
+  // Button text - elegant and properly sized
+  noStroke();
+  textSize(16); // Further reduced from 18 to fit comfortably
+  
+  if (!leaderboardScoreSubmitted) {
+    fill(220, 200, 200); // Lighter color on dark red background
+    text("SUBMIT SCORE TO LEADERBOARD", width/2, buttonY + 6);
+      } else {
+    // If already submitted, show different text
+    fill(180, 160, 160); // Slightly dimmer text for the "already done" state
+    text("VIEW LEADERBOARD", width/2, buttonY + 6);
+  }
+  
+  // Remove the following detection section since we're handling clicks in mousePressed()
+  // We're not using mouseIsPressed here anymore
+      pop();
+  
+  // Restart prompt with subtle styling instead of flashing
+  textSize(24);
+  fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
+  text("PRESS 'R' TO RESTART", width/2, height - 40);
+  
+  // Add newsletter opt-in notice at the bottom
+  textSize(12); // Reduced from 14 to make it more subtle
+  fill(120, 120, 140, 180); // Slightly more transparent
+  text("Joining the leaderboard opts you in for our amazing newsletter", width/2, height - 15);
+  
+  pop();
+}
+
+
+// Add a helper function to draw stars for ninja blade glint
+function star(x, y, radius1, radius2, npoints) {
+  let angle = TWO_PI / npoints;
+  let halfAngle = angle / 2.0;
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += angle) {
+    let sx = x + cos(a) * radius2;
+    let sy = y + sin(a) * radius2;
+    vertex(sx, sy);
+    sx = x + cos(a + halfAngle) * radius1;
+    sy = y + sin(a + halfAngle) * radius1;
+    vertex(sx, sy);
+  }
+  endShape(CLOSE);
+}
+
+// Add function for drawing twinkling stars
+function drawTwinklingStars() {
+  push();
+  noStroke();
+  
+  // Draw stars with different sizes and twinkle effect
+  for (let i = 0; i < 100; i++) {
+    let x = (i * 25.7) % width;
+    let y = (i * 31.1) % (height/2);
+    let twinkle = sin(frameCount * 0.1 + i * 0.3) * 0.5 + 0.5;
+    let starSize = (noise(i * 0.1) * 1.5 + 0.5) * twinkle;
+    
+    fill(255, 255 * twinkle);
+    ellipse(x, y, starSize, starSize);
+    
+    // Add occasional larger stars
+    if (i % 10 === 0) {
+      fill(255, 180 * twinkle);
+      ellipse(x, y, starSize * 1.5, starSize * 1.5);
+    }
+  }
+  
+  pop();
+}
+
+// Add function for drawing street fog
+function drawStreetFog() {
+  // Function removed to improve visibility
+  // Not drawing any fog
+}
+
+function drawObstacle(obstacle) {
+  push();
+  translate(obstacle.x, obstacle.y);
+  
+  // Draw shadow under obstacles
+  drawShadow(0, obstacle.type === "flying" ? 5 : 0, 
+             obstacle.type === "flying" ? 60 + sin(frameCount * 0.05) * 10 : 80, 
+             obstacle.type === "flying" ? 40 * (1 - abs(obstacle.y - (groundY-100))/100) : 30);
+  
+  if (obstacle.type === "ground") {
+    // Check if it's a birthday cake obstacle
+    if (obstacle.cake) {
+      // Draw birthday cake obstacle
+      drawBirthdayCake(0, -12); // Position it slightly above ground level
+    }
+    // If it's not a cake, draw regular obstacles
+    else if (obstacle.tall) {
+      // Tall obstacle that requires ducking
+      push();
+      fill(40);
+      noStroke();
+      // Draw a taller obstacle
+      beginShape();
+      vertex(-30, 0);
+      vertex(-35, -100); // Taller than regular obstacles
+      vertex(-20, -120);
+      vertex(20, -120);
+      vertex(35, -100);
+      vertex(30, 0);
+      endShape(CLOSE);
+      
+      // Add some noir-style details
+      fill(20);
+      beginShape();
+      vertex(-20, -60);
+      vertex(-15, -110);
+      vertex(15, -110);
+      vertex(20, -60);
+      endShape(CLOSE);
+      
+      // Add warning stripes
+      fill(150, 30, 30);
+      beginShape();
+      vertex(-25, -40);
+      vertex(-28, -60);
+      vertex(28, -60);
+      vertex(25, -40);
+      endShape(CLOSE);
+      
+      pop();
+    } else {
+      // Regular ground obstacle
+      groundObstacleGfx();
+    }
+  } else if (obstacle.type === "flying") {
+    // Apply swinging motion to flying obstacles
+    if (obstacle.swingOffset !== undefined) {
+      // Apply a slight pendulum motion
+      let swingAmount = sin(frameCount * 0.05 + obstacle.swingOffset) * 10;
+      translate(0, swingAmount);
+      rotate(swingAmount * 0.01);
+    }
+    
+    // Flying obstacle
+    flyingObstacleGfx();
+  }
+  
+  pop();
+}
+
+// Function to spawn random power-ups
+function spawnPowerUp() {
+  // Check if enough time has passed since last power-up
+  if (frameCount - lastPowerUpTime < 600) {
+    return; // Don't spawn if it's been less than 10 seconds (600 frames)
+  }
+  
+  // Random position
+  let powerUpY = random(groundY - 100, groundY - 50);
+  
+  // Random power-up type
+  let typeIndex = floor(random(powerUpTypes.length));
+  let type = powerUpTypes[typeIndex].type;
+  
+  // Create power-up
+  powerUps.push({
+    x: width + 50,
+    y: powerUpY,
+    type: type,
+    rotation: 0,
+    pulseScale: 1,
+    pulseDirection: 0.01
+  });
+  
+  // Update last power-up time
+  lastPowerUpTime = frameCount;
+}
+
+// Update power-ups
+function updatePowerUps() {
+  // Update active power-up timers
+  if (activePowerUps.shield > 0) {
+    activePowerUps.shield--;
+  }
+  
+  if (activePowerUps.beamShot > 0) {
+    activePowerUps.beamShot--;
+  }
+  
+  if (activePowerUps.rapidFire > 0) {
+    activePowerUps.rapidFire--;
+  }
+  
+  // Update existing power-ups
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    let powerUp = powerUps[i];
+    
+    // Move power-up with the game world
+    powerUp.x -= scrollSpeed;
+    
+    // Animate power-up rotation and pulsing
+    powerUp.rotation += 0.02;
+    powerUp.pulseScale += powerUp.pulseDirection;
+    if (powerUp.pulseScale > 1.1 || powerUp.pulseScale < 0.9) {
+      powerUp.pulseDirection *= -1;
+    }
+    
+    // Check if power-up is off-screen
+    if (powerUp.x < -50) {
+      powerUps.splice(i, 1);
+      continue;
+    }
+    
+    // Check for collision with player
+    if (dist(powerUp.x, powerUp.y, player.x, player.y - 20) < 35) {
+      // Apply power-up effect
+      let powerUpType = powerUp.type;
+      
+      switch (powerUpType) {
+        case "shield":
+          activePowerUps.shield = powerUpTypes[0].duration;
+          break;
+        case "beamShot":
+          activePowerUps.beamShot = powerUpTypes[1].duration;
+          break;
+        case "rapidFire":
+          activePowerUps.rapidFire = powerUpTypes[2].duration;
+          break;
+      }
+      
+      // Visual effect for collecting power-up
+      for (let j = 0; j < 10; j++) {
+        let angle = random(0, TWO_PI);
+        let speed = random(1, 3);
+        let effect = {
+          x: powerUp.x,
+          y: powerUp.y,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          size: random(3, 8),
+          alpha: 255,
+          life: 20,
+          color: [255, 255, 255]
+        };
+        shootEffects.push(effect);
+      }
+      
+      // Remove the collected power-up
+      powerUps.splice(i, 1);
+    }
+  }
+}
+
+// Function to draw power-ups with noir aesthetic
+function drawPowerUps() {
+  // Draw all power-ups
+  for (let powerUp of powerUps) {
+    push();
+    translate(powerUp.x, powerUp.y);
+    // No rotation! scale(powerUp.pulseScale);
+    scale(powerUp.pulseScale);
+    
+    // Draw the power-up base (white orb with noir aesthetics)
+    noStroke();
+    
+    // Outer glow
+    fill(255, 80);
+    ellipse(0, 0, 40, 40);
+    
+    // Main orb
+    fill(225, 225, 225);
+    ellipse(0, 0, 30, 30);
+    
+    // Inner shadow for depth
+    fill(200, 200, 200);
+    ellipse(2, 2, 22, 22);
+    
+    // Draw the power-up icon in black
+    fill(10, 10, 10);
+    
+    // Different symbols for different power-ups
+    if (powerUp.type === "shield") {
+      // Shield - noir style shield
+      beginShape();
+      vertex(0, -10);
+      vertex(8, -5);
+      vertex(8, 5);
+      vertex(0, 10);
+      vertex(-8, 5);
+      vertex(-8, -5);
+      endShape(CLOSE);
+      // Inner detail
+      fill(40);
+      ellipse(0, 0, 8, 8);
+    } else if (powerUp.type === "beamShot") {
+      // Beam weapon - horizontal line with energy nodes
+      rect(-10, -2, 20, 4); // Main beam line
+      // Energy nodes
+      fill(40);
+      ellipse(-8, 0, 6, 6);
+      ellipse(0, 0, 6, 6);
+      ellipse(8, 0, 6, 6);
+    } else if (powerUp.type === "rapidFire") {
+      // Rapid fire - three parallel lines
+      rect(-6, -8, 3, 16);
+      rect(-1, -8, 3, 16);
+      rect(4, -8, 3, 16);
+    }
+    
+    // Add subtle shadow
+    drawingContext.shadowBlur = 15;
+    drawingContext.shadowColor = 'rgba(255, 255, 255, 0.4)';
+    
+    pop();
+  }
+  
+  // Reset shadow
+  drawingContext.shadowBlur = 0;
+}
+
+// Draw active power-up indicators with noir style
+function drawActivePowerUps() {
+  if (activePowerUps.shield > 0 || activePowerUps.beamShot > 0 || activePowerUps.rapidFire > 0) {
+    push();
+    noStroke();
+    
+    // Position for power-up indicators - moved to upper right
+    let x = width - 40;  // Changed from 30 to width - 40
+    let y = 40;
+    
+    // Draw shield indicator
+    if (activePowerUps.shield > 0) {
+      // White circle with noir shadow
+      fill(225, 225, 225, min(255, activePowerUps.shield > 60 ? 255 : activePowerUps.shield * 4));
+      ellipse(x, y, 20, 20);
+      
+      // Shield icon
+      fill(10, 10, 10);
+      beginShape();
+      vertex(x, y-7);
+      vertex(x+5, y-3);
+      vertex(x+5, y+3);
+      vertex(x, y+7);
+      vertex(x-5, y+3);
+      vertex(x-5, y-3);
+      endShape(CLOSE);
+      
+      // Duration text in noir style - align right
+      fill(200);
+      textAlign(RIGHT, CENTER);  // Changed from LEFT to RIGHT alignment
+      textSize(12);
+      text(`${ceil(activePowerUps.shield / 60)}s`, x - 15, y);  // Changed from x + 15 to x - 15
+      
+      // Shield effect around player - noir style glowing outline
+      if (frameCount % 3 === 0) {
+        push();
+        noFill();
+        
+        // Get brightness based on normal pulsing or flare effect
+        let baseBrightness = 70 + sin(frameCount * 0.1) * 30;
+        let flareBoost = player.shieldFlareTime ? map(player.shieldFlareTime, 20, 0, 150, 0) : 0;
+        let brightness = min(255, baseBrightness + flareBoost);
+        
+        stroke(255, brightness);
+        strokeWeight(4); // Increased thickness from 3 to 4
+        ellipse(player.x, player.y - 20, 80 + sin(frameCount * 0.2) * 5, 80 + sin(frameCount * 0.2) * 5);
+        
+        // Second ring for style
+        let outerBrightness = min(255, 40 + sin(frameCount * 0.15) * 20 + flareBoost * 0.7);
+        stroke(255, outerBrightness);
+        strokeWeight(5); // Increased thickness from 4 to 5
+        ellipse(player.x, player.y - 20, 90 + sin(frameCount * 0.25) * 6, 90 + sin(frameCount * 0.25) * 6);
+        pop();
+      }
+      
+      y += 25;
+    }
+    
+    // Draw beam shot indicator
+    if (activePowerUps.beamShot > 0) {
+      // White circle with noir shadow
+      fill(225, 225, 225, min(255, activePowerUps.beamShot > 60 ? 255 : activePowerUps.beamShot * 4));
+      ellipse(x, y, 20, 20);
+      
+      // Beam weapon icon
+      fill(10, 10, 10);
+      rect(x-10, y-2, 20, 4); // Main beam line
+      
+      // Energy nodes
+      fill(40);
+      ellipse(x-8, y, 6, 6);
+      ellipse(x, y, 6, 6);
+      ellipse(x+8, y, 6, 6);
+      
+      // Duration text
+      fill(200);
+      textAlign(RIGHT, CENTER);  // Changed from LEFT to RIGHT alignment
+      textSize(12);
+      textStyle(NORMAL);
+      text(`${ceil(activePowerUps.beamShot / 60)}s`, x - 15, y);  // Changed from x + 15 to x - 15
+      
+      y += 25;
+    }
+    
+    // Draw rapid fire indicator
+    if (activePowerUps.rapidFire > 0) {
+      // White circle with noir shadow
+      fill(225, 225, 225, min(255, activePowerUps.rapidFire > 60 ? 255 : activePowerUps.rapidFire * 4));
+      ellipse(x, y, 20, 20);
+      
+      // Three lines symbol
+      fill(10, 10, 10);
+      rect(x-6, y-7, 2, 14);
+      rect(x-1, y-7, 2, 14);
+      rect(x+4, y-7, 2, 14);
+      
+      // Duration text
+      fill(200);
+      textAlign(RIGHT, CENTER);  // Changed from LEFT to RIGHT alignment
+      textSize(12);
+      text(`${ceil(activePowerUps.rapidFire / 60)}s`, x - 15, y);  // Changed from x + 15 to x - 15
+    }
+    
+    pop();
+  }
+}
+
+// Add this function for better projectile collision detection with fast enemies
+function checkProjectileEnemyCollision(projectile, enemy) {
+  // Get enemy hitbox
+  let enemyHitbox = getEnemyHitbox(enemy);
+  
+  // For beam projectiles
+  if (projectile.isBeam) {
+    // Beam collisions use a rectangular hitbox
+    let beamHitbox = {
+      x: projectile.x - projectile.width/2,
+      y: projectile.y - projectile.height/2,
+      width: projectile.width,
+      height: projectile.height
+    };
+    
+    return checkCollision(beamHitbox, enemyHitbox);
+  } 
+  // Special case for ninjas - use a more generous collision detection 
+  else if (enemy.type === 'ninja') {
+    // Increased hitbox for checking ninja-projectile collision
+    // This makes it easier to hit fast-moving ninjas
+    let expanded = {
+      x: enemyHitbox.x - 5, // Expand left boundary
+      y: enemyHitbox.y - 5, // Expand top boundary
+      width: enemyHitbox.width + 10, // Add to width
+      height: enemyHitbox.height + 10 // Add to height
+    };
+    
+    // Point-based collision with expanded area
+    return projectile.x > expanded.x && 
+           projectile.x < expanded.x + expanded.width &&
+           projectile.y > expanded.y && 
+           projectile.y < expanded.y + expanded.height;
+  } 
+  // Normal projectile collision detection for other enemies
+  else {
+    return projectile.x > enemyHitbox.x && 
+           projectile.x < enemyHitbox.x + enemyHitbox.width &&
+           projectile.y > enemyHitbox.y && 
+           projectile.y < enemyHitbox.y + enemyHitbox.height;
+  }
+}
+
+// Add a shield flare effect function that gets called whenever the shield blocks something
+function createShieldFlareEffect() {
+  // Strong shield flare effect
+  screenFlash = 5; // Brief screen flash
+  
+  // Dramatic shield burst
+  for (let j = 0; j < 25; j++) {
+    let angle = random(0, TWO_PI);
+    let speed = random(3, 7);
+    let effect = {
+      x: player.x,
+      y: player.y - 20,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(6, 14),
+      alpha: 255,
+      life: 40,
+      color: [255, 255, 255]
+    };
+    shootEffects.push(effect);
+  }
+  
+  // Add a temporary shield flare property that will make the shield glow brighter
+  if (!player.shieldFlareTime || player.shieldFlareTime <= 0) {
+    player.shieldFlareTime = 20; // Frames the flare will last
+  } else {
+    player.shieldFlareTime = 20; // Reset timer if already flaring
+  }
+}
+
+// Draw the leaderboard screen
+function drawLeaderboardScreen() {
+  push();
+  
+  // Background similar to game over
+  background(0);
+  drawSkyGradient();
+  drawMoon(width - 120, 100);
+  
+  // Draw static buildings silhouette
+  image(backgroundGfx, -backgroundOffset, 0);
+  if (backgroundOffset > backgroundGfx.width - width) {
+    image(backgroundGfx, -backgroundOffset + backgroundGfx.width, 0);
+  }
+  
+  // Add dark overlay with red tint
+  fill(40, 5, 10, 230); // Changed from black (0,0,0,230) to dark red
+  rect(0, 0, width, height);
+  
+  // Draw dramatic lighting effect
+  push();
+  noStroke();
+  
+  // Light beams
+  for (let i = 0; i < 2; i++) {
+    let x = width/2 + (i - 0.5) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let beamWidth = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    fill(255, 15);
+    beginShape();
+    vertex(x, 0);
+    vertex(x + beamWidth/2, 0);
+    vertex(x + beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Central spotlight
+  fill(255, 20);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  pop();
+  
+  // Add vignette
+  push();
+  noFill();
+  for (let i = 0; i < 3; i++) {
+    let alpha = map(i, 0, 2, 60, 20);
+    stroke(0, alpha);
+    strokeWeight(40);
+    rect(0, 0, width, height, 100);
+  }
+  pop();
+  
+  // Draw leaderboard title
+  textAlign(CENTER);
+  
+  push();
+  translate(width/2, 60); // Moved up from 80
+  rotate(sin(frameCount * 0.01) * 0.01);
+  
+  // Shadow/glow effect
+  textSize(50); // Reduced from 60
+  fill(220, 30, 30, 150);
+  text("LEADERBOARD", 3, 3);
+  
+  // Main text
+  fill(255);
+  text("LEADERBOARD", 0, 0);
+  pop();
+  
+  // Show player's current score - smaller and higher
+  textSize(22); // Reduced from 28
+  fill(220, 220, 220);
+  text("YOUR SCORE: " + Math.floor(score), width/2, 110); // Moved up from 140
+  
+  // Show leaderboard data or loading message
+  if (leaderboardIsLoading) {
+    textSize(24);
+    fill(180);
+    text("LOADING SCORES...", width/2, height/2);
+  } else if (leaderboardError) {
+    textSize(24);
+    fill(220, 30, 30);
+    text("ERROR LOADING SCORES", width/2, height/2 - 20);
+    textSize(16);
+    fill(180);
+    text("PLEASE TRY AGAIN LATER", width/2, height/2 + 20);
+  } else {
+    // Display leaderboard entries - moved up closer to the score
+    textAlign(LEFT);
+    textSize(16); // Reduced from 18
+    fill(255);
+    text("RANK", width/2 - 200, 140); // Moved up from 170
+    text("NAME", width/2 - 100, 140);
+    text("SCORE", width/2 + 150, 140);
+    
+    fill(200);
+    stroke(80);
+    strokeWeight(1);
+    line(width/2 - 220, 150, width/2 + 220, 150); // Moved up from 180
+    noStroke();
+    
+    if (leaderboardData && leaderboardData.length > 0) {
+      // Display top scores with more compact layout
+      for (let i = 0; i < Math.min(10, leaderboardData.length); i++) {
+        const entry = leaderboardData[i];
+        const y = 170 + i * 22; // More compact - reduced from 210 start and 25px spacing to 170 start and 22px spacing
+        
+        // Highlight the current player's score - removed yellow highlight
+        // Instead, use a subtle red tint that matches the noir theme
+        if (entry.email === playerEmail) {
+          fill(80, 20, 20, 100); // Subtle dark red instead of yellow
+          rect(width/2 - 220, y - 16, 440, 22); // Adjusted rectangle height
+        }
+        
+        // Rank with medal for top 3
+        fill(255);
+        if (i === 0) fill(255, 215, 0); // Gold
+        else if (i === 1) fill(192, 192, 192); // Silver
+        else if (i === 2) fill(205, 127, 50); // Bronze
+        
+        textAlign(CENTER);
+        text((i + 1), width/2 - 200, y);
+        
+        // Name and score
+        textAlign(LEFT);
+        fill(255);
+        text(entry.player_name || "Anonymous", width/2 - 100, y);
+        
+        textAlign(RIGHT);
+        text(Math.floor(entry.score), width/2 + 200, y);
+      }
+    } else {
+      fill(180);
+      textAlign(CENTER);
+      text("NO SCORES YET - BE THE FIRST!", width/2, height/2);
+    }
+  }
+  
+  // Instructions with subtle noir styling instead of flashing
+  textSize(16); // Smaller size to fit on sides
+  
+  // Return instruction on the left side
+  fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
+  textAlign(LEFT);
+  text("PRESS ESC\nTO RETURN", 50, height/2);
+  
+  // Restart instruction on the right side
+  fill(200, 200, 220, 180 + sin(frameCount * 0.04) * 30);
+  textAlign(RIGHT);
+  text("PRESS 'R'\nTO RESTART", width - 50, height/2);
+  
+  pop();
+}
+
+// ================ LEADERBOARD FUNCTIONS ================
+
+// Set up event listeners for the leaderboard form
+function setupLeaderboardFormEvents() {
+  console.log("Setting up leaderboard form events");
+  
+  // Get DOM elements
+  const leaderboardForm = document.getElementById('leaderboardForm');
+  const playerNameInput = document.getElementById('playerName');
+  const playerEmailInput = document.getElementById('playerEmail');
+  const submitButton = document.getElementById('submitScore');
+  const cancelButton = document.getElementById('cancelSubmit');
+  const emailError = document.getElementById('emailError');
+  
+  // Submit button event listener
+  submitButton.addEventListener('click', () => {
+    console.log("Submit button clicked");
+    
+    // Validate email
+    const email = playerEmailInput.value.trim();
+    const name = playerNameInput.value.trim() || 'Anonymous Player';
+    
+    if (!isValidEmail(email)) {
+      emailError.style.display = 'block';
+      return;
+    }
+    
+    emailError.style.display = 'none';
+    submitScoreToLeaderboard(name, email, pendingScore);
+  });
+  
+  // Cancel button event listener
+  cancelButton.addEventListener('click', () => {
+    console.log("Cancel button clicked");
+    hideLeaderboardForm();
+    gameState = "gameOver"; // Return to game over screen
+  });
+}
+
+// Show the leaderboard form
+function showLeaderboardForm() {
+  console.log("showLeaderboardForm called - attempting to display form");
+  
+  const form = document.getElementById('leaderboardForm');
+  if (!form) {
+    console.error("Leaderboard form element not found in the DOM!");
+    return;
+  }
+  
+  console.log("Form element found, setting display to block");
+  form.style.display = 'block';
+  
+  // Make sure form fields are reset
+  const playerNameInput = document.getElementById('playerName');
+  const playerEmailInput = document.getElementById('playerEmail');
+  const emailError = document.getElementById('emailError');
+  
+  if (playerNameInput) playerNameInput.value = '';
+  if (playerEmailInput) playerEmailInput.value = '';
+  if (emailError) emailError.style.display = 'none';
+  
+  pendingScore = score; // Store the current score for submission
+  console.log("Form displayed, pendingScore set to:", pendingScore);
+}
+
+// Hide the leaderboard form
+function hideLeaderboardForm() {
+  console.log("hideLeaderboardForm called - attempting to hide form");
+  
+  const form = document.getElementById('leaderboardForm');
+  if (!form) {
+    console.error("Leaderboard form element not found in the DOM!");
+    return;
+  }
+  
+  console.log("Form element found, setting display to none");
+  form.style.display = 'none';
+  console.log("Form hidden");
+}
+
+// Validate email format
+function isValidEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+// Fetch leaderboard data from Supabase
+async function fetchLeaderboardData() {
+  if (!supabaseClient) return;
+  
+  leaderboardIsLoading = true;
+  leaderboardError = null;
+  
+  try {
+    const { data, error } = await supabaseClient
+      .from('leaderboard')
+      .select('*')
+      .order('score', { ascending: false })
+      .limit(10);
+    
+    if (error) throw error;
+    
+    leaderboardData = data;
+    console.log("Leaderboard data loaded:", data);
+  } catch (error) {
+    console.error("Error fetching leaderboard data:", error);
+    leaderboardError = error.message;
+  } finally {
+    leaderboardIsLoading = false;
+  }
+}
+
+// Submit score to the leaderboard with RLS handling
+async function submitScoreToLeaderboard(name, email, score) {
+  if (!supabaseClient) {
+    console.error("Supabase client not initialized");
+    return;
+  }
+  
+  try {
+    // Show loading state
+    const submitButton = document.getElementById('submitScore');
+    submitButton.innerHTML = "SUBMITTING...";
+    submitButton.disabled = true;
+    
+    // Using player_name instead of name to match the database schema
+    const { data, error } = await supabaseClient
+      .from('leaderboard')
+      .insert([
+        { player_name: name, email, score }
+      ]);
+    
+    if (error) {
+      // Check for specific RLS errors
+      if (error.code === '23505') {
+        throw new Error("You've already submitted a score with this email recently.");
+      } else if (error.code === 'PGRST116') {
+        throw new Error("You've reached the submission limit. Please try again later.");
+      } else {
+        throw error;
+      }
+    }
+    
+    console.log("Score submitted successfully");
+    playerEmail = email;
+    leaderboardScoreSubmitted = true;
+    hideLeaderboardForm();
+    
+    // Fetch updated leaderboard data
+    fetchLeaderboardData();
+    
+    // Switch to leaderboard view
+    gameState = "leaderboard";
+  } catch (error) {
+    console.error("Error submitting score:", error);
+    
+    // Display error to the user
+    const emailError = document.getElementById('emailError');
+    emailError.textContent = error.message || "Error submitting score. Please try again.";
+    emailError.style.display = 'block';
+    
+    // Stay in the enteringScore state
+    gameState = "enteringScore";
+  } finally {
+    // Reset button state
+    const submitButton = document.getElementById('submitScore');
+    submitButton.innerHTML = "SUBMIT";
+    submitButton.disabled = false;
+  }
+}
