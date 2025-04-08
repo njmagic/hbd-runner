@@ -489,17 +489,16 @@
             }
         }
         
-        // Function to monitor game state and ensure restart button shows correctly
+        // Function to monitor game state and ensure buttons show correctly
         function setupRestartButtonMonitor() {
             console.log("Setting up enhanced button monitor v4");
             
             let lastState = "";
-            let restartButtonShowAttempts = 0;
             let leaderboardButtonShowAttempts = 0;
             
             // Check if the buttons initially exist
             setTimeout(function() {
-                // Create buttons if they don't exist
+                // Create leaderboard button if it doesn't exist
                 if (!document.getElementById('submitLeaderboardBtn')) {
                     createLeaderboardButton();
                 }
@@ -516,119 +515,48 @@
                     if (currentState !== lastState) {
                         console.log(`Game state changed from "${lastState}" to "${currentState}"`);
                         lastState = currentState;
-                        restartButtonShowAttempts = 0; // Reset counter on state change
                         leaderboardButtonShowAttempts = 0;
                         
-                        // Add aggressive event listeners whenever we enter an end-game state
-                        const isEndGameState = currentState === "gameOver" || 
-                                           currentState === "leaderboard" || 
-                                           currentState === "enteringScore";
-                        
-                        if (isEndGameState) {
+                        // Add aggressive event listeners whenever we enter game over state
+                        if (currentState === "gameOver") {
                             // Small delay to ensure DOM is ready
                             setTimeout(function() {
-                                addAggressiveRestartButtonListeners();
-                                window.forceShowRestartButton(); // Force show button
+                                addLeaderboardButtonListeners();
+                                updateLeaderboardButtonVisibility();
                                 
-                                if (currentState === "gameOver") {
-                                    addLeaderboardButtonListeners();
-                                    updateLeaderboardButtonVisibility();
-                                    
-                                    // Check again after a delay to ensure it appears
-                                    setTimeout(updateLeaderboardButtonVisibility, 200);
-                                    setTimeout(updateLeaderboardButtonVisibility, 500);
-                                    setTimeout(updateLeaderboardButtonVisibility, 1000);
-                                }
+                                // Check again after a delay to ensure it appears
+                                setTimeout(updateLeaderboardButtonVisibility, 200);
+                                setTimeout(updateLeaderboardButtonVisibility, 500);
+                                setTimeout(updateLeaderboardButtonVisibility, 1000);
                             }, 100);
                         }
                     }
                     
-                    // Check for any end game states that should show restart button
-                    const isEndGameState = currentState === "gameOver" || 
-                                           currentState === "leaderboard" || 
-                                           currentState === "enteringScore";
-                    
-                    if (isEndGameState) {
-                        restartButtonShowAttempts++;
-                        const restartButton = document.getElementById('restartButton');
+                    // Check for game over state to show leaderboard button
+                    if (currentState === "gameOver") {
+                        leaderboardButtonShowAttempts++;
                         
-                        if (restartButton) {
-                            // Force display properties
-                            restartButton.style.display = 'block';
-                            restartButton.style.position = 'fixed';
-                            restartButton.style.zIndex = '10000';
-                            restartButton.style.opacity = '1';
-                            restartButton.style.visibility = 'visible';
-                            restartButton.style.pointerEvents = 'auto';
-                            
-                            // Ensure it has the control-area class for styling
-                            if (!restartButton.classList.contains('control-area')) {
-                                restartButton.classList.add('control-area');
-                            }
-                            
-                            // Every 10 attempts (500ms), refresh listeners to be extra safe
-                            if (restartButtonShowAttempts % 10 === 0) {
-                                console.log(`[Attempt ${restartButtonShowAttempts}] Refreshing restart button`);
-                                addAggressiveRestartButtonListeners();
-                            }
-                        } else {
-                            // If button doesn't exist, check if we should create it
-                            if (restartButtonShowAttempts % 20 === 0) {
-                                console.error(`[Attempt ${restartButtonShowAttempts}] Restart button element not found!`);
-                                // Maybe we need to recreate it
-                                const mobileControls = document.getElementById('mobileControls');
-                                if (mobileControls && restartButtonShowAttempts >= 40) {
-                                    console.log("Attempting to recreate missing restart button");
-                                    const newButton = document.createElement('div');
-                                    newButton.id = 'restartButton';
-                                    newButton.className = 'control-area';
-                                    newButton.innerHTML = 'RETURN TO TITLE';
-                                    newButton.style = 'font-weight: bold; letter-spacing: 1px; text-transform: uppercase;';
-                                    newButton.onclick = function(e) { 
-                                        console.log('Recreated button clicked'); 
-                                        restartGame(); 
-                                        e.preventDefault(); 
-                                        return false; 
-                                    };
-                                    mobileControls.appendChild(newButton);
-                                    window.forceShowRestartButton();
-                                    addAggressiveRestartButtonListeners();
-                                }
-                            }
-                        }
+                        // Update leaderboard button visibility every attempt
+                        updateLeaderboardButtonVisibility();
                         
-                        // Also check/update leaderboard button on game over state
-                        if (currentState === "gameOver") {
-                            leaderboardButtonShowAttempts++;
-                            
-                            // Update leaderboard button visibility every attempt
-                            updateLeaderboardButtonVisibility();
-                            
-                            // Extra logging for debugging
-                            if (leaderboardButtonShowAttempts % 10 === 0) {
-                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                                if (leaderboardBtn) {
-                                    console.log(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button status:`, {
-                                        display: leaderboardBtn.style.display,
-                                        visibility: leaderboardBtn.style.visibility,
-                                        opacity: leaderboardBtn.style.opacity,
-                                        zIndex: leaderboardBtn.style.zIndex,
-                                        scoreSubmitted: window.leaderboardScoreSubmitted
-                                    });
-                                } else {
-                                    console.error(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button not found, recreating...`);
-                                    createLeaderboardButton();
-                                }
+                        // Extra logging for debugging
+                        if (leaderboardButtonShowAttempts % 10 === 0) {
+                            const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                            if (leaderboardBtn) {
+                                console.log(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button status:`, {
+                                    display: leaderboardBtn.style.display,
+                                    visibility: leaderboardBtn.style.visibility,
+                                    opacity: leaderboardBtn.style.opacity,
+                                    zIndex: leaderboardBtn.style.zIndex,
+                                    scoreSubmitted: window.leaderboardScoreSubmitted
+                                });
+                            } else {
+                                console.error(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button not found, recreating...`);
+                                createLeaderboardButton();
                             }
                         }
                     } else {
-                        // Hide buttons when not in end game state
-                        const restartButton = document.getElementById('restartButton');
-                        if (restartButton) {
-                            restartButton.style.display = 'none';
-                        }
-                        
-                        // Also hide the leaderboard submit button
+                        // Hide the leaderboard submit button when not in game over
                         const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
                         if (leaderboardBtn) {
                             leaderboardBtn.style.display = 'none';
@@ -824,35 +752,20 @@
                 console.log("Mobile device detected via DOMContentLoaded");
                 document.getElementById('mobileControls').style.display = 'block';
                 
-                // Set up game state monitoring for restart button visibility
+                // Set up game state monitoring for button visibility
                 setupRestartButtonMonitor();
-                
-                // Set up aggressive restart button event monitoring
-                addAggressiveRestartButtonListeners();
                 
                 // Set up aggressive leaderboard button event monitoring
                 addLeaderboardButtonListeners();
                 
                 // Set up periodic event listener refresh
                 setInterval(function() {
-                    addAggressiveRestartButtonListeners();
                     addLeaderboardButtonListeners();
                 }, 5000);
-                
-                // Check if restart button is working
-                setTimeout(testRestartButton, 2000);
             }
             
-            // Add global event listener for restart button
+            // Add global event listener for leaderboard button
             document.addEventListener('touchstart', function(e) {
-                const restartButton = document.getElementById('restartButton');
-                if (restartButton && e.target === restartButton) {
-                    console.log("Restart button touched via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    restartGame();
-                }
-                
                 // Check if it's the leaderboard submit button
                 const leaderboardButton = document.getElementById('submitLeaderboardBtn');
                 if (leaderboardButton && e.target === leaderboardButton) {
@@ -864,14 +777,6 @@
             }, {capture: true, passive: false});
             
             document.addEventListener('click', function(e) {
-                const restartButton = document.getElementById('restartButton');
-                if (restartButton && e.target === restartButton) {
-                    console.log("Restart button clicked via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    restartGame();
-                }
-                
                 // Check if it's the leaderboard submit button
                 const leaderboardButton = document.getElementById('submitLeaderboardBtn');
                 if (leaderboardButton && e.target === leaderboardButton) {
@@ -1010,28 +915,17 @@
                         // Call original draw function
                         originalDraw.apply(this, arguments);
                         
-                        // Check if we're in a game over state
-                        if (window.gameState === "gameOver" || 
-                            window.gameState === "leaderboard" || 
-                            window.gameState === "enteringScore") {
-                            
-                            // Make sure restart button is visible
-                            const restartButton = document.getElementById('restartButton');
-                            if (restartButton && restartButton.style.display !== 'block') {
-                                window.forceShowRestartButton();
-                            }
-                            
-                            // Make sure leaderboard button is visible in game over state (when score not submitted)
-                            if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                                if (!leaderboardBtn || leaderboardBtn.style.display !== 'block') {
-                                    window.forceShowLeaderboardButton();
-                                }
+                        // Check if we're in game over state and score not submitted
+                        if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
+                            // Make sure leaderboard button is visible
+                            const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                            if (!leaderboardBtn || leaderboardBtn.style.display !== 'block') {
+                                window.forceShowLeaderboardButton();
                             }
                         }
                     };
                     
-                    console.log("Successfully patched draw function to monitor game state and button visibility");
+                    console.log("Successfully patched draw function to monitor game state and leaderboard button visibility");
                 }
                 
                 // Also check initially after a delay
@@ -1186,18 +1080,7 @@
         <div id="leftControl" class="control-area" onclick="mobileJump()" onmousedown="mobileJump()" ontouchstart="mobileJump()"></div>
         <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
         <div id="startButton" class="control-area" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);" onclick="startGame()" onmousedown="startGame()" ontouchstart="startGame()">TAP TO START</div>
-        <!-- Restart button for mobile -->
-        <div id="restartButton" 
-             onclick="console.log('Restart onclick'); restartGame(); return false;" 
-             onmousedown="console.log('Restart mousedown'); event.preventDefault(); event.stopPropagation(); return false;"
-             onmouseup="console.log('Restart mouseup'); event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchstart="console.log('Restart touchstart'); restartGame(); event.preventDefault(); event.stopPropagation(); return false;" 
-             ontouchend="console.log('Restart touchend'); event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
-             class="control-area"
-             style="font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
-             RETURN TO TITLE
-        </div>
+        <!-- Restart button removed -->
         <!-- Leaderboard submission button for mobile -->
         <div id="submitLeaderboardBtn"
              onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
