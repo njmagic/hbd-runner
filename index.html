@@ -212,12 +212,20 @@
             user-select: none; /* Prevent text selection */
             -webkit-user-select: none;
             -webkit-touch-callout: none;
+            animation: pulse 1.5s infinite alternate; /* Add pulsing animation for visibility */
+        }
+        
+        /* Add pulsing animation for restart button */
+        @keyframes pulse {
+            from { transform: translateX(-50%) scale(1); }
+            to { transform: translateX(-50%) scale(1.05); }
         }
         
         /* Active state for restart button */
         #restartButton:active {
             background-color: rgba(255, 100, 100, 0.95);
             transform: translateX(-50%) scale(0.95);
+            animation: none; /* Stop pulsing when pressed */
         }
     </style>
     <script src="libraries/p5.min.js"></script>
@@ -353,115 +361,145 @@
         
         /* Add restart game function for mobile - simulates R key press */
         function restartGame() {
-            console.log("Restart button clicked - using multiple approaches to simulate R key");
+            console.log("Restart button clicked - improved mobile restart");
             
-            // APPROACH 1: Direct simulation of keyPressed function
+            // APPROACH 1: Direct method call
+            if (typeof window.resetGame === 'function') {
+                console.log("Calling resetGame() function directly");
+                window.resetGame();
+                return; // Exit if this worked
+            }
+            
+            // APPROACH 2: Direct simulation of keyPressed function with proper p5.js context
             if (typeof window.keyPressed === 'function') {
-                // Store original key values
-                const originalKey = window.key;
-                const originalKeyCode = window.keyCode;
+                console.log("Simulating R keypress via keyPressed()");
                 
-                // Set all the properties that would be set during a real keypress
+                // Create a synthetic event that mimics a keyboard event
+                const syntheticEvent = {
+                    key: 'r',
+                    keyCode: 82,
+                    preventDefault: function() {}
+                };
+                
+                try {
+                    // Set global p5.js key variables that are checked in the game code
+                    window.key = 'r';
+                    window.keyCode = 82; // R key code
+                    
+                    // Call keyPressed with the game's context and our synthetic event
+                    window.keyPressed.call(window, syntheticEvent);
+                    
+                    // Clear the key state after a short delay
+                    setTimeout(function() {
+                        window.key = '';
+                        window.keyCode = 0;
+                    }, 100);
+                    
+                    return; // Exit if this worked
+                } catch(e) {
+                    console.error("Failed to call keyPressed:", e);
+                }
+            }
+            
+            // APPROACH 3: Create and dispatch keyboard events with proper timing
+            try {
+                console.log("Creating native keyboard events");
+                
+                // Create keydown event
+                const keyDownEvent = new KeyboardEvent('keydown', {
+                    key: 'r',
+                    code: 'KeyR',
+                    keyCode: 82,
+                    which: 82,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                // Create keypress event
+                const keyPressEvent = new KeyboardEvent('keypress', { 
+                    key: 'r',
+                    code: 'KeyR',
+                    keyCode: 82,
+                    which: 82,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                // Create keyup event
+                const keyUpEvent = new KeyboardEvent('keyup', { 
+                    key: 'r',
+                    code: 'KeyR',
+                    keyCode: 82,
+                    which: 82,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                // Dispatch the events in sequence with timing
+                document.dispatchEvent(keyDownEvent);
+                
+                // Set global key state for p5.js
                 window.key = 'r';
-                window.keyCode = 82; // R key code
+                window.keyCode = 82;
                 
-                // Also set global p5.js key variables
-                try {
-                    window._lastKeyPressed = 'r';
-                    window.keyIsPressed = true;
-                } catch(e) {
-                    console.log("Could not set some p5 properties:", e);
-                }
-                
-                // Call the game's key handler with direct access pattern
-                window.keyPressed();
-                
-                // APPROACH 2: Create and dispatch an actual keyboard event
-                try {
-                    const keyEvent = new KeyboardEvent('keydown', {
-                        key: 'r',
-                        code: 'KeyR',
-                        keyCode: 82,
-                        which: 82,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    document.dispatchEvent(keyEvent);
-                    
-                    // Fire keypress event too
-                    const keypressEvent = new KeyboardEvent('keypress', { 
-                        key: 'r',
-                        code: 'KeyR',
-                        keyCode: 82,
-                        which: 82,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    document.dispatchEvent(keypressEvent);
-                } catch(e) {
-                    console.log("Could not dispatch keyboard event:", e);
-                }
-                
-                // APPROACH 3: Direct game state manipulation (last resort)
-                try {
-                    if (window.gameState === "gameOver" || window.gameState === "leaderboard") {
-                        window.showTitleScreen = true;
-                        window.gameState = "start";
-                        
-                        // Reset score and game variables as the original code would
-                        window.score = 0;
-                        window.enemiesKilled = 0;
-                        window.enemies = [];
-                        window.obstacles = [];
-                        window.projectiles = [];
-                        window.shootEffects = [];
-                        window.powerUps = [];
-                        
-                        // Reset other game states
-                        if (window.activePowerUps) {
-                            window.activePowerUps.shield = 0;
-                            window.activePowerUps.beamShot = 0;
-                            window.activePowerUps.rapidFire = 0;
-                        }
-                        
-                        // Reset player position
-                        if (window.player) {
-                            window.player.y = window.groundY || 0;
-                            window.player.vy = 0;
-                            window.player.state = "running";
-                        }
-                        
-                        console.log("Direct game state manipulation applied");
-                    }
-                } catch(e) {
-                    console.log("Direct state manipulation failed:", e);
-                }
-                
-                // Restore original key values
+                // Then keypress
                 setTimeout(function() {
-                    window.key = originalKey;
-                    window.keyCode = originalKeyCode;
-                    window.keyIsPressed = false;
+                    document.dispatchEvent(keyPressEvent);
+                }, 10);
+                
+                // Then keyup after a delay
+                setTimeout(function() {
+                    document.dispatchEvent(keyUpEvent);
+                    window.key = '';
+                    window.keyCode = 0;
+                }, 100);
+                
+                return; // Exit if this worked
+            } catch(e) {
+                console.error("Failed to dispatch keyboard events:", e);
+            }
+            
+            // APPROACH 4: Direct game state manipulation (last resort)
+            console.log("Attempting direct game state manipulation");
+            try {
+                if (window.gameState === "gameOver" || window.gameState === "leaderboard" || window.gameState === "enteringScore") {
+                    // Force game to title screen
+                    window.showTitleScreen = true;
+                    window.gameState = "start";
                     
-                    // Fire keyup event to complete the sequence
-                    try {
-                        const keyupEvent = new KeyboardEvent('keyup', { 
-                            key: 'r',
-                            code: 'KeyR',
-                            keyCode: 82,
-                            which: 82,
-                            bubbles: true,
-                            cancelable: true
-                        });
-                        document.dispatchEvent(keyupEvent);
-                    } catch(e) {
-                        console.log("Could not dispatch keyup event:", e);
+                    // Reset score and game variables
+                    window.score = 0;
+                    window.enemiesKilled = 0;
+                    window.enemies = [];
+                    window.obstacles = [];
+                    window.projectiles = [];
+                    window.shootEffects = [];
+                    window.powerUps = [];
+                    
+                    // Reset power-ups
+                    if (window.activePowerUps) {
+                        window.activePowerUps.shield = 0;
+                        window.activePowerUps.beamShot = 0;
+                        window.activePowerUps.rapidFire = 0;
                     }
                     
-                    console.log("R key simulation completed");
-                }, 100);
-            } else {
-                console.error("keyPressed function not available");
+                    // Reset player position
+                    if (window.player) {
+                        window.player.y = window.groundY || 0;
+                        window.player.vy = 0;
+                        window.player.state = "running";
+                    }
+                    
+                    // Reset any other game state variables
+                    window.groundOffset = 0;
+                    window.backgroundOffset = 0;
+                    window.midgroundOffset = 0;
+                    window.foregroundOffset = 0;
+                    
+                    console.log("Game state directly reset to start");
+                }
+            } catch(e) {
+                console.error("Direct state manipulation failed:", e);
             }
         }
         
@@ -479,6 +517,9 @@
                 
                 // Set up game state monitoring for restart button visibility
                 setupRestartButtonMonitor();
+                
+                // Check if restart button is working
+                setTimeout(testRestartButton, 2000);
             }
         });
         
@@ -490,11 +531,20 @@
             setInterval(function() {
                 try {
                     // Direct check for game over state
-                    if (window.gameState === "gameOver") {
+                    if (window.gameState === "gameOver" || window.gameState === "leaderboard") {
                         const restartButton = document.getElementById('restartButton');
                         if (restartButton) {
                             restartButton.style.display = 'block';
                             restartButton.style.zIndex = '9999'; // Make sure it's on top
+                            
+                            // Force button to be visible
+                            restartButton.style.opacity = '1';
+                            restartButton.style.visibility = 'visible';
+                            
+                            // Log button state
+                            console.log("Restart button should be visible now. Display: " + restartButton.style.display);
+                        } else {
+                            console.error("Restart button element not found!");
                         }
                     } else {
                         // Only hide if not in game over state
@@ -507,6 +557,36 @@
                     console.error("Error in restart button monitor:", e);
                 }
             }, 100); // Check very frequently
+        }
+        
+        // Function to test that restart button properly triggers game restart
+        function testRestartButton() {
+            console.log("Testing restart button functionality...");
+            const restartButton = document.getElementById('restartButton');
+            
+            if (restartButton) {
+                // Add an event listener to capture all click events
+                restartButton.addEventListener('click', function(e) {
+                    console.log("Restart button CLICKED - Detail event log:", 
+                               {x: e.clientX, y: e.clientY, timestamp: new Date().toISOString()});
+                }, {capture: true, passive: false});
+                
+                restartButton.addEventListener('touchstart', function(e) {
+                    console.log("Restart button TOUCHED - Detail event log:", 
+                               {touches: e.touches.length, timestamp: new Date().toISOString()});
+                    
+                    // Ensure event propagation
+                    e.stopPropagation();
+                    e.preventDefault();
+                    
+                    // Force trigger restart
+                    restartGame();
+                }, {capture: true, passive: false});
+                
+                console.log("Restart button event listeners added successfully");
+            } else {
+                console.warn("Restart button not found during testing");
+            }
         }
     </script>
 </head>
