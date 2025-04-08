@@ -1615,12 +1615,38 @@
         // Add handlers for the protection layer
         protectionLayer.addEventListener('touchstart', function(e) {
             console.log("Title protection layer touched");
-            // Always prevent default behavior to stop any game starting
+            
+            // Check if touch is on the start button by getting its position
+            const startBtn = document.getElementById('startButton');
+            if (startBtn) {
+                // Get touch coordinates
+                const touchX = e.touches[0].clientX;
+                const touchY = e.touches[0].clientY;
+                
+                // Get start button boundaries
+                const startBtnRect = startBtn.getBoundingClientRect();
+                
+                // Check if touch is within start button boundaries
+                if (touchX >= startBtnRect.left && touchX <= startBtnRect.right &&
+                    touchY >= startBtnRect.top && touchY <= startBtnRect.bottom) {
+                    console.log("Touch on start button - allowing event to pass through!");
+                    
+                    // Allow this touch to trigger the button by immediately calling startGame
+                    startGame();
+                    
+                    // Prevent the default behavior to avoid any confusion
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+            
+            // For touches outside the start button - always prevent default behavior
+            console.log("Touch outside start button - blocking");
             e.preventDefault();
             e.stopPropagation();
             
-            // Show the start button if it's not visible
-            const startBtn = document.getElementById('startButton');
+            // Always ensure the start button is visible
             if (startBtn && startBtn.style.display !== 'block') {
                 startBtn.style.display = 'block';
                 startBtn.style.zIndex = '999999'; // Make it above the protection layer
@@ -1691,7 +1717,7 @@
                         protectionLayer.style.display = 'none';
                     }
                     
-                    // Call start game
+                    // Call startGame
                     startGame();
                     return false;
                 }, {capture: true, passive: false});
@@ -1712,42 +1738,102 @@
             if (startButton) {
                 console.log("🔥 APPLYING DIRECT START BUTTON FIX");
                 
-                // Boost its z-index and visibility
-                startButton.style.zIndex = '9999999';
-                startButton.style.opacity = '1';
-                startButton.style.visibility = 'visible';
+                // Boost its visibility and interactivity - use an even higher z-index
+                startButton.style.cssText = `
+                    display: block !important;
+                    position: absolute !important;
+                    top: 50% !important;
+                    left: 50% !important;
+                    transform: translate(-50%, -50%) !important;
+                    width: 250px !important;
+                    height: 80px !important;
+                    text-align: center !important;
+                    line-height: 80px !important;
+                    font-family: 'Courier New', monospace !important;
+                    color: white !important;
+                    font-size: 22px !important;
+                    font-weight: bold !important;
+                    background-color: rgba(50, 50, 50, 0.95) !important;
+                    border: 3px solid rgba(255, 255, 255, 0.95) !important;
+                    border-radius: 15px !important;
+                    box-shadow: 0 0 25px rgba(255, 255, 255, 0.8) !important;
+                    z-index: 10000000 !important;
+                    pointer-events: auto !important;
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                    animation: startButtonPulse 1.5s infinite alternate !important;
+                `;
                 
-                // Create a direct click handler that doesn't rely on p5.js
+                // Add pulsing animation to make it more noticeable
+                if (!document.getElementById('start-button-animation')) {
+                    const style = document.createElement('style');
+                    style.id = 'start-button-animation';
+                    style.textContent = `
+                        @keyframes startButtonPulse {
+                            from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 25px rgba(255, 255, 255, 0.8); }
+                            to { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 0 40px rgba(255, 255, 255, 1); }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                // Create a direct handler that immediately calls startGame
                 const directStartHandler = function(e) {
                     console.log("🚀 START BUTTON CLICKED VIA DIRECT HANDLER");
-                    e.preventDefault();
-                    e.stopPropagation();
                     
-                    // Hide the button first
-                    startButton.style.display = 'none';
+                    // Prevent any default behaviors
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
                     
-                    // Call startGame directly
-                    startGame();
+                    // Provide visual feedback
+                    startButton.style.transform = 'translate(-50%, -50%) scale(0.95)';
+                    startButton.style.backgroundColor = 'rgba(100, 100, 100, 0.95)';
+                    
+                    // Hide the button immediately to prevent double-clicks
+                    setTimeout(function() {
+                        startButton.style.display = 'none';
+                    }, 10);
+                    
+                    // Call startGame with a slight delay to ensure the visual feedback is seen
+                    setTimeout(function() {
+                        // Call startGame directly
+                        startGame();
+                        console.log("🚀 GAME STARTED FROM DIRECT HANDLER");
+                    }, 50);
                     
                     return false;
                 };
                 
-                // Clean up any existing handlers to prevent duplicates
-                startButton.replaceWith(startButton.cloneNode(true));
+                // Clean up any existing handlers by replacing the button
+                const newButton = startButton.cloneNode(true);
+                startButton.parentNode.replaceChild(newButton, startButton);
                 
                 // Get the refreshed element
                 const refreshedButton = document.getElementById('startButton');
+                refreshedButton.innerText = 'TAP TO START';
                 
-                // Add all possible event types
-                ['touchstart', 'touchend', 'mousedown', 'mouseup', 'click'].forEach(function(eventType) {
+                // Add multiple event types for maximum compatibility
+                const eventTypes = ['touchstart', 'touchend', 'mousedown', 'mouseup', 'click'];
+                eventTypes.forEach(function(eventType) {
                     refreshedButton.addEventListener(eventType, directStartHandler, {capture: true, passive: false});
                 });
                 
-                // Force display it
-                refreshedButton.style.display = 'block';
+                // Also add a global touch handler specifically for this button
+                document.addEventListener('touchstart', function(e) {
+                    // Check if we're on the title screen and touch is on the start button
+                    if (window.showTitleScreen && window.gameState === "start") {
+                        const btn = document.getElementById('startButton');
+                        if (btn && e.target === btn) {
+                            console.log("Start button touched via global handler");
+                            directStartHandler(e);
+                        }
+                    }
+                }, {capture: true, passive: false});
                 
-                console.log("🔥 DIRECT START BUTTON FIX APPLIED");
+                console.log("🔥 DIRECT START BUTTON FIX APPLIED - BUTTON SHOULD BE HIGHLY VISIBLE AND RESPONSIVE");
             }
-        }, 500);
+        }, 300);
     });
 </script>

@@ -2937,63 +2937,12 @@ function touchStarted() {
   touchStartTime = millis();
   touchStartY = touchY;
   
-  // Handle start button on title screen - FIXED MOBILE APPROACH
+  // Handle start button on title screen - COMPLETELY DISABLED
   if (showTitleScreen) {
-    console.log("Touch detected on title screen");
+    console.log("Touch detected on title screen - DELEGATING TO HTML HANDLERS ONLY");
     
-    // Get the start button
-    const startBtn = document.getElementById('startButton');
-    if (!startBtn) {
-      console.error("Start button element not found");
-      return false;
-    }
-    
-    // Make sure the start button is visible and enhanced
-    startBtn.style.display = 'block';
-    startBtn.style.zIndex = '999999';
-    startBtn.style.width = '250px';
-    startBtn.style.height = '80px';
-    startBtn.style.backgroundColor = 'rgba(50, 50, 50, 0.8)';
-    startBtn.style.border = '3px solid rgba(255, 255, 255, 0.9)';
-    
-    // Get the button's position
-    const startBtnRect = startBtn.getBoundingClientRect();
-    
-    // Check if touch is on the button
-    if (touchX >= startBtnRect.left && touchX <= startBtnRect.right &&
-        touchY >= startBtnRect.top && touchY <= startBtnRect.bottom) {
-        
-      console.log("Start button touched directly - calling startGame()");
-      
-      // Hide the button immediately to prevent double-clicks
-      startBtn.style.display = 'none';
-      
-      // DIRECT APPROACH: Call the HTML-defined startGame function
-      if (typeof window.startGame === 'function') {
-        console.log("Calling window.startGame() function directly");
-        window.startGame(); 
-      } else {
-        console.log("startGame function not found, using fallback approach");
-        
-        // Fallback approach - set the core variables directly 
-        showTitleScreen = false;
-        gameState = "playing";
-        
-        // Reset core game variables
-        score = 0;
-        enemiesKilled = 0;
-        enemies = [];
-        obstacles = [];
-        projectiles = [];
-        shootEffects = [];
-        powerUps = [];
-        
-        // Reset player
-        player.y = groundY;
-        player.vy = 0;
-        player.state = "running";
-      }
-    }
+    // DO NOT handle title screen touches here at all
+    // Let the HTML buttons and handlers manage everything
     
     return false; // Prevent default
   }
