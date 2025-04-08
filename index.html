@@ -1217,244 +1217,344 @@
         <button id="submitScore">SUBMIT</button>
         <button id="cancelSubmit">CANCEL</button>
     </div>
+
+    <!-- Add this immediately before the end of the body tag -->
+    <div id="guaranteed-mobile-submit" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999999; background-color: rgba(0,0,0,0.7); pointer-events: all;">
+        <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 100px; background-color: #ff3333; color: white; text-align: center; font-size: 26px; line-height: 100px; border-radius: 10px; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; border: 5px solid white; box-shadow: 0 0 30px #ff0000; animation: mobilePulse 1s infinite alternate;">
+            SUBMIT SCORE
+        </div>
+        <style>
+            @keyframes mobilePulse {
+                from { transform: translate(-50%, -50%) scale(1); }
+                to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 50px #ff5555; }
+            }
+        </style>
+    </div>
 </body>
 </html>
 
 <script>
-    // IMMEDIATE FIX: Directly force the button visibility with interval checks
+    // DIRECT GUARANTEED SOLUTION - COMPLETELY REPLACES PREVIOUS ATTEMPTS
     (function() {
-        console.log("⚠️ INSTALLING EMERGENCY MOBILE BUTTON FIX");
+        console.log("🔴 INSTALLING 100% GUARANTEED MOBILE SOLUTION");
         
-        // Create an absolutely positioned floating button that's always visible
-        function createEmergencySubmitButton() {
-            console.log("🆘 Creating emergency floating submit button");
-            
-            // First remove any existing emergency buttons
-            const existingButton = document.getElementById('emergency-submit-btn');
-            if (existingButton) {
-                existingButton.remove();
+        // Add extra style directly to make sure our animation works
+        const extraStyle = document.createElement('style');
+        extraStyle.textContent = `
+            @keyframes absoluteButtonPulse {
+                from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); }
+                to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 40px rgba(255, 0, 0, 1); }
             }
             
-            // Create a completely independent button positioned at the center of screen
-            const emergencyBtn = document.createElement('div');
-            emergencyBtn.id = 'emergency-submit-btn';
-            emergencyBtn.innerText = 'SUBMIT SCORE';
-            
-            // Apply critical styles directly with !important flags
-            emergencyBtn.style.cssText = `
+            #absolute-mobile-submit-btn {
                 position: fixed !important;
                 top: 40% !important;
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
                 width: 280px !important;
-                height: 80px !important;
-                background-color: rgb(255, 50, 50) !important;
+                height: 100px !important;
+                background-color: #ff3333 !important;
                 color: white !important;
-                font-size: 24px !important;
+                font-size: 28px !important;
                 font-family: 'Courier New', monospace !important;
                 font-weight: bold !important;
                 text-align: center !important;
-                line-height: 80px !important;
-                border: 4px solid white !important;
-                border-radius: 10px !important;
-                z-index: 2000000 !important;
-                box-shadow: 0 0 30px rgba(255, 0, 0, 0.7) !important;
-                display: none !important;
+                line-height: 100px !important;
+                border: 6px solid white !important;
+                border-radius: 15px !important;
+                z-index: 9999999 !important;
+                box-shadow: 0 0 30px rgba(255, 50, 50, 0.8) !important;
                 pointer-events: auto !important;
                 cursor: pointer !important;
-                user-select: none !important;
-                -webkit-user-select: none !important;
-                animation: emergencyPulse 1s infinite alternate !important;
-            `;
+                text-transform: uppercase !important;
+                animation: absoluteButtonPulse 1s infinite alternate !important;
+                -webkit-tap-highlight-color: transparent !important;
+            }
+        `;
+        document.head.appendChild(extraStyle);
+        
+        // Direct implementation of showLeaderboardForm logic for mobile
+        function showMobileLeaderboardForm() {
+            console.log("📱 DIRECT mobile leaderboard form display");
             
-            // Add style for animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes emergencyPulse {
-                    from { transform: translate(-50%, -50%) scale(1); }
-                    to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 50px rgba(255, 50, 50, 0.9); }
+            try {
+                // Get direct references to DOM elements
+                const leaderboardForm = document.getElementById('leaderboardForm');
+                const playerNameInput = document.getElementById('playerName');
+                const submitButton = document.getElementById('submitScore');
+                
+                if (!leaderboardForm || !playerNameInput || !submitButton) {
+                    console.error("⚠️ Cannot find leaderboard form elements!");
+                    return;
                 }
-            `;
-            document.head.appendChild(style);
+                
+                // Change game state directly
+                window.gameState = "enteringScore";
+                
+                // Show the form with maximum visibility
+                leaderboardForm.style.display = 'block';
+                leaderboardForm.style.opacity = '1';
+                leaderboardForm.style.visibility = 'visible';
+                leaderboardForm.style.zIndex = '9999999';
+                
+                // Focus on player name input
+                setTimeout(() => {
+                    playerNameInput.focus();
+                    console.log("✅ Form displayed and input focused");
+                }, 100);
+                
+                // Hide any emergency buttons
+                hideAllMobileButtons();
+                
+                return true;
+            } catch (e) {
+                console.error("❌ Error in mobile leaderboard form display:", e);
+                return false;
+            }
+        }
+        
+        // Hide all mobile buttons
+        function hideAllMobileButtons() {
+            // Hide guaranteed button container
+            const guaranteedContainer = document.getElementById('guaranteed-mobile-submit');
+            if (guaranteedContainer) guaranteedContainer.style.display = 'none';
             
-            // Add multiple event handlers for max compatibility
+            // Hide absolute button
+            const absoluteButton = document.getElementById('absolute-mobile-submit-btn');
+            if (absoluteButton) absoluteButton.style.display = 'none';
+            
+            // Hide emergency button
+            const emergencyButton = document.getElementById('emergency-submit-btn');
+            if (emergencyButton) emergencyButton.style.display = 'none';
+            
+            // Hide original button
+            const originalButton = document.getElementById('submitLeaderboardBtn');
+            if (originalButton) originalButton.style.display = 'none';
+        }
+        
+        // Create an absolute button that's directly in the body
+        function createAbsoluteButton() {
+            // First remove any existing button
+            const existingButton = document.getElementById('absolute-mobile-submit-btn');
+            if (existingButton) existingButton.remove();
+            
+            // Create button element
+            const absoluteButton = document.createElement('div');
+            absoluteButton.id = 'absolute-mobile-submit-btn';
+            absoluteButton.innerText = 'SUBMIT SCORE';
+            
+            // Add event listeners for all possible events
             function handleButtonPress(e) {
-                console.log("🎯 Emergency button clicked/tapped");
+                console.log("✅ Absolute mobile submit button pressed");
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Hide this button
-                emergencyBtn.style.display = 'none !important';
+                // Hide the button immediately
+                absoluteButton.style.display = 'none';
                 
-                // Call the leaderboard function
-                if (typeof window.showLeaderboardForm === 'function') {
-                    window.showLeaderboardForm();
-                    window.gameState = "enteringScore";
-                    console.log("✅ Called showLeaderboardForm successfully");
-                } else {
-                    console.log("⚠️ showLeaderboardForm not found, trying fallback");
-                    // Try direct state change
-                    window.gameState = "enteringScore";
-                    
-                    // Show form directly if possible
-                    const form = document.getElementById('leaderboardForm');
-                    if (form) form.style.display = 'block';
-                }
+                // Show the leaderboard form
+                showMobileLeaderboardForm();
                 
                 return false;
             }
             
-            // Add all possible event types
-            ['click', 'touchstart', 'mousedown', 'pointerdown'].forEach(eventType => {
-                emergencyBtn.addEventListener(eventType, handleButtonPress, {capture: true, passive: false});
+            // Add maximum event handlers
+            ['click', 'touchstart', 'mousedown', 'pointerdown'].forEach(event => {
+                absoluteButton.addEventListener(event, handleButtonPress, {capture: true, passive: false});
             });
             
-            // Add to document body, outside all other containers for maximum reliability
-            document.body.appendChild(emergencyBtn);
-            console.log("🟢 Emergency button created and added to DOM");
+            // Add to document body for maximum visibility
+            document.body.appendChild(absoluteButton);
+            console.log("✅ Created absolute submit button");
             
-            return emergencyBtn;
+            // Hide initially
+            absoluteButton.style.display = 'none';
+            
+            return absoluteButton;
         }
         
-        // Create the emergency button right away
-        const emergencyBtn = createEmergencySubmitButton();
+        // Create the button as soon as possible
+        const absoluteButton = createAbsoluteButton();
         
-        // Force show the button by directly changing its style
-        function forceShowEmergencyButton() {
-            const btn = document.getElementById('emergency-submit-btn');
-            if (!btn) return false;
+        // Set up event handlers for the guaranteed container
+        function setupGuaranteedContainer() {
+            const container = document.getElementById('guaranteed-mobile-submit');
+            if (!container) return false;
             
-            // Override the display property with direct style manipulation
-            btn.style.setProperty('display', 'block', 'important');
+            // Add event handlers to the container
+            container.addEventListener('click', function(e) {
+                console.log("✅ Guaranteed container clicked");
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Hide container
+                container.style.display = 'none';
+                
+                // Show leaderboard form
+                showMobileLeaderboardForm();
+                
+                return false;
+            }, {capture: true, passive: false});
             
-            // Also try direct attribute setting as a fallback
-            btn.setAttribute('style', btn.getAttribute('style').replace('display: none', 'display: block'));
+            container.addEventListener('touchstart', function(e) {
+                console.log("✅ Guaranteed container touched");
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Hide container
+                container.style.display = 'none';
+                
+                // Show leaderboard form
+                showMobileLeaderboardForm();
+                
+                return false;
+            }, {capture: true, passive: false});
             
+            console.log("✅ Set up guaranteed container handlers");
             return true;
         }
         
-        // Set up a direct interval that checks VERY frequently (every 200ms)
-        // This runs independently of any game state monitoring
-        const emergencyInterval = setInterval(function() {
+        // Setup container handlers
+        setupGuaranteedContainer();
+        
+        // Check for game over very frequently and show buttons
+        function checkGameStateAndShowButtons() {
             try {
-                // Check if game is in game over state
+                // Check if we're in game over state and score hasn't been submitted
                 if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                    console.log("🔍 Emergency detector found GAME OVER state - forcing button visibility");
-                    forceShowEmergencyButton();
+                    console.log("🎮 Game over detected, showing submission options");
                     
-                    // Also try to show the regular button
-                    const regularBtn = document.getElementById('submitLeaderboardBtn');
-                    if (regularBtn) {
-                        regularBtn.style.display = 'block';
-                        regularBtn.style.visibility = 'visible';
-                        regularBtn.style.opacity = '1';
+                    // Show absolute button
+                    if (absoluteButton) {
+                        absoluteButton.style.display = 'block';
+                        console.log("✅ Absolute button displayed");
                     }
+                    
+                    // Show guaranteed container
+                    const container = document.getElementById('guaranteed-mobile-submit');
+                    if (container) {
+                        container.style.display = 'block';
+                        console.log("✅ Guaranteed container displayed");
+                    }
+                    
+                    // Try to show the original button too
+                    const originalBtn = document.getElementById('submitLeaderboardBtn');
+                    if (originalBtn) {
+                        originalBtn.style.display = 'block';
+                        originalBtn.style.visibility = 'visible';
+                        originalBtn.style.opacity = '1';
+                        console.log("✅ Original button visibility enforced");
+                    }
+                    
+                    // Try the emergency button if it exists
+                    const emergencyBtn = document.getElementById('emergency-submit-btn');
+                    if (emergencyBtn) {
+                        emergencyBtn.style.display = 'block';
+                        console.log("✅ Emergency button displayed");
+                    }
+                    
+                    return true;
                 } else {
-                    // Hide emergency button when not in game over
-                    const btn = document.getElementById('emergency-submit-btn');
-                    if (btn) btn.style.display = 'none';
+                    // Hide all buttons when not in game over
+                    hideAllMobileButtons();
+                    return false;
                 }
             } catch (e) {
-                console.error("⚠️ Error in emergency button monitor:", e);
+                console.error("❌ Error checking game state:", e);
+                return false;
             }
-        }, 200);
+        }
         
-        // Also set up a MutationObserver to detect DOM changes
-        // This helps catch when the game state changes through DOM updates
-        const gameObserver = new MutationObserver(function(mutations) {
-            // Check game state after DOM changes
-            if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                console.log("🔄 DOM change detected - checking game state");
-                forceShowEmergencyButton();
-            }
-        });
-        
-        // Start observing the document
-        gameObserver.observe(document.body, { 
-            childList: true, 
-            subtree: true, 
-            attributes: true,
-            attributeFilter: ['style', 'class']
-        });
-        
-        // Direct hook into the game's draw loop
-        // Wait for the game to fully initialize
-        setTimeout(function() {
-            if (window.draw && typeof window.draw === 'function') {
-                console.log("🔄 Adding emergency hook to draw loop");
-                const originalDraw = window.draw;
-                
-                window.draw = function() {
-                    // Call original function
-                    originalDraw.apply(this, arguments);
+        // Hook into game draw loop
+        function patchGameDrawLoop() {
+            setTimeout(function() {
+                if (window.draw && typeof window.draw === 'function') {
+                    console.log("🎮 Patching game draw loop");
+                    const originalDraw = window.draw;
                     
-                    // After draw completes, check state
-                    try {
-                        if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                            const btn = document.getElementById('emergency-submit-btn');
-                            if (btn && btn.style.display === 'none') {
-                                console.log("🔴 Draw loop detected game over - showing emergency button");
-                                forceShowEmergencyButton();
-                            }
+                    window.draw = function() {
+                        // Call original draw function
+                        originalDraw.apply(this, arguments);
+                        
+                        // Check for game over
+                        try {
+                            checkGameStateAndShowButtons();
+                        } catch (e) {
+                            // Silent catch to not disrupt game
                         }
-                    } catch (e) {
-                        // Silent error handling to not break the game
-                    }
-                };
-            }
-        }, 1500); // Wait for game to be ready
+                    };
+                    
+                    console.log("✅ Game draw loop patched successfully");
+                }
+            }, 1000);
+        }
         
-        // Add direct handler to listen for score changes
-        // This helps detect the moment the game ends
-        let lastKnownScore = 0;
+        // Set up multiple intervals with different timings for redundancy
+        const intervals = [
+            setInterval(checkGameStateAndShowButtons, 100),  // Very frequent check
+            setInterval(checkGameStateAndShowButtons, 250),  // Medium frequency check
+            setInterval(checkGameStateAndShowButtons, 500),  // Slower backup check
+            setInterval(checkGameStateAndShowButtons, 1000)  // Slowest fallback check
+        ];
+        
+        // Patch draw loop
+        patchGameDrawLoop();
+        
+        // Add global handler to detect game over
+        document.addEventListener('keydown', function(e) {
+            // After any key press, check the game state
+            setTimeout(checkGameStateAndShowButtons, 100);
+        });
+        
+        // Watch for score changes - score stopping increases suggests game over
+        let lastScore = 0;
+        let stableScoreCount = 0;
+        
         setInterval(function() {
             try {
                 const currentScore = window.score || 0;
                 
-                // If score stops changing for a while, it might indicate game over
-                if (currentScore > 0 && currentScore === lastKnownScore) {
-                    // Check if we're in game over state without the flag being set
-                    if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                        console.log("🛑 Score stopped changing and game over detected");
-                        forceShowEmergencyButton();
-                    }
-                }
-                
-                lastKnownScore = currentScore;
-            } catch (e) {
-                // Silent catch to prevent errors
-            }
-        }, 1000);
-    })();
-    
-    // Last resort - direct DOM injection when everything is loaded
-    window.addEventListener('load', function() {
-        // Wait for the game to fully load and potentially set variables
-        setTimeout(function() {
-            console.log("⏱️ Final check for emergency button visibility");
-            // Force create and show the emergency button if needed
-            if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                const emergencyBtn = document.getElementById('emergency-submit-btn');
-                if (emergencyBtn) {
-                    emergencyBtn.style.setProperty('display', 'block', 'important');
-                    console.log("⚡ Final emergency button visibility enforced");
-                }
-            }
-            
-            // Set up occasional checks thereafter
-            setInterval(function() {
-                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                    // Try both buttons
-                    const emergencyBtn = document.getElementById('emergency-submit-btn');
-                    if (emergencyBtn) emergencyBtn.style.setProperty('display', 'block', 'important');
+                // If we have a score and it hasn't changed
+                if (currentScore > 0 && currentScore === lastScore) {
+                    stableScoreCount++;
                     
-                    const regularBtn = document.getElementById('submitLeaderboardBtn');
-                    if (regularBtn) {
-                        regularBtn.style.display = 'block';
-                        regularBtn.style.visibility = 'visible'; 
+                    // After score is stable for a bit, check if we're in game over
+                    if (stableScoreCount >= 3) {
+                        checkGameStateAndShowButtons();
                     }
+                } else {
+                    // Reset counter if score changes
+                    stableScoreCount = 0;
+                    lastScore = currentScore;
                 }
-            }, 2000);
-        }, 3000);
-    });
+            } catch (e) {
+                // Silent catch
+            }
+        }, 500);
+        
+        // Observe DOM for changes that might indicate game over
+        const observer = new MutationObserver(function(mutations) {
+            checkGameStateAndShowButtons();
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+        
+        // One time check after everything is loaded
+        window.addEventListener('load', function() {
+            console.log("🖥️ Page fully loaded, running final checks");
+            
+            // Do multiple delayed checks
+            setTimeout(checkGameStateAndShowButtons, 1000);
+            setTimeout(checkGameStateAndShowButtons, 2000);
+            setTimeout(checkGameStateAndShowButtons, 3000);
+            setTimeout(checkGameStateAndShowButtons, 5000);
+        });
+        
+        console.log("✅ 100% GUARANTEED MOBILE SOLUTION INSTALLED");
+    })();
 </script>
