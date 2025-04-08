@@ -135,6 +135,22 @@
             border-radius: 5px;
             z-index: 10;
         }
+        /* Hide game control text on mobile devices */
+        @media (max-width: 1024px), (pointer: coarse) {
+            /* This selector targets the screen control instructions */
+            canvas + p {
+                display: none !important;
+            }
+            
+            /* Target any text elements that contain control instructions */
+            text[data-help-text="true"],
+            .controls-text,
+            .key-instructions,
+            p.controls-instruction,
+            div.controls-help {
+                display: none !important;
+            }
+        }
         input, button {
             display: block;
             width: 100%;

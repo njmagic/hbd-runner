@@ -5023,6 +5023,57 @@ function mobileJump() {
   }
 }
 
+// Function to hide control instructions text on mobile
+function hideControlInstructionsOnMobile() {
+  console.log("Checking for control instructions to hide on mobile...");
+  
+  // Function to check if text contains control-related keywords
+  function containsControlKeywords(text) {
+    if (!text) return false;
+    
+    const controlKeywords = [
+      'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
+      'keys', 'z key', 'x key', 'up', 'down', 'left', 'right', 
+      'wasd', 'jump', 'duck', 'shoot'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return controlKeywords.some(keyword => lowerText.includes(keyword));
+  }
+  
+  // Wait for canvas to be created
+  setTimeout(() => {
+    // Get the canvas elements
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    
+    // Look for paragraphs or divs after the canvas that might contain control instructions
+    let element = canvas.nextElementSibling;
+    while (element) {
+      // If the element contains text with control keywords, hide it
+      if (element.textContent && containsControlKeywords(element.textContent)) {
+        console.log("Found control instructions element:", element.textContent.substring(0, 50) + "...");
+        element.style.display = 'none';
+      }
+      element = element.nextElementSibling;
+    }
+    
+    // Also check for controls drawn onto the canvas using p5.js text function
+    // We'll inject a style to hide these elements via our mobile CSS
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Hide any text drawn on canvas that contains control instructions */
+      .p5Canvas text:not(.game-score):not(.game-title) {
+        opacity: 0 !important;
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    console.log("Control instruction hiding complete");
+  }, 1500);
+}
+
 // Custom mobile detection and control setup
 function setupMobileControls() {
   console.log("Setting up mobile controls...");
@@ -5068,6 +5119,238 @@ function setupMobileControls() {
     
     // Expose game variables to window for direct access from HTML
     exposeGameFunctions();
+    
+    // Hide control instructions since we have mobile controls
+    hideControlInstructionsOnMobile();
+    
+    console.log("Mobile controls enabled and game variables exposed to window");
+  } else {
+    console.log("Not a mobile device - controls will remain hidden");
+  }
+}
+
+// Call mobile setup after a short delay to ensure the DOM is ready
+setTimeout(setupMobileControls, 1000);
+
+// Expose key functions to window object for direct access from HTML
+function exposeGameFunctions() {
+  console.log("Exposing game functions to global scope");
+  
+  // Directly expose the critical functions
+  window.mobileShoot = function() {
+    console.log("GLOBAL mobileShoot called");
+    // Create a simple projectile regardless of power-ups
+    if (player && projectiles) {
+      let projectile = {
+        x: player.x + 32,
+        y: player.y - 16,
+        vx: 12,
+        vy: 0,
+        isRed: true
+      };
+      
+      projectiles.push(projectile);
+      console.log("Projectile added:", projectiles.length);
+      
+      // Create visual effects
+      for (let i = 0; i < 5; i++) {
+        let angle = random(-PI/4, PI/4);
+        let speed = random(1, 4);
+        let effect = {
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          size: random(2, 5),
+          alpha: 255,
+          life: 8,
+          isRed: true
+        };
+        shootEffects.push(effect);
+      }
+    }
+  };
+  
+  window.mobileJump = function() {
+    console.log("GLOBAL mobileJump called");
+    if (player && player.y >= groundY - 1) {
+      player.vy = jumpStrength;
+      player.state = "jumping";
+      console.log("Jump triggered, vy =", player.vy);
+    }
+  };
+  
+  window.mobileDuck = function() {
+    console.log("GLOBAL mobileDuck called");
+    if (player) {
+      player.state = "ducking";
+    }
+  };
+  
+  window.gameState = gameState;
+  window.player = player;
+  window.groundY = groundY;
+  window.jumpStrength = jumpStrength;
+}
+
+// Call function to expose game functions
+setTimeout(exposeGameFunctions, 500);
+
+// Override p5.js text function to hide control instructions on mobile
+function overrideTextFunctionForMobile() {
+  console.log("Setting up p5.js text function override for mobile...");
+  
+  // Wait for p5.js to be fully initialized
+  setTimeout(() => {
+    // Store the original text function
+    if (window.p5 && window.p5.prototype) {
+      const originalTextFunction = window.p5.prototype.text;
+      
+      // Control instruction keywords
+      const controlKeywords = [
+        'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
+        'z key', 'x key', 'up', 'down', 'left', 'right', 
+        'wasd', 'jump', 'duck', 'shoot', 'controls'
+      ];
+      
+      // Override text function
+      window.p5.prototype.text = function(str, x, y, x2, y2) {
+        // If it's a mobile device and text contains control instructions, don't draw it
+        if (isMobileDevice && typeof str === 'string') {
+          const lowerStr = str.toLowerCase();
+          
+          // Check if this text contains any control keywords
+          const hasControlKeywords = controlKeywords.some(keyword => 
+            lowerStr.includes(keyword)
+          );
+          
+          // Skip drawing if it has control keywords
+          // Exception: don't hide score, title, game over text etc.
+          const isGameplayText = lowerStr.includes('score') || 
+                                lowerStr.includes('game over') || 
+                                lowerStr.includes('title') ||
+                                lowerStr.includes('enemies') ||
+                                /^\d+$/.test(str); // Just numbers (like score)
+          
+          if (hasControlKeywords && !isGameplayText) {
+            console.log("Hiding control text:", str.substring(0, 30) + (str.length > 30 ? "..." : ""));
+            return; // Skip drawing this text
+          }
+        }
+        
+        // Otherwise, use the original text function
+        return originalTextFunction.apply(this, arguments);
+      };
+      
+      console.log("Text function override complete");
+    } else {
+      console.log("p5.js not found, couldn't override text function");
+    }
+  }, 2000);
+}
+
+// Function to hide control instructions text on mobile
+function hideControlInstructionsOnMobile() {
+  console.log("Checking for control instructions to hide on mobile...");
+  
+  // Function to check if text contains control-related keywords
+  function containsControlKeywords(text) {
+    if (!text) return false;
+    
+    const controlKeywords = [
+      'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
+      'keys', 'z key', 'x key', 'up', 'down', 'left', 'right', 
+      'wasd', 'jump', 'duck', 'shoot'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return controlKeywords.some(keyword => lowerText.includes(keyword));
+  }
+  
+  // Wait for canvas to be created
+  setTimeout(() => {
+    // Get the canvas elements
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    
+    // Look for paragraphs or divs after the canvas that might contain control instructions
+    let element = canvas.nextElementSibling;
+    while (element) {
+      // If the element contains text with control keywords, hide it
+      if (element.textContent && containsControlKeywords(element.textContent)) {
+        console.log("Found control instructions element:", element.textContent.substring(0, 50) + "...");
+        element.style.display = 'none';
+      }
+      element = element.nextElementSibling;
+    }
+    
+    // Also check for controls drawn onto the canvas using p5.js text function
+    // We'll inject a style to hide these elements via our mobile CSS
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Hide any text drawn on canvas that contains control instructions */
+      .p5Canvas text:not(.game-score):not(.game-title) {
+        opacity: 0 !important;
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    console.log("Control instruction hiding complete");
+  }, 1500);
+  
+  // Set up text function override
+  overrideTextFunctionForMobile();
+}
+
+// Custom mobile detection and control setup
+function setupMobileControls() {
+  console.log("Setting up mobile controls...");
+  
+  // Detect mobile more aggressively
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                  (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) ||
+                  ('ontouchstart' in window) ||
+                  (navigator.maxTouchPoints > 0);
+  
+  if (isMobile) {
+    console.log("Mobile device CONFIRMED - enabling controls");
+    isMobileDevice = true;
+    
+    // Ensure mobile controls are visible
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls) {
+      mobileControls.style.display = 'block';
+      controlsVisible = true;
+      
+      // Add click listeners directly to the controls
+      const leftControl = document.getElementById('leftControl');
+      const rightControl = document.getElementById('rightControl');
+      
+      if (leftControl) {
+        leftControl.addEventListener('click', function() {
+          console.log("Left control clicked via event listener");
+          if (typeof window.mobileJump === 'function') {
+            window.mobileJump();
+          }
+        });
+      }
+      
+      if (rightControl) {
+        rightControl.addEventListener('click', function() {
+          console.log("Right control clicked via event listener");
+          if (typeof window.mobileShoot === 'function') {
+            window.mobileShoot();
+          }
+        });
+      }
+    }
+    
+    // Expose game variables to window for direct access from HTML
+    exposeGameFunctions();
+    
+    // Hide control instructions since we have mobile controls
+    hideControlInstructionsOnMobile();
     
     console.log("Mobile controls enabled and game variables exposed to window");
   } else {
