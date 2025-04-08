@@ -384,6 +384,18 @@
         function startGame() {
             console.log("Start game clicked");
             
+            // Hide the title screen overlay immediately to prevent any double-triggers
+            const titleOverlay = document.getElementById('titleScreenOverlay');
+            if (titleOverlay) {
+                titleOverlay.style.display = 'none';
+            }
+            
+            // Hide start button immediately to prevent double-clicks
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.style.display = 'none';
+            }
+            
             // Give focus back to the canvas for proper game input
             try {
                 const canvasElement = document.querySelector('canvas');
@@ -394,40 +406,48 @@
                 console.error("Error focusing canvas:", e);
             }
             
-            // Rather than directly manipulate game variables, let's trigger the native touchStarted
-            // function in the game code by simulating a touch event on the canvas
+            // Use a more robust approach to start the game
             try {
-                const canvasElement = document.querySelector('canvas');
-                if (canvasElement) {
-                    console.log("Simulating touch on canvas to start game");
-                    
-                    // Hide start button first to avoid interference
-                    document.getElementById('startButton').style.display = 'none';
-                    
-                    // Set a small delay to ensure canvas is ready
-                    setTimeout(function() {
-                        // Set these core game state variables using the sketch.js style
-                        window.showTitleScreen = false;
-                        window.gameState = "playing";
-                        
-                        // Directly call the native game touchStarted if available
-                        if (typeof window.touchStarted === 'function') {
-                            // This will properly invoke all game initialization
-                            window.touchStarted();
-                            console.log("Called native touchStarted function");
-                        }
-                        
-                        console.log("Game started via simulated touch event");
-                    }, 50);
-                } else {
-                    console.error("Canvas element not found for touch event");
-                    // Fallback to direct variable manipulation if we can't find the canvas
-                    directlyStartGame();
+                console.log("Using robust approach to start game");
+                
+                // First set these core game state variables
+                window.showTitleScreen = false;
+                window.gameState = "playing";
+                
+                // Then call all direct initialization code to ensure proper reset
+                // Initialize core game elements
+                window.score = 0;
+                window.enemiesKilled = 0;
+                window.enemies = [];
+                window.obstacles = [];
+                window.projectiles = [];
+                window.shootEffects = [];
+                window.powerUps = [];
+                window.slowMotion = false;
+                window.slowMotionTimer = 0;
+                window.scrollSpeed = window.normalScrollSpeed;
+                window.screenFlash = 0;
+                
+                // Reset player position
+                if (window.player) {
+                    window.player.y = window.groundY;
+                    window.player.vy = 0;
+                    window.player.state = "running";
                 }
+                
+                // Reset offsets
+                window.groundOffset = 0;
+                window.backgroundOffset = 0;
+                window.midgroundOffset = 0;
+                window.foregroundOffset = 0;
+                
+                window.lastEnemySpawnTime = 0;
+                window.forceEnemySpawnCounter = 0;
+                window.lastPowerUpTime = 0;
+                
+                console.log("Game started successfully");
             } catch (e) {
-                console.error("Error simulating touch event:", e);
-                // Fallback to direct approach
-                directlyStartGame();
+                console.error("Error in direct game start:", e);
             }
         }
         
@@ -1450,30 +1470,27 @@
             if (canvas) {
                 console.log("Adding direct canvas touch listeners for game start");
                 
-                // This makes sure that when the title screen is showing and the canvas is touched,
-                // the game starts properly without freezing
+                // IMPORTANT: Instead of allowing the canvas touch to start the game,
+                // we'll use it to capture and prevent touches on the canvas except for the start button
                 canvas.addEventListener('touchstart', function(e) {
-                    // Only trigger if we're on the title screen
+                    // Only handle if we're on the title screen
                     if (window.showTitleScreen && window.gameState === "start") {
-                        console.log("Canvas touched on title screen - starting game");
-                        // Prevent default behavior
+                        // We need to BLOCK canvas touches to PREVENT starting the game
+                        // when clicking outside the button
+                        console.log("Canvas touched on title screen - blocking auto-start");
+                        
+                        // Always prevent default and stop propagation to block game auto-start
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        // First set game state directly - belt and suspenders approach
-                        window.showTitleScreen = false;
-                        window.gameState = "playing";
-                        
-                        // Make sure start button is hidden
+                        // Make sure the start button is visible
                         const startButton = document.getElementById('startButton');
-                        if (startButton) startButton.style.display = 'none';
-                        
-                        // Then call touchStarted directly if available
-                        if (typeof window.touchStarted === 'function') {
-                            window.touchStarted();
+                        if (startButton && startButton.style.display !== 'block') {
+                            startButton.style.display = 'block';
                         }
                         
-                        console.log("Game started via direct canvas touch");
+                        // Do NOT start the game here - let the dedicated button handle that
+                        return false;
                     }
                 }, {capture: true, passive: false});
                 
@@ -1491,6 +1508,7 @@
                         startButton.addEventListener(eventType, function(e) {
                             e.preventDefault();
                             e.stopPropagation();
+                            console.log("Start button clicked via " + eventType);
                             startGame();
                             return false;
                         }, {capture: true, passive: false});
@@ -1503,6 +1521,43 @@
                         console.log("Start button added to mobile controls");
                     }
                 }
+                
+                // Add a transparent overlay that will prevent direct canvas interaction
+                // when on the title screen to ensure only the button works
+                const titleOverlay = document.createElement('div');
+                titleOverlay.id = 'titleScreenOverlay';
+                titleOverlay.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background-color: transparent;';
+                
+                // Add event listener to block all touches except for the start button
+                titleOverlay.addEventListener('touchstart', function(e) {
+                    // Always prevent default unless it's the start button
+                    const startButton = document.getElementById('startButton');
+                    if (startButton && e.target === startButton) {
+                        // Let the start button handle this
+                        return true;
+                    }
+                    
+                    // Block all other touches
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }, {capture: true, passive: false});
+                
+                // Add to body
+                document.body.appendChild(titleOverlay);
+                
+                // Timer to check and show/hide the overlay
+                setInterval(function() {
+                    const overlay = document.getElementById('titleScreenOverlay');
+                    if (!overlay) return;
+                    
+                    // Show overlay only on title screen
+                    if (window.showTitleScreen && window.gameState === "start") {
+                        overlay.style.display = 'block';
+                    } else {
+                        overlay.style.display = 'none';
+                    }
+                }, 100);
             }
             
             // Ensure that if game state changes to "start" with showTitleScreen,
@@ -1513,6 +1568,12 @@
                     if (startButton && startButton.style.display !== 'block') {
                         console.log("Setting start button visible based on game state");
                         startButton.style.display = 'block';
+                        
+                        // Also verify the overlay is visible
+                        const overlay = document.getElementById('titleScreenOverlay');
+                        if (overlay) {
+                            overlay.style.display = 'block';
+                        }
                     }
                 }
             }, 100);
@@ -1520,4 +1581,127 @@
             console.log("Mobile game startup helper installed");
         }, 1000);
     })();
+
+    // Mobile Initialization - runs only once when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only run for mobile devices
+        if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && 
+            !(window.matchMedia && window.matchMedia("(max-width: 768px)").matches)) {
+            return;
+        }
+        
+        console.log("Running mobile-specific initialization");
+        
+        // Add title screen protection layer - this will be shown when on the title screen
+        // and prevent any touch events except on the start button
+        const protectionLayer = document.createElement('div');
+        protectionLayer.id = 'mobileTitleProtection';
+        protectionLayer.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999998;
+            background-color: transparent;
+            touch-action: none;
+            pointer-events: auto;
+        `;
+        
+        // Add to body
+        document.body.appendChild(protectionLayer);
+        
+        // Add handlers for the protection layer
+        protectionLayer.addEventListener('touchstart', function(e) {
+            console.log("Title protection layer touched");
+            // Always prevent default behavior to stop any game starting
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Show the start button if it's not visible
+            const startBtn = document.getElementById('startButton');
+            if (startBtn && startBtn.style.display !== 'block') {
+                startBtn.style.display = 'block';
+                startBtn.style.zIndex = '999999'; // Make it above the protection layer
+            }
+            
+            return false;
+        }, {capture: true, passive: false});
+        
+        // Also block regular clicks
+        protectionLayer.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, {capture: true, passive: false});
+        
+        // Set up interval to check for title screen and show/hide protection layer
+        setInterval(function() {
+            try {
+                const protectionLayer = document.getElementById('mobileTitleProtection');
+                if (!protectionLayer) return;
+                
+                // Only show on title screen
+                if (window.gameState === "start" && window.showTitleScreen) {
+                    protectionLayer.style.display = 'block';
+                    
+                    // Make sure start button is visible and above protection layer
+                    const startBtn = document.getElementById('startButton');
+                    if (startBtn) {
+                        startBtn.style.display = 'block';
+                        startBtn.style.zIndex = '999999';
+                    }
+                } else {
+                    protectionLayer.style.display = 'none';
+                }
+            } catch (e) {
+                console.error("Error in title screen protection check:", e);
+            }
+        }, 100);
+        
+        // Enhance the start button specifically for mobile title screen
+        const enhanceStartButton = function() {
+            const startBtn = document.getElementById('startButton');
+            if (!startBtn) return;
+            
+            // Make start button more visible on mobile
+            startBtn.style.width = '250px';
+            startBtn.style.height = '80px';
+            startBtn.style.lineHeight = '80px';
+            startBtn.style.fontSize = '22px';
+            startBtn.style.fontWeight = 'bold';
+            startBtn.style.backgroundColor = 'rgba(50, 50, 50, 0.8)';
+            startBtn.style.border = '3px solid rgba(255, 255, 255, 0.9)';
+            startBtn.style.borderRadius = '15px';
+            startBtn.style.boxShadow = '0 0 15px rgba(255, 255, 255, 0.5)';
+            startBtn.style.color = 'white';
+            startBtn.style.zIndex = '999999';
+            
+            // Ensure it has the necessary event listeners
+            ['touchstart', 'click', 'mousedown'].forEach(function(eventType) {
+                startBtn.addEventListener(eventType, function(e) {
+                    console.log("Start button " + eventType + " via enhanced mobile handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Hide protection layer
+                    const protectionLayer = document.getElementById('mobileTitleProtection');
+                    if (protectionLayer) {
+                        protectionLayer.style.display = 'none';
+                    }
+                    
+                    // Call start game
+                    startGame();
+                    return false;
+                }, {capture: true, passive: false});
+            });
+            
+            console.log("Enhanced start button for mobile");
+        };
+        
+        // Run now and again after a delay in case it wasn't created yet
+        setTimeout(enhanceStartButton, 1000);
+        setTimeout(enhanceStartButton, 2000);
+    });
 </script>
