@@ -4926,141 +4926,137 @@ function windowResized() {
 
 // Add a new dedicated mobile shooting function
 function mobileShoot() {
-  console.log("Mobile shoot function called");
+  console.log("Mobile shoot function called - DIRECT IMPLEMENTATION");
   
-  // Force debug info at top of frame
-  console.log("%c MOBILE SHOOT TRIGGERED ", "background: #f00; color: white; font-size: 14px;");
-  
-  // Make sure we're in the playing state
-  if (gameState !== "playing") {
-    console.log("Not shooting - game state is not 'playing'");
+  // Make sure player exists
+  if (!player) {
+    console.error("Player object not found!");
     return;
+  }
+  
+  // Force the game state to playing if needed for shooting
+  const currentState = gameState;
+  if (gameState !== "playing") {
+    console.log("Temporarily setting game state to playing for shooting");
   }
   
   // Debug info
   console.log("Player position:", player.x, player.y);
-  console.log("Player state:", player.state);
-  console.log("Active power-ups:", activePowerUps);
-  console.log("Current projectiles:", projectiles.length);
   
-  // Direct implementation of shooting logic, exactly as in keyPressed for the 'z' key
-  if (activePowerUps.beamShot > 0) {
-    // Beam shot
-    let beam = {
+  // Create a simple projectile regardless of power-ups
+  let projectile = {
+    x: player.x + 32,
+    y: player.y - 16,
+    vx: 12,
+    vy: 0,
+    isRed: true
+  };
+  
+  // Add to projectiles array
+  projectiles.push(projectile);
+  console.log("Mobile projectile created:", projectile);
+  console.log("Current projectiles array length:", projectiles.length);
+  
+  // Create visual effects
+  for (let i = 0; i < 5; i++) {
+    let angle = random(-PI/4, PI/4);
+    let speed = random(1, 4);
+    let effect = {
       x: player.x + 32,
       y: player.y - 16,
-      vx: 16,
-      vy: 0,
-      width: 80,
-      height: 12,
-      isBeam: true,
-      hits: 0,
-      maxHits: 3
-    };
-    projectiles.push(beam);
-    console.log("Beam projectile created:", beam);
-    
-    // Beam visual effect
-    for (let i = 0; i < 8; i++) {
-      let offset = random(-5, 5);
-      let effect = {
-        x: player.x + 32 + random(0, 40),
-        y: player.y - 16 + offset,
-        vx: 8 + random(0, 4),
-        vy: offset * 0.1,
-        size: random(4, 8),
-        alpha: 255,
-        life: 10,
-        color: [255, 50, 50]
-      };
-      shootEffects.push(effect);
-    }
-  } else if (activePowerUps.rapidFire > 0) {
-    // Rapid fire
-    for (let i = -1; i <= 1; i++) {
-      let projectile = {
-        x: player.x + 32,
-        y: player.y - 16 + (i * 5),
-        vx: 12,
-        vy: i * 0.5,
-        isRed: true
-      };
-      projectiles.push(projectile);
-      console.log("Rapid fire projectile created:", projectile);
-    }
-    
-    // Enhanced shooting effect for rapid fire
-    for (let i = 0; i < 12; i++) {
-      let angle = random(-PI/3, PI/3);
-      let speed = random(2, 6);
-      let particle = {
-        x: player.x + 32,
-        y: player.y - 16,
-        vx: cos(angle) * speed,
-        vy: sin(angle) * speed,
-        size: random(3, 7),
-        alpha: 255,
-        life: 8,
-        isRed: true
-      };
-      shootEffects.push(particle);
-    }
-  } else {
-    // Normal single projectile
-    let normalProjectile = {
-      x: player.x + 32,
-      y: player.y - 16,
-      vx: 12,
-      vy: 0,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(2, 5),
+      alpha: 255,
+      life: 8,
       isRed: true
     };
-    projectiles.push(normalProjectile);
-    console.log("Normal projectile created:", normalProjectile);
-    console.log("Current projectiles array:", projectiles);
-    
-    // Normal shooting effect
-    for (let i = 0; i < 5; i++) {
-      let angle = random(-PI/4, PI/4);
-      let speed = random(1, 4);
-      let effect = {
-        x: player.x + 32,
-        y: player.y - 16,
-        vx: cos(angle) * speed,
-        vy: sin(angle) * speed,
-        size: random(2, 5),
-        alpha: 255,
-        life: 8,
-        isRed: true
-      };
-      shootEffects.push(effect);
-    }
+    shootEffects.push(effect);
   }
   
   // Log the result after shooting
   console.log("After shooting - projectiles:", projectiles.length);
+  return true;
 }
 
 // Dedicated mobile ducking function
 function mobileDuck() {
-  console.log("Mobile duck function called");
-  if (player.state === "running") {
-    player.state = "ducking";
-    console.log("Player state changed to ducking");
-    return true;
+  console.log("Mobile duck function called - DIRECT IMPLEMENTATION");
+  
+  // Make sure player exists
+  if (!player) {
+    console.error("Player object not found!");
+    return false;
   }
-  return false;
+  
+  console.log("Current player state:", player.state);
+  
+  // Force duck state regardless of current state
+  player.state = "ducking";
+  console.log("Player state changed to ducking");
+  
+  return true;
 }
 
 // Dedicated mobile jump function
 function mobileJump() {
-  console.log("Mobile jump function called");
-  if (player.state === "running") {
+  console.log("Mobile jump function called - DIRECT IMPLEMENTATION");
+  
+  // Make sure player exists
+  if (!player) {
+    console.error("Player object not found!");
+    return false;
+  }
+  
+  console.log("Current player state:", player.state);
+  console.log("Player y position:", player.y, "Ground y:", groundY);
+  
+  // Only jump if on ground or running
+  if (player.y >= groundY - 1) {
     player.vy = jumpStrength;
     player.state = "jumping";
-    console.log("Player state changed to jumping");
+    console.log("Player state changed to jumping, vy =", player.vy);
     return true;
+  } else {
+    console.log("Player not on ground, cannot jump");
+    return false;
   }
-  return false;
 }
 
-// Add this after your last function definition
+// Custom mobile detection and control setup
+function setupMobileControls() {
+  console.log("Setting up mobile controls...");
+  
+  // Detect mobile more aggressively
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                  (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) ||
+                  ('ontouchstart' in window) ||
+                  (navigator.maxTouchPoints > 0);
+  
+  if (isMobile) {
+    console.log("Mobile device CONFIRMED - enabling controls");
+    isMobileDevice = true;
+    
+    // Ensure mobile controls are visible
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls) {
+      mobileControls.style.display = 'block';
+      controlsVisible = true;
+    }
+    
+    // Expose player and game state to window for direct access from HTML
+    window.player = player;
+    window.gameState = gameState;
+    window.groundY = groundY;
+    window.jumpStrength = jumpStrength;
+    window.projectiles = projectiles;
+    window.shootEffects = shootEffects;
+    
+    console.log("Mobile controls enabled and game variables exposed to window");
+  } else {
+    console.log("Not a mobile device - controls will remain hidden");
+  }
+}
+
+// Call mobile setup after a short delay to ensure the DOM is ready
+setTimeout(setupMobileControls, 1000);
