@@ -1580,122 +1580,90 @@
                     });
                 }
                 
-                // **** FIX: Enhanced button handling for the form buttons ****
-                // Completely replace the submit and cancel buttons to ensure they work
-                function replaceButton(originalButton, isSubmit) {
-                    if (!originalButton) return null;
-                    
-                    // Create a brand new button element instead of cloning
-                    const newButton = document.createElement('button');
-                    
-                    // Copy attributes from original button
-                    newButton.id = originalButton.id;
-                    newButton.textContent = originalButton.textContent || (isSubmit ? "SUBMIT" : "CANCEL");
-                    newButton.type = "button"; // Explicitly set type to button
-                    
-                    // Apply styles
-                    newButton.style.display = 'block';
-                    newButton.style.width = '100%';
-                    newButton.style.margin = '15px 0';
-                    newButton.style.padding = '10px';
-                    newButton.style.height = '60px';
-                    newButton.style.fontSize = '20px';
-                    newButton.style.fontWeight = 'bold';
-                    newButton.style.fontFamily = "'Courier New', monospace";
-                    newButton.style.textTransform = 'uppercase';
-                    newButton.style.letterSpacing = '1px';
-                    newButton.style.borderRadius = '8px';
-                    newButton.style.border = isSubmit ? '2px solid #ff5252' : '2px solid #555';
-                    newButton.style.backgroundColor = isSubmit ? '#d32f2f' : '#333';
-                    newButton.style.color = '#fff';
-                    newButton.style.position = 'relative';
-                    newButton.style.zIndex = '10000002';
-                    newButton.style.cursor = 'pointer';
-                    newButton.style.touchAction = 'manipulation';
-                    newButton.style.WebkitAppearance = 'none';
-                    newButton.style.appearance = 'none';
-                    newButton.style.pointerEvents = 'auto';
-                    
-                    // Replace the original button
-                    if (originalButton.parentNode) {
-                        originalButton.parentNode.replaceChild(newButton, originalButton);
-                    }
-                    
-                    // Add visual feedback for touch
-                    ['touchstart', 'mousedown'].forEach(function(eventType) {
-                        newButton.addEventListener(eventType, function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.style.transform = 'scale(0.98)';
-                            this.style.opacity = '0.9';
-                        }, {capture: true, passive: false});
-                    });
-                    
-                    ['touchend', 'mouseup', 'mouseleave'].forEach(function(eventType) {
-                        newButton.addEventListener(eventType, function(e) {
-                            this.style.transform = 'scale(1)';
-                            this.style.opacity = '1';
-                        }, {capture: true, passive: false});
-                    });
-                    
-                    return newButton;
-                }
+                // **** NEW APPROACH: Complete replacement of form buttons ****
+                // First, remove original buttons to avoid conflicts
+                const formElement = document.getElementById('leaderboardForm');
+                const submitBtnParent = document.getElementById('submitScore').parentNode;
+                const cancelBtnParent = document.getElementById('cancelSubmit').parentNode;
                 
-                // Replace the submit and cancel buttons with enhanced versions
-                const enhancedSubmitButton = replaceButton(submitButton, true);
-                const enhancedCancelButton = replaceButton(cancelButton, false);
+                // Remove the original buttons completely
+                submitBtnParent.removeChild(document.getElementById('submitScore'));
+                cancelBtnParent.removeChild(document.getElementById('cancelSubmit'));
                 
-                // Add specific handlers for the submit button
-                if (enhancedSubmitButton) {
-                    console.log("Setting up enhanced submit button handler");
-                    
-                    // Add multiple event listeners for maximum compatibility
-                    ['click', 'touchstart'].forEach(function(eventType) {
-                        enhancedSubmitButton.addEventListener(eventType, function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            console.log("Submit button activated via: " + eventType);
-                            
-                            // Submit only on touchend/click to prevent double submissions
-                            if (eventType === 'click') {
-                                submitLeaderboardScore();
-                            }
-                        }, {capture: true, passive: false});
-                    });
-                    
-                    // Additional touchend event specifically for the submit button
-                    enhancedSubmitButton.addEventListener('touchend', function(e) {
+                // Create brand new buttons with basic HTML
+                const newSubmitBtn = document.createElement('button');
+                newSubmitBtn.id = 'submitScore';
+                newSubmitBtn.textContent = 'SUBMIT';
+                newSubmitBtn.type = 'button';
+                
+                const newCancelBtn = document.createElement('button');
+                newCancelBtn.id = 'cancelSubmit';
+                newCancelBtn.textContent = 'CANCEL';
+                newCancelBtn.type = 'button';
+                
+                // Append the new buttons to the form
+                submitBtnParent.appendChild(newSubmitBtn);
+                cancelBtnParent.appendChild(newCancelBtn);
+                
+                // Apply extensive styling to ensure visibility and clickability
+                newSubmitBtn.setAttribute('style', `
+                    display: block !important;
+                    width: 100% !important;
+                    height: 60px !important;
+                    margin: 15px 0 !important;
+                    padding: 10px !important;
+                    font-size: 20px !important;
+                    font-weight: bold !important;
+                    font-family: 'Courier New', monospace !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 1px !important;
+                    border-radius: 8px !important;
+                    border: 2px solid #ff5252 !important;
+                    background-color: #d32f2f !important;
+                    color: #fff !important;
+                    position: relative !important;
+                    z-index: 10000002 !important;
+                    cursor: pointer !important;
+                    touch-action: manipulation !important;
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
+                    pointer-events: auto !important;
+                `);
+                
+                newCancelBtn.setAttribute('style', `
+                    display: block !important;
+                    width: 100% !important;
+                    height: 60px !important;
+                    margin: 15px 0 !important;
+                    padding: 10px !important;
+                    font-size: 20px !important;
+                    font-weight: bold !important;
+                    font-family: 'Courier New', monospace !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 1px !important;
+                    border-radius: 8px !important;
+                    border: 2px solid #555 !important;
+                    background-color: #333 !important;
+                    color: #fff !important;
+                    position: relative !important;
+                    z-index: 10000002 !important;
+                    cursor: pointer !important;
+                    touch-action: manipulation !important;
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
+                    pointer-events: auto !important;
+                `);
+                
+                // Define submission function
+                function handleMobileSubmit(e) {
+                    if (e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        console.log("Submit button touchend triggered");
-                        submitLeaderboardScore();
-                    }, {capture: true, passive: false});
-                }
-                
-                // Add specific handlers for the cancel button
-                if (enhancedCancelButton) {
-                    console.log("Setting up enhanced cancel button handler");
+                    }
                     
-                    ['click', 'touchstart', 'touchend'].forEach(function(eventType) {
-                        enhancedCancelButton.addEventListener(eventType, function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            // Only process on touchend or click to prevent double triggers
-                            if (eventType === 'click' || eventType === 'touchend') {
-                                console.log("Cancel button activated via: " + eventType);
-                                cancelLeaderboardSubmission();
-                            }
-                        }, {capture: true, passive: false});
-                    });
-                }
-                
-                // Function to handle score submission
-                function submitLeaderboardScore() {
-                    console.log("Processing leaderboard submission");
+                    console.log("SUBMIT button pressed through direct handler");
                     
+                    // Get current values from inputs
                     const nameValue = document.getElementById('playerName').value.trim();
                     const emailValue = document.getElementById('playerEmail').value.trim();
                     
@@ -1719,22 +1687,23 @@
                         return false;
                     }
                     
-                    // Submit the score
-                    console.log("Submitting score with:", {
+                    // Log the submission attempt
+                    console.log("Submitting score with data:", {
                         name: nameValue,
                         email: emailValue,
-                        score: window.score || window.pendingScore
+                        score: window.score || window.pendingScore || 0
                     });
                     
-                    // Call the game's submission function if available
-                    if (typeof window.submitLeaderboardScore === 'function') {
-                        try {
+                    // Try both methods of score submission, starting with the game's native function
+                    try {
+                        // First method: Call the game's native function
+                        if (typeof window.submitLeaderboardScore === 'function') {
                             window.submitLeaderboardScore(nameValue, emailValue);
                             console.log("Score submitted via game's native function");
-                        } catch (e) {
-                            console.error("Error calling native submitLeaderboardScore:", e);
+                        } else {
+                            console.warn("Game's native submitLeaderboardScore function not found");
                             
-                            // Fallback approach - direct API call if Supabase client is available
+                            // Second method: Try to use Supabase directly if available
                             if (window.supabase) {
                                 try {
                                     window.supabase
@@ -1752,39 +1721,142 @@
                                 }
                             }
                         }
-                    } else {
-                        console.warn("Native submitLeaderboardScore function not available");
+                    } catch (e) {
+                        console.error("Error during score submission:", e);
                     }
                     
-                    // Mark score as submitted
+                    // Mark score as submitted regardless of method used
                     window.leaderboardScoreSubmitted = true;
                     
                     // Hide the form
-                    form.style.display = 'none';
+                    formElement.style.display = 'none';
                     
-                    // Reset game state
+                    // Update game state
                     if (window.gameState === "enteringScore") {
                         window.gameState = "gameOver";
                     }
                     
-                    // Provide visual confirmation
+                    // Show confirmation
                     alert("Your score has been submitted. Thank you!");
                     
+                    console.log("Score submission completed");
                     return true;
                 }
                 
-                // Function to handle cancellation
-                function cancelLeaderboardSubmission() {
-                    console.log("Cancelling leaderboard submission");
+                // Define cancel function
+                function handleMobileCancel(e) {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    
+                    console.log("CANCEL button pressed through direct handler");
                     
                     // Hide the form
-                    form.style.display = 'none';
+                    formElement.style.display = 'none';
                     
                     // Reset game state
                     if (window.gameState === "enteringScore") {
                         window.gameState = "gameOver";
                     }
+                    
+                    console.log("Form submission cancelled");
+                    return true;
                 }
+                
+                // Add global mobile submit function
+                window.mobileSubmitScore = handleMobileSubmit;
+                window.mobileCancelScore = handleMobileCancel;
+                
+                // CRITICAL: Add multiple event listeners to ensure compatibility across different devices
+                // Add regular click events
+                newSubmitBtn.onclick = handleMobileSubmit;
+                newCancelBtn.onclick = handleMobileCancel;
+                
+                // Add touchend events (more reliable on iOS)
+                newSubmitBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileSubmit(e);
+                }, { capture: true, passive: false });
+                
+                newCancelBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMobileCancel(e);
+                }, { capture: true, passive: false });
+                
+                // Also intercept the form submission
+                form.onsubmit = function(e) {
+                    e.preventDefault();
+                    handleMobileSubmit(e);
+                    return false;
+                };
+                
+                // Add feedback touch events for better user experience
+                [newSubmitBtn, newCancelBtn].forEach(function(btn) {
+                    // Visual feedback on press
+                    btn.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                        this.style.transform = 'scale(0.95)';
+                        this.style.opacity = '0.9';
+                    }, { capture: true, passive: false });
+                    
+                    btn.addEventListener('mousedown', function(e) {
+                        e.stopPropagation();
+                        this.style.transform = 'scale(0.95)';
+                        this.style.opacity = '0.9';
+                    }, { capture: true, passive: false });
+                    
+                    // Reset appearance
+                    ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(function(evt) {
+                        btn.addEventListener(evt, function() {
+                            this.style.transform = 'scale(1)';
+                            this.style.opacity = '1';
+                        }, { capture: true, passive: false });
+                    });
+                });
+                
+                // Add a direct button handler to the document for maximum compatibility
+                document.addEventListener('click', function(e) {
+                    if (e.target && e.target.id === 'submitScore') {
+                        console.log("Submit button clicked via global document handler");
+                        handleMobileSubmit(e);
+                    } else if (e.target && e.target.id === 'cancelSubmit') {
+                        console.log("Cancel button clicked via global document handler");
+                        handleMobileCancel(e);
+                    }
+                }, true);
+                
+                document.addEventListener('touchend', function(e) {
+                    if (e.target && e.target.id === 'submitScore') {
+                        console.log("Submit button touchend via global document handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleMobileSubmit(e);
+                    } else if (e.target && e.target.id === 'cancelSubmit') {
+                        console.log("Cancel button touchend via global document handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleMobileCancel(e);
+                    }
+                }, { capture: true, passive: false });
+                
+                // Disable all default form button behaviors that might interfere
+                form.querySelectorAll('button').forEach(function(button) {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (this.id === 'submitScore') {
+                            handleMobileSubmit(e);
+                        } else if (this.id === 'cancelSubmit') {
+                            handleMobileCancel(e);
+                        }
+                        
+                        return false;
+                    }, { capture: true, passive: false });
+                });
                 
                 // **** FIX: Prevent parent events from capturing form interactions ****
                 // When form is visible, disable other touch handlers temporarily
@@ -1795,6 +1867,13 @@
                             
                             // When form becomes visible, temporarily disable other controls
                             if (isVisible) {
+                                // Apply the fixed button handlers again when form becomes visible
+                                const submitBtn = document.getElementById('submitScore');
+                                const cancelBtn = document.getElementById('cancelSubmit');
+                                
+                                if (submitBtn) submitBtn.onclick = handleMobileSubmit;
+                                if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
+                                
                                 // Disable mobile controls while form is open
                                 const mobileControls = document.getElementById('mobileControls');
                                 if (mobileControls) {
@@ -1825,14 +1904,7 @@
                 // Observe form style changes
                 observer.observe(form, { attributes: true });
                 
-                // Prevent the default form submission - use our enhanced method instead
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    submitLeaderboardScore();
-                    return false;
-                });
-                
-                console.log("Enhanced mobile form improvements applied with fixed buttons");
+                console.log("Enhanced mobile form improvements applied with completely rebuilt buttons");
                 
                 // One final enhancement - ensure the form stays in view when keyboard opens
                 window.addEventListener('resize', function() {
@@ -1842,9 +1914,36 @@
                         // Scroll to ensure form is visible
                         setTimeout(() => {
                             form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            
+                            // Re-check buttons after resize
+                            const submitBtn = document.getElementById('submitScore');
+                            const cancelBtn = document.getElementById('cancelSubmit');
+                            
+                            if (submitBtn) submitBtn.onclick = handleMobileSubmit;
+                            if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
                         }, 100);
                     }
                 });
+                
+                // Last step: when the submitToLeaderboard function is called, reinstall our button handlers
+                const originalSubmitToLeaderboard = window.submitToLeaderboard;
+                if (typeof originalSubmitToLeaderboard === 'function') {
+                    window.submitToLeaderboard = function() {
+                        // Call the original function
+                        originalSubmitToLeaderboard.apply(this, arguments);
+                        
+                        // After a delay, ensure our button handlers are installed
+                        setTimeout(function() {
+                            const submitBtn = document.getElementById('submitScore');
+                            const cancelBtn = document.getElementById('cancelSubmit');
+                            
+                            if (submitBtn) submitBtn.onclick = handleMobileSubmit;
+                            if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
+                            
+                            console.log("Reinstalled button handlers after leaderboard form was shown");
+                        }, 500);
+                    };
+                }
             }
             
             // Try initializing the mobile form improvements multiple times to ensure it works
