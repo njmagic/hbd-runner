@@ -863,13 +863,24 @@
                 // Set game state directly
                 window.gameState = "enteringScore";
                 
+                // Reset the form fields if they contain previous entries
+                const nameInput = document.getElementById('playerName');
+                const emailInput = document.getElementById('playerEmail');
+                
+                if (nameInput) {
+                    nameInput.value = '';
+                }
+                
+                if (emailInput) {
+                    emailInput.value = '';
+                }
+                
                 // Make form fully visible with high z-index
                 form.style.display = 'block';
                 form.style.opacity = '1';
                 form.style.visibility = 'visible';
-                form.style.zIndex = '10000001';
                 
-                // Enhance the form for mobile devices
+                // Apply mobile form enhancements
                 enhanceFormForMobile(form);
                 
                 // Store score for submission
@@ -881,10 +892,44 @@
                 setTimeout(() => {
                     const nameInput = document.getElementById('playerName');
                     if (nameInput) {
+                        // Attempt to focus and scroll into view
                         nameInput.focus();
+                        nameInput.scrollIntoView(false);
                         console.log("Focus set on name input field");
+                        
+                        // Attempt to show virtual keyboard on mobile
+                        try {
+                            if (typeof nameInput.click === 'function') {
+                                nameInput.click();
+                            }
+                        } catch (e) {
+                            console.warn("Could not trigger virtual keyboard:", e);
+                        }
                     }
                 }, 300);
+                
+                // Ensure the form doesn't get hidden by preventing propagation of events
+                form.addEventListener('touchstart', function(e) {
+                    e.stopPropagation();
+                }, { capture: true });
+                
+                form.addEventListener('touchmove', function(e) {
+                    e.stopPropagation();
+                }, { capture: true });
+                
+                form.addEventListener('touchend', function(e) {
+                    e.stopPropagation();
+                }, { capture: true });
+                
+                // Re-check focus after a bit longer delay
+                setTimeout(() => {
+                    const nameInput = document.getElementById('playerName');
+                    if (nameInput && document.activeElement !== nameInput) {
+                        console.log("Re-attempting focus on name field");
+                        nameInput.focus();
+                    }
+                }, 800);
+                
             } catch (e) {
                 console.error("Error in submitToLeaderboard:", e);
                 
@@ -899,6 +944,8 @@
         
         // Enhance the form for better mobile experience
         function enhanceFormForMobile(form) {
+            console.log("Enhancing form for mobile input");
+            
             // Get form elements
             const nameInput = document.getElementById('playerName');
             const emailInput = document.getElementById('playerEmail');
@@ -910,14 +957,21 @@
                 return;
             }
             
-            // Enhance form appearance for mobile
+            // Set form position and appearance
+            form.style.position = 'fixed';
+            form.style.top = '50%';
+            form.style.left = '50%';
+            form.style.transform = 'translate(-50%, -50%)';
             form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
             form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
             form.style.borderRadius = '15px';
             form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
             form.style.padding = '25px';
+            form.style.width = '85%';
+            form.style.maxWidth = '350px';
+            form.style.zIndex = '10000001';
             
-            // Enhance inputs for mobile
+            // Fix form inputs for reliable touch input
             const enhanceInput = (input) => {
                 input.style.height = '50px';
                 input.style.fontSize = '18px';
@@ -925,6 +979,33 @@
                 input.style.marginBottom = '15px';
                 input.style.borderRadius = '8px';
                 input.style.border = '2px solid #555';
+                input.style.backgroundColor = '#fff';
+                input.style.color = '#000';
+                input.style.WebkitAppearance = 'none';
+                input.style.appearance = 'none';
+                input.style.touchAction = 'manipulation';
+                input.style.position = 'relative';
+                input.style.zIndex = '10000002';
+                
+                // Add specific input touch handling with aggressive event capture
+                input.addEventListener('touchstart', function(e) {
+                    // Don't prevent default here to allow focus
+                    e.stopPropagation();
+                    this.focus();
+                }, { capture: true });
+                
+                // Ensure proper focus handling
+                input.addEventListener('focus', function() {
+                    console.log(`Input field '${this.id}' focused`);
+                    this.style.borderColor = '#66aaff';
+                    this.style.boxShadow = '0 0 8px rgba(102, 170, 255, 0.8)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    console.log(`Input field '${this.id}' blurred`);
+                    this.style.borderColor = '#555';
+                    this.style.boxShadow = 'none';
+                });
             };
             
             enhanceInput(nameInput);
@@ -937,9 +1018,12 @@
                 button.style.fontWeight = 'bold';
                 button.style.textTransform = 'uppercase';
                 button.style.letterSpacing = '1px';
-                button.style.margin = '10px 0';
+                button.style.margin = '15px 0';
                 button.style.borderRadius = '8px';
                 button.style.border = '2px solid #555';
+                button.style.position = 'relative';
+                button.style.zIndex = '10000002';
+                button.style.touchAction = 'manipulation';
                 
                 if (isSubmit) {
                     button.style.backgroundColor = '#d32f2f';
@@ -948,10 +1032,62 @@
                 } else {
                     button.style.backgroundColor = '#333';
                 }
+                
+                // Add specific button touch handling
+                button.addEventListener('touchstart', function(e) {
+                    e.stopPropagation();
+                    this.style.transform = 'scale(0.98)';
+                    this.style.opacity = '0.9';
+                }, { capture: true });
+                
+                button.addEventListener('touchend', function(e) {
+                    e.stopPropagation();
+                    this.style.transform = 'scale(1)';
+                    this.style.opacity = '1';
+                }, { capture: true });
             };
             
             enhanceButton(submitButton, true);
             enhanceButton(cancelButton, false);
+            
+            // Add a submit button event handler to detect submission success
+            submitButton.addEventListener('click', function(e) {
+                console.log("Submit button clicked on mobile form");
+                // The default form handler will still work
+            });
+            
+            // Add a cancel button event handler
+            cancelButton.addEventListener('click', function(e) {
+                console.log("Cancel button clicked on mobile form");
+                form.style.display = 'none';
+                
+                // Reset game state to bring back to game over screen
+                if (window.gameState === "enteringScore") {
+                    window.gameState = "gameOver";
+                }
+            });
+
+            // Add form title styling
+            const formTitle = form.querySelector('.form-title');
+            if (formTitle) {
+                formTitle.style.fontSize = '24px';
+                formTitle.style.fontWeight = 'bold';
+                formTitle.style.marginBottom = '20px';
+                formTitle.style.textAlign = 'center';
+                formTitle.style.color = 'white';
+            }
+            
+            // Hide error message by default
+            const errorMsg = document.getElementById('emailError');
+            if (errorMsg) {
+                errorMsg.style.display = 'none';
+            }
+            
+            // Ensure scrolling is enabled for the form on mobile
+            form.style.overflowY = 'auto';
+            form.style.maxHeight = '90vh';
+            
+            console.log("Mobile form enhancement complete");
         }
         
         // Initialize mobile controls and button monitoring
@@ -1341,6 +1477,100 @@
                           (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
                           ('ontouchstart' in window) ||
                           (navigator.maxTouchPoints > 0);
+            
+            // Add mobile form submission improvements when page loads
+            function initMobileFormImprovements() {
+                if (!isMobile) return;
+                
+                // Find the form and its fields
+                const form = document.getElementById('leaderboardForm');
+                const nameInput = document.getElementById('playerName');
+                const emailInput = document.getElementById('playerEmail');
+                const submitButton = document.getElementById('submitScore');
+                
+                if (!form || !nameInput || !emailInput || !submitButton) {
+                    console.log("Mobile form elements not found, will try again later");
+                    return;
+                }
+                
+                console.log("Setting up improved mobile form behavior");
+                
+                // Fix email input type to ensure proper keyboard on mobile
+                emailInput.type = "email";
+                emailInput.inputMode = "email";
+                emailInput.autocomplete = "email";
+                
+                // Set name field properties
+                nameInput.autocomplete = "name";
+                nameInput.autocapitalize = "words";
+                nameInput.inputMode = "text";
+                
+                // Add maxlength attribute to prevent too long inputs
+                nameInput.maxLength = 20;
+                emailInput.maxLength = 50;
+                
+                // Ensure proper auto-focus when switching between fields
+                nameInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        emailInput.focus();
+                    }
+                });
+                
+                emailInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        submitButton.click();
+                    }
+                });
+                
+                // Prevent the default form submission
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Simple email validation
+                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailPattern.test(emailInput.value)) {
+                        const errorMessage = document.getElementById('emailError');
+                        if (errorMessage) {
+                            errorMessage.style.display = 'block';
+                            emailInput.style.borderColor = '#ff5555';
+                        }
+                        return false;
+                    }
+                    
+                    // Handle submission
+                    console.log("Form submission with:", {
+                        name: nameInput.value,
+                        email: emailInput.value
+                    });
+                    
+                    // Call the game's leaderboard submission function if available
+                    if (typeof window.submitLeaderboardScore === 'function') {
+                        window.submitLeaderboardScore(nameInput.value, emailInput.value);
+                    }
+                    
+                    // Hide the form
+                    form.style.display = 'none';
+                    
+                    return false;
+                });
+                
+                console.log("Mobile form improvements applied");
+            }
+            
+            // Try initializing the mobile form improvements multiple times to ensure it works
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                initMobileFormImprovements();
+            }
+            
+            window.addEventListener('DOMContentLoaded', initMobileFormImprovements);
+            window.addEventListener('load', initMobileFormImprovements);
+            
+            // Also try with some delays to ensure DOM elements are available
+            setTimeout(initMobileFormImprovements, 500);
+            setTimeout(initMobileFormImprovements, 1500);
+            setTimeout(initMobileFormImprovements, 3000);
             
             // Function to initialize the mobile start button
             function initMobileStart() {
