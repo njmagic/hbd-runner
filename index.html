@@ -1487,8 +1487,9 @@
                 const nameInput = document.getElementById('playerName');
                 const emailInput = document.getElementById('playerEmail');
                 const submitButton = document.getElementById('submitScore');
+                const cancelButton = document.getElementById('cancelSubmit');
                 
-                if (!form || !nameInput || !emailInput || !submitButton) {
+                if (!form || !nameInput || !emailInput || !submitButton || !cancelButton) {
                     console.log("Mobile form elements not found, will try again later");
                     return;
                 }
@@ -1579,24 +1580,211 @@
                     });
                 }
                 
-                // Ensure buttons can be clicked
-                [submitButton, document.getElementById('cancelSubmit')].forEach(function(button) {
-                    if (!button) return;
+                // **** FIX: Enhanced button handling for the form buttons ****
+                // Completely replace the submit and cancel buttons to ensure they work
+                function replaceButton(originalButton, isSubmit) {
+                    if (!originalButton) return null;
                     
-                    // Clone to remove existing listeners
-                    const newButton = button.cloneNode(true);
-                    button.parentNode.replaceChild(newButton, button);
+                    // Create a brand new button element instead of cloning
+                    const newButton = document.createElement('button');
                     
-                    // Ensure button is clickable
-                    newButton.style.pointerEvents = 'auto';
-                    newButton.style.zIndex = '100001';
+                    // Copy attributes from original button
+                    newButton.id = originalButton.id;
+                    newButton.textContent = originalButton.textContent || (isSubmit ? "SUBMIT" : "CANCEL");
+                    newButton.type = "button"; // Explicitly set type to button
+                    
+                    // Apply styles
+                    newButton.style.display = 'block';
+                    newButton.style.width = '100%';
+                    newButton.style.margin = '15px 0';
+                    newButton.style.padding = '10px';
+                    newButton.style.height = '60px';
+                    newButton.style.fontSize = '20px';
+                    newButton.style.fontWeight = 'bold';
+                    newButton.style.fontFamily = "'Courier New', monospace";
+                    newButton.style.textTransform = 'uppercase';
+                    newButton.style.letterSpacing = '1px';
+                    newButton.style.borderRadius = '8px';
+                    newButton.style.border = isSubmit ? '2px solid #ff5252' : '2px solid #555';
+                    newButton.style.backgroundColor = isSubmit ? '#d32f2f' : '#333';
+                    newButton.style.color = '#fff';
                     newButton.style.position = 'relative';
+                    newButton.style.zIndex = '10000002';
+                    newButton.style.cursor = 'pointer';
+                    newButton.style.touchAction = 'manipulation';
+                    newButton.style.WebkitAppearance = 'none';
+                    newButton.style.appearance = 'none';
+                    newButton.style.pointerEvents = 'auto';
                     
-                    // Add touch events
-                    newButton.addEventListener('touchstart', function(e) {
+                    // Replace the original button
+                    if (originalButton.parentNode) {
+                        originalButton.parentNode.replaceChild(newButton, originalButton);
+                    }
+                    
+                    // Add visual feedback for touch
+                    ['touchstart', 'mousedown'].forEach(function(eventType) {
+                        newButton.addEventListener(eventType, function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.style.transform = 'scale(0.98)';
+                            this.style.opacity = '0.9';
+                        }, {capture: true, passive: false});
+                    });
+                    
+                    ['touchend', 'mouseup', 'mouseleave'].forEach(function(eventType) {
+                        newButton.addEventListener(eventType, function(e) {
+                            this.style.transform = 'scale(1)';
+                            this.style.opacity = '1';
+                        }, {capture: true, passive: false});
+                    });
+                    
+                    return newButton;
+                }
+                
+                // Replace the submit and cancel buttons with enhanced versions
+                const enhancedSubmitButton = replaceButton(submitButton, true);
+                const enhancedCancelButton = replaceButton(cancelButton, false);
+                
+                // Add specific handlers for the submit button
+                if (enhancedSubmitButton) {
+                    console.log("Setting up enhanced submit button handler");
+                    
+                    // Add multiple event listeners for maximum compatibility
+                    ['click', 'touchstart'].forEach(function(eventType) {
+                        enhancedSubmitButton.addEventListener(eventType, function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            console.log("Submit button activated via: " + eventType);
+                            
+                            // Submit only on touchend/click to prevent double submissions
+                            if (eventType === 'click') {
+                                submitLeaderboardScore();
+                            }
+                        }, {capture: true, passive: false});
+                    });
+                    
+                    // Additional touchend event specifically for the submit button
+                    enhancedSubmitButton.addEventListener('touchend', function(e) {
+                        e.preventDefault();
                         e.stopPropagation();
-                    }, true);
-                });
+                        
+                        console.log("Submit button touchend triggered");
+                        submitLeaderboardScore();
+                    }, {capture: true, passive: false});
+                }
+                
+                // Add specific handlers for the cancel button
+                if (enhancedCancelButton) {
+                    console.log("Setting up enhanced cancel button handler");
+                    
+                    ['click', 'touchstart', 'touchend'].forEach(function(eventType) {
+                        enhancedCancelButton.addEventListener(eventType, function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Only process on touchend or click to prevent double triggers
+                            if (eventType === 'click' || eventType === 'touchend') {
+                                console.log("Cancel button activated via: " + eventType);
+                                cancelLeaderboardSubmission();
+                            }
+                        }, {capture: true, passive: false});
+                    });
+                }
+                
+                // Function to handle score submission
+                function submitLeaderboardScore() {
+                    console.log("Processing leaderboard submission");
+                    
+                    const nameValue = document.getElementById('playerName').value.trim();
+                    const emailValue = document.getElementById('playerEmail').value.trim();
+                    
+                    // Basic validation
+                    if (!nameValue) {
+                        alert("Please enter your name");
+                        return false;
+                    }
+                    
+                    // Email validation
+                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailPattern.test(emailValue)) {
+                        // Show error message
+                        const errorMessage = document.getElementById('emailError');
+                        if (errorMessage) {
+                            errorMessage.style.display = 'block';
+                            document.getElementById('playerEmail').style.borderColor = '#ff5555';
+                        } else {
+                            alert("Please enter a valid email address");
+                        }
+                        return false;
+                    }
+                    
+                    // Submit the score
+                    console.log("Submitting score with:", {
+                        name: nameValue,
+                        email: emailValue,
+                        score: window.score || window.pendingScore
+                    });
+                    
+                    // Call the game's submission function if available
+                    if (typeof window.submitLeaderboardScore === 'function') {
+                        try {
+                            window.submitLeaderboardScore(nameValue, emailValue);
+                            console.log("Score submitted via game's native function");
+                        } catch (e) {
+                            console.error("Error calling native submitLeaderboardScore:", e);
+                            
+                            // Fallback approach - direct API call if Supabase client is available
+                            if (window.supabase) {
+                                try {
+                                    window.supabase
+                                        .from('leaderboard')
+                                        .insert([{ 
+                                            name: nameValue, 
+                                            email: emailValue, 
+                                            score: window.score || window.pendingScore || 0 
+                                        }])
+                                        .then(function(response) {
+                                            console.log("Score submitted via direct Supabase call", response);
+                                        });
+                                } catch (err) {
+                                    console.error("Error in direct Supabase submission:", err);
+                                }
+                            }
+                        }
+                    } else {
+                        console.warn("Native submitLeaderboardScore function not available");
+                    }
+                    
+                    // Mark score as submitted
+                    window.leaderboardScoreSubmitted = true;
+                    
+                    // Hide the form
+                    form.style.display = 'none';
+                    
+                    // Reset game state
+                    if (window.gameState === "enteringScore") {
+                        window.gameState = "gameOver";
+                    }
+                    
+                    // Provide visual confirmation
+                    alert("Your score has been submitted. Thank you!");
+                    
+                    return true;
+                }
+                
+                // Function to handle cancellation
+                function cancelLeaderboardSubmission() {
+                    console.log("Cancelling leaderboard submission");
+                    
+                    // Hide the form
+                    form.style.display = 'none';
+                    
+                    // Reset game state
+                    if (window.gameState === "enteringScore") {
+                        window.gameState = "gameOver";
+                    }
+                }
                 
                 // **** FIX: Prevent parent events from capturing form interactions ****
                 // When form is visible, disable other touch handlers temporarily
@@ -1617,8 +1805,9 @@
                                 
                                 // Focus the name input field when form appears
                                 setTimeout(function() {
-                                    if (newNameInput) {
-                                        newNameInput.focus();
+                                    const nameInput = document.getElementById('playerName');
+                                    if (nameInput) {
+                                        nameInput.focus();
                                         console.log("Auto-focusing name input after form display");
                                     }
                                 }, 100);
@@ -1636,42 +1825,14 @@
                 // Observe form style changes
                 observer.observe(form, { attributes: true });
                 
-                // Prevent the default form submission
+                // Prevent the default form submission - use our enhanced method instead
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    
-                    // Simple email validation
-                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailPattern.test(newEmailInput.value)) {
-                        const errorMessage = document.getElementById('emailError');
-                        if (errorMessage) {
-                            errorMessage.style.display = 'block';
-                            newEmailInput.style.borderColor = '#ff5555';
-                        }
-                        return false;
-                    }
-                    
-                    // Handle submission
-                    console.log("Form submission with:", {
-                        name: newNameInput.value,
-                        email: newEmailInput.value
-                    });
-                    
-                    // Call the game's leaderboard submission function if available
-                    if (typeof window.submitLeaderboardScore === 'function') {
-                        window.submitLeaderboardScore(newNameInput.value, newEmailInput.value);
-                    }
-                    
-                    // Mark score as submitted to prevent multiple submissions
-                    window.leaderboardScoreSubmitted = true;
-                    
-                    // Hide the form
-                    form.style.display = 'none';
-                    
+                    submitLeaderboardScore();
                     return false;
                 });
                 
-                console.log("Enhanced mobile form improvements applied");
+                console.log("Enhanced mobile form improvements applied with fixed buttons");
                 
                 // One final enhancement - ensure the form stays in view when keyboard opens
                 window.addEventListener('resize', function() {
