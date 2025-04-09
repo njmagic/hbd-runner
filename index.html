@@ -1349,44 +1349,113 @@
                     return;
                 }
                 
-                // Show the button
+                // Show the button immediately
                 mobileStartButton.style.display = 'block';
                 
-                // Function to start the game
+                // Function to start the game - with multiple fallback approaches
                 const startTheGame = function(e) {
                     // Prevent default touch behavior
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    console.log("Mobile start button pressed - starting game");
+                    console.log("Mobile start button pressed - starting game with direct approach");
+                    
+                    // Visual feedback - change button color
+                    this.style.backgroundColor = 'rgba(100, 100, 100, 0.9)';
                     
                     // Hide the button immediately
                     mobileStartButton.style.display = 'none';
                     
                     try {
-                        // Hide any game overlays that might interfere
-                        const titleOverlay = document.getElementById('titleScreenOverlay');
-                        if (titleOverlay) {
-                            titleOverlay.style.display = 'none';
-                        }
-                        
-                        // Hide the original start button
-                        const originalStartBtn = document.getElementById('startButton');
-                        if (originalStartBtn) {
-                            originalStartBtn.style.display = 'none';
-                        }
-                        
-                        // Call the game's original startGame function
+                        // APPROACH 1: First try to call the game's startGame function
                         if (typeof window.startGame === 'function') {
-                            console.log("Calling original startGame function");
+                            console.log("APPROACH 1: Calling original startGame function");
                             window.startGame();
                         }
+                        
+                        // APPROACH 2: After a tiny delay, directly set game state variables
+                        // This is the most reliable approach
+                        setTimeout(function() {
+                            console.log("APPROACH 2: Direct game variable manipulation");
+                            
+                            // Hide any game overlays
+                            const titleOverlay = document.getElementById('titleScreenOverlay');
+                            if (titleOverlay) {
+                                titleOverlay.style.display = 'none';
+                            }
+                            
+                            // Hide the original start button
+                            const originalStartBtn = document.getElementById('startButton');
+                            if (originalStartBtn) {
+                                originalStartBtn.style.display = 'none';
+                            }
+                            
+                            // These are the critical game state variables
+                            window.showTitleScreen = false;
+                            window.gameState = "playing";
+                            
+                            // Ensure game elements are reset properly
+                            window.score = 0;
+                            window.enemies = [];
+                            window.obstacles = [];
+                            window.projectiles = [];
+                            
+                            // Reset player position if it exists
+                            if (window.player) {
+                                window.player.y = window.groundY;
+                                window.player.vy = 0;
+                                window.player.state = "running";
+                            }
+                            
+                            console.log("Game state directly set to playing");
+                        }, 50);
+                        
+                        // APPROACH 3: Simulate spacebar press as an extra fallback
+                        setTimeout(function() {
+                            console.log("APPROACH 3: Simulating spacebar press");
+                            
+                            // Store original key state
+                            const origKey = window.key;
+                            const origKeyCode = window.keyCode;
+                            
+                            // Set to spacebar
+                            window.key = ' ';
+                            window.keyCode = 32;
+                            
+                            // If keyPressed exists, call it
+                            if (typeof window.keyPressed === 'function') {
+                                try {
+                                    window.keyPressed();
+                                } catch (e) {
+                                    console.error("Error in keyPressed:", e);
+                                }
+                            }
+                            
+                            // Restore original key state
+                            setTimeout(function() {
+                                window.key = origKey;
+                                window.keyCode = origKeyCode;
+                            }, 100);
+                        }, 150);
                     } catch (err) {
                         console.error("Error starting game:", err);
+                        
+                        // Extreme fallback - direct state change
+                        window.showTitleScreen = false;
+                        window.gameState = "playing";
                     }
                     
                     return false;
                 };
+                
+                // Apply mobile button optimizations
+                mobileStartButton.style.display = 'block';
+                mobileStartButton.style.zIndex = '9999999'; // Ensure it's above everything
+                mobileStartButton.style.position = 'fixed';
+                mobileStartButton.style.visibility = 'visible';
+                mobileStartButton.style.opacity = '1';
+                mobileStartButton.style.pointerEvents = 'auto';
+                mobileStartButton.style.touchAction = 'manipulation';
                 
                 // Remove any existing listeners by cloning
                 const newButton = mobileStartButton.cloneNode(true);
@@ -1397,29 +1466,40 @@
                     newButton.addEventListener(eventType, startTheGame, { capture: true, passive: false });
                 });
                 
-                console.log("Mobile start button ready");
+                console.log("Mobile start button fully configured");
                 
-                // Watch for game state to hide our button if game starts by other means
-                // and show it when the game returns to start state
+                // Monitor game state to ensure the button is shown/hidden appropriately
                 setInterval(function() {
                     try {
+                        // If game is playing, ensure button is hidden
                         if (window.gameState === 'playing') {
                             newButton.style.display = 'none';
-                        } else if (window.gameState === 'start' && window.showTitleScreen) {
+                        }
+                        // If at title screen, ensure button is shown
+                        else if (window.gameState === 'start' && window.showTitleScreen) {
                             newButton.style.display = 'block';
+                            newButton.style.zIndex = '9999999';
+                            newButton.style.visibility = 'visible';
+                            newButton.style.opacity = '1';
                         }
                     } catch (err) {
                         // Silent catch - don't break anything
                     }
-                }, 500);
+                }, 300);
             }
             
-            // Initialize on load
-            if (document.readyState === 'complete') {
+            // Initialize immediately
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
                 initMobileStart();
             } else {
+                // Also add both load and DOMContentLoaded for maximum reliability
+                window.addEventListener('DOMContentLoaded', initMobileStart);
                 window.addEventListener('load', initMobileStart);
             }
+            
+            // Also initialize after a delay for maximum reliability
+            setTimeout(initMobileStart, 500);
+            setTimeout(initMobileStart, 1000);
         })();
     </script>
 </body>
