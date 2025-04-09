@@ -299,6 +299,54 @@
                 border: 2px solid #ff5252 !important;
             }
         }
+        
+        /* Simple mobile start button that appears above the canvas in portrait mode */
+        #mobile-start-button {
+            display: none; /* Hidden by default, shown via JS only on mobile */
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 100px;
+            background-color: rgba(50, 50, 50, 0.9);
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 100px;
+            border-radius: 15px;
+            border: 4px solid white;
+            z-index: 100000;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+            animation: start-button-pulse 1.5s infinite alternate;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        @keyframes start-button-pulse {
+            from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
+            to { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.8); }
+        }
+        
+        #mobile-start-button:active {
+            background-color: rgba(80, 80, 80, 0.9);
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+        
+        /* Modify button position in landscape mode */
+        @media (orientation: landscape) {
+            #mobile-start-button {
+                top: 50%;
+                height: 80px;
+                line-height: 80px;
+                font-size: 24px;
+            }
+        }
     </style>
     <script src="libraries/p5.min.js"></script>
     <!-- Add Supabase JS Client -->
@@ -1224,6 +1272,9 @@
     </script>
 </head>
 <body>
+    <!-- Simple mobile start button, completely separate from the game's original controls -->
+    <div id="mobile-start-button">TAP TO START</div>
+    
     <!-- Game will be rendered by p5.js -->
     
     <!-- Mobile touch controls overlay -->
@@ -1270,6 +1321,106 @@
 
     <!-- Add this right after the closing body tag -->
     <div id="brute-force-mobile-button" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
+
+    <!-- Simple mobile integration script - directly embedded to avoid external file issues -->
+    <script>
+        (function() {
+            // Check if we're on a mobile device
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                          (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                          ('ontouchstart' in window) ||
+                          (navigator.maxTouchPoints > 0);
+            
+            // Function to initialize the mobile start button
+            function initMobileStart() {
+                console.log("Mobile integration initializing");
+                
+                if (!isMobile) {
+                    console.log("Not on mobile - mobile start button not needed");
+                    return;
+                }
+                
+                console.log("Mobile device detected - setting up start button");
+                
+                // Get the custom mobile start button
+                const mobileStartButton = document.getElementById('mobile-start-button');
+                if (!mobileStartButton) {
+                    console.error("Mobile start button not found in DOM");
+                    return;
+                }
+                
+                // Show the button
+                mobileStartButton.style.display = 'block';
+                
+                // Function to start the game
+                const startTheGame = function(e) {
+                    // Prevent default touch behavior
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log("Mobile start button pressed - starting game");
+                    
+                    // Hide the button immediately
+                    mobileStartButton.style.display = 'none';
+                    
+                    try {
+                        // Hide any game overlays that might interfere
+                        const titleOverlay = document.getElementById('titleScreenOverlay');
+                        if (titleOverlay) {
+                            titleOverlay.style.display = 'none';
+                        }
+                        
+                        // Hide the original start button
+                        const originalStartBtn = document.getElementById('startButton');
+                        if (originalStartBtn) {
+                            originalStartBtn.style.display = 'none';
+                        }
+                        
+                        // Call the game's original startGame function
+                        if (typeof window.startGame === 'function') {
+                            console.log("Calling original startGame function");
+                            window.startGame();
+                        }
+                    } catch (err) {
+                        console.error("Error starting game:", err);
+                    }
+                    
+                    return false;
+                };
+                
+                // Remove any existing listeners by cloning
+                const newButton = mobileStartButton.cloneNode(true);
+                mobileStartButton.parentNode.replaceChild(newButton, mobileStartButton);
+                
+                // Add event listeners for all possible events
+                ['touchstart', 'click', 'mousedown'].forEach(function(eventType) {
+                    newButton.addEventListener(eventType, startTheGame, { capture: true, passive: false });
+                });
+                
+                console.log("Mobile start button ready");
+                
+                // Watch for game state to hide our button if game starts by other means
+                // and show it when the game returns to start state
+                setInterval(function() {
+                    try {
+                        if (window.gameState === 'playing') {
+                            newButton.style.display = 'none';
+                        } else if (window.gameState === 'start' && window.showTitleScreen) {
+                            newButton.style.display = 'block';
+                        }
+                    } catch (err) {
+                        // Silent catch - don't break anything
+                    }
+                }, 500);
+            }
+            
+            // Initialize on load
+            if (document.readyState === 'complete') {
+                initMobileStart();
+            } else {
+                window.addEventListener('load', initMobileStart);
+            }
+        })();
+    </script>
 </body>
-<script src="fix-mobile-start.js"></script>
 </html>
