@@ -1509,20 +1509,132 @@
                 nameInput.maxLength = 20;
                 emailInput.maxLength = 50;
                 
-                // Ensure proper auto-focus when switching between fields
-                nameInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.keyCode === 13) {
-                        e.preventDefault();
-                        emailInput.focus();
+                // **** FIX: Ensure form input fields can receive touch events ****
+                form.addEventListener('touchstart', function(e) {
+                    // Don't stop propagation for form inputs - allow interaction
+                    if (e.target === nameInput || e.target === emailInput || 
+                        e.target === submitButton || e.target.id === 'cancelSubmit') {
+                        // Allow event to continue for input fields and buttons
+                        e.stopPropagation();
                     }
+                }, true);
+
+                // Ensure form inputs can be focused and typed into
+                [nameInput, emailInput].forEach(function(input) {
+                    // Remove any existing listeners by cloning
+                    const newInput = input.cloneNode(true);
+                    input.parentNode.replaceChild(newInput, input);
+                    
+                    // Set pointer-events to auto explicitly
+                    newInput.style.pointerEvents = 'auto';
+                    
+                    // Make sure inputs are focusable
+                    newInput.style.zIndex = '100001';
+                    newInput.style.position = 'relative';
+                    
+                    // Prevent parent handlers from blocking input
+                    newInput.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, true);
+                    
+                    newInput.addEventListener('touchmove', function(e) {
+                        e.stopPropagation();
+                    }, true);
+                    
+                    newInput.addEventListener('touchend', function(e) {
+                        e.stopPropagation();
+                    }, true);
+                    
+                    // Extra focus handling
+                    newInput.addEventListener('focus', function() {
+                        console.log(`Input ${this.id} focused`);
+                        this.style.borderColor = '#66aaff';
+                        
+                        // Ensure form visibility when input is focused
+                        form.style.display = 'block';
+                        form.style.opacity = '1';
+                        form.style.visibility = 'visible';
+                        form.style.zIndex = '100000';
+                    });
                 });
                 
-                emailInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.keyCode === 13) {
-                        e.preventDefault();
-                        submitButton.click();
-                    }
+                // Update references after DOM changes
+                const newNameInput = document.getElementById('playerName');
+                const newEmailInput = document.getElementById('playerEmail');
+                
+                // Handle tabbing between fields
+                if (newNameInput && newEmailInput) {
+                    newNameInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13) {
+                            e.preventDefault();
+                            newEmailInput.focus();
+                        }
+                    });
+                    
+                    newEmailInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13) {
+                            e.preventDefault();
+                            submitButton.click();
+                        }
+                    });
+                }
+                
+                // Ensure buttons can be clicked
+                [submitButton, document.getElementById('cancelSubmit')].forEach(function(button) {
+                    if (!button) return;
+                    
+                    // Clone to remove existing listeners
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    
+                    // Ensure button is clickable
+                    newButton.style.pointerEvents = 'auto';
+                    newButton.style.zIndex = '100001';
+                    newButton.style.position = 'relative';
+                    
+                    // Add touch events
+                    newButton.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, true);
                 });
+                
+                // **** FIX: Prevent parent events from capturing form interactions ****
+                // When form is visible, disable other touch handlers temporarily
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.attributeName === 'style') {
+                            const isVisible = form.style.display === 'block';
+                            
+                            // When form becomes visible, temporarily disable other controls
+                            if (isVisible) {
+                                // Disable mobile controls while form is open
+                                const mobileControls = document.getElementById('mobileControls');
+                                if (mobileControls) {
+                                    // Save original pointer-events value
+                                    mobileControls.dataset.originalPointerEvents = mobileControls.style.pointerEvents;
+                                    mobileControls.style.pointerEvents = 'none';
+                                }
+                                
+                                // Focus the name input field when form appears
+                                setTimeout(function() {
+                                    if (newNameInput) {
+                                        newNameInput.focus();
+                                        console.log("Auto-focusing name input after form display");
+                                    }
+                                }, 100);
+                            } else {
+                                // Restore mobile controls when form is closed
+                                const mobileControls = document.getElementById('mobileControls');
+                                if (mobileControls && mobileControls.dataset.originalPointerEvents) {
+                                    mobileControls.style.pointerEvents = mobileControls.dataset.originalPointerEvents;
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                // Observe form style changes
+                observer.observe(form, { attributes: true });
                 
                 // Prevent the default form submission
                 form.addEventListener('submit', function(e) {
@@ -1530,25 +1642,28 @@
                     
                     // Simple email validation
                     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailPattern.test(emailInput.value)) {
+                    if (!emailPattern.test(newEmailInput.value)) {
                         const errorMessage = document.getElementById('emailError');
                         if (errorMessage) {
                             errorMessage.style.display = 'block';
-                            emailInput.style.borderColor = '#ff5555';
+                            newEmailInput.style.borderColor = '#ff5555';
                         }
                         return false;
                     }
                     
                     // Handle submission
                     console.log("Form submission with:", {
-                        name: nameInput.value,
-                        email: emailInput.value
+                        name: newNameInput.value,
+                        email: newEmailInput.value
                     });
                     
                     // Call the game's leaderboard submission function if available
                     if (typeof window.submitLeaderboardScore === 'function') {
-                        window.submitLeaderboardScore(nameInput.value, emailInput.value);
+                        window.submitLeaderboardScore(newNameInput.value, newEmailInput.value);
                     }
+                    
+                    // Mark score as submitted to prevent multiple submissions
+                    window.leaderboardScoreSubmitted = true;
                     
                     // Hide the form
                     form.style.display = 'none';
@@ -1556,7 +1671,19 @@
                     return false;
                 });
                 
-                console.log("Mobile form improvements applied");
+                console.log("Enhanced mobile form improvements applied");
+                
+                // One final enhancement - ensure the form stays in view when keyboard opens
+                window.addEventListener('resize', function() {
+                    if (form.style.display === 'block') {
+                        // Reposition form to stay in viewport
+                        form.style.top = '40%';
+                        // Scroll to ensure form is visible
+                        setTimeout(() => {
+                            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }
+                });
             }
             
             // Try initializing the mobile form improvements multiple times to ensure it works
