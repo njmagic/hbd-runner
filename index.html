@@ -888,6 +888,85 @@
                 
                 console.log("Leaderboard form displayed via direct manipulation");
                 
+                // Add special mobile event handlers for form submission
+                const submitButton = document.getElementById('submitScore');
+                const cancelButton = document.getElementById('cancelSubmit');
+                
+                if (submitButton) {
+                    // Remove any previous listeners to avoid duplicates
+                    const newSubmitBtn = submitButton.cloneNode(true);
+                    submitButton.parentNode.replaceChild(newSubmitBtn, submitButton);
+                    
+                    // Add event listener for the submit button
+                    newSubmitBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log("Mobile submit button clicked");
+                        
+                        // Get form values
+                        const nameInput = document.getElementById('playerName');
+                        const emailInput = document.getElementById('playerEmail');
+                        const emailError = document.getElementById('emailError');
+                        
+                        if (!nameInput || !emailInput) {
+                            console.error("Form inputs not found");
+                            return;
+                        }
+                        
+                        // Get values
+                        const email = emailInput.value.trim();
+                        const name = nameInput.value.trim() || 'Anonymous Player';
+                        
+                        // Validate email
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(email)) {
+                            if (emailError) {
+                                emailError.style.display = 'block';
+                            }
+                            console.error("Invalid email format");
+                            return;
+                        }
+                        
+                        if (emailError) {
+                            emailError.style.display = 'none';
+                        }
+                        
+                        console.log("Submitting score:", name, email, window.pendingScore);
+                        
+                        // Call the game's submitScoreToLeaderboard function directly
+                        if (typeof window.submitScoreToLeaderboard === 'function') {
+                            window.submitScoreToLeaderboard(name, email, window.pendingScore);
+                        } else {
+                            console.error("submitScoreToLeaderboard function not found!");
+                        }
+                    }, true);
+                }
+                
+                if (cancelButton) {
+                    // Remove any previous listeners to avoid duplicates
+                    const newCancelBtn = cancelButton.cloneNode(true);
+                    cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
+                    
+                    // Add event listener for the cancel button
+                    newCancelBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log("Mobile cancel button clicked");
+                        
+                        // Hide the form
+                        if (typeof window.hideLeaderboardForm === 'function') {
+                            window.hideLeaderboardForm();
+                        } else {
+                            form.style.display = 'none';
+                        }
+                        
+                        // Return to game over screen
+                        window.gameState = "gameOver";
+                    }, true);
+                }
+                
                 // Focus on name input after a short delay
                 setTimeout(() => {
                     const nameInput = document.getElementById('playerName');
@@ -896,15 +975,6 @@
                         nameInput.focus();
                         nameInput.scrollIntoView(false);
                         console.log("Focus set on name input field");
-                        
-                        // Attempt to show virtual keyboard on mobile
-                        try {
-                            if (typeof nameInput.click === 'function') {
-                                nameInput.click();
-                            }
-                        } catch (e) {
-                            console.warn("Could not trigger virtual keyboard:", e);
-                        }
                     }
                 }, 300);
                 
@@ -920,15 +990,6 @@
                 form.addEventListener('touchend', function(e) {
                     e.stopPropagation();
                 }, { capture: true });
-                
-                // Re-check focus after a bit longer delay
-                setTimeout(() => {
-                    const nameInput = document.getElementById('playerName');
-                    if (nameInput && document.activeElement !== nameInput) {
-                        console.log("Re-attempting focus on name field");
-                        nameInput.focus();
-                    }
-                }, 800);
                 
             } catch (e) {
                 console.error("Error in submitToLeaderboard:", e);
@@ -1029,7 +1090,7 @@
                     button.style.backgroundColor = '#d32f2f';
                     button.style.color = 'white';
                     button.style.border = '2px solid #ff5252';
-                } else {
+                        } else {
                     button.style.backgroundColor = '#333';
                 }
                 
@@ -1302,7 +1363,7 @@
                     this.style.backgroundColor = 'rgba(180, 20, 20, 0.95)';
                     
                     // Call the submission function
-                    submitToLeaderboard();
+                        submitToLeaderboard();
                     
                     // Restore button appearance after a short delay
                     setTimeout(() => {
@@ -1470,14 +1531,14 @@
     <div id="brute-force-mobile-button" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
 
     <!-- Simple mobile integration script - directly embedded to avoid external file issues -->
-    <script>
-        (function() {
+<script>
+    (function() {
             // Check if we're on a mobile device
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                          (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
-                          ('ontouchstart' in window) ||
-                          (navigator.maxTouchPoints > 0);
-            
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                        (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                        ('ontouchstart' in window) ||
+                        (navigator.maxTouchPoints > 0);
+        
             // Add mobile form submission improvements when page loads
             function initMobileFormImprovements() {
                 if (!isMobile) return;
@@ -1491,9 +1552,9 @@
                 
                 if (!form || !nameInput || !emailInput || !submitButton || !cancelButton) {
                     console.log("Mobile form elements not found, will try again later");
-                    return;
-                }
-                
+            return;
+        }
+        
                 console.log("Setting up improved mobile form behavior");
                 
                 // Fix email input type to ensure proper keyboard on mobile
@@ -1535,7 +1596,7 @@
                     
                     // Prevent parent handlers from blocking input
                     newInput.addEventListener('touchstart', function(e) {
-                        e.stopPropagation();
+            e.stopPropagation();
                     }, true);
                     
                     newInput.addEventListener('touchmove', function(e) {
@@ -1552,9 +1613,9 @@
                         this.style.borderColor = '#66aaff';
                         
                         // Ensure form visibility when input is focused
-                        form.style.display = 'block';
-                        form.style.opacity = '1';
-                        form.style.visibility = 'visible';
+                form.style.display = 'block';
+                form.style.opacity = '1';
+                form.style.visibility = 'visible';
                         form.style.zIndex = '100000';
                     });
                 });
@@ -1681,7 +1742,7 @@
                         if (errorMessage) {
                             errorMessage.style.display = 'block';
                             document.getElementById('playerEmail').style.borderColor = '#ff5555';
-                        } else {
+                } else {
                             alert("Please enter a valid email address");
                         }
                         return false;
@@ -1720,8 +1781,8 @@
                                     console.error("Error in direct Supabase submission:", err);
                                 }
                             }
-                        }
-                    } catch (e) {
+                }
+            } catch (e) {
                         console.error("Error during score submission:", e);
                     }
                     
@@ -1890,7 +1951,7 @@
                                         console.log("Auto-focusing name input after form display");
                                     }
                                 }, 100);
-                            } else {
+                } else {
                                 // Restore mobile controls when form is closed
                                 const mobileControls = document.getElementById('mobileControls');
                                 if (mobileControls && mobileControls.dataset.originalPointerEvents) {
@@ -1941,7 +2002,7 @@
                             if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
                             
                             console.log("Reinstalled button handlers after leaderboard form was shown");
-                        }, 500);
+        }, 500);
                     };
                 }
             }
@@ -2064,7 +2125,7 @@
                             if (typeof window.keyPressed === 'function') {
                                 try {
                                     window.keyPressed();
-                                } catch (e) {
+                } catch (e) {
                                     console.error("Error in keyPressed:", e);
                                 }
                             }
@@ -2147,7 +2208,7 @@
             // Also initialize after a delay for maximum reliability
             setTimeout(initMobileStart, 500);
             setTimeout(initMobileStart, 1000);
-        })();
-    </script>
+    })();
+</script>
 </body>
 </html>
