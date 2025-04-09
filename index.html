@@ -347,6 +347,17 @@
                 font-size: 24px;
             }
         }
+        
+        /* Hide the original start button when on mobile devices */
+        @media (max-width: 1024px), (pointer: coarse) {
+            #startButton {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                z-index: -1 !important;
+            }
+        }
     </style>
     <script src="libraries/p5.min.js"></script>
     <!-- Add Supabase JS Client -->
@@ -1342,6 +1353,16 @@
                 
                 console.log("Mobile device detected - setting up start button");
                 
+                // Explicitly hide the original start button to avoid conflicts
+                const originalStartBtn = document.getElementById('startButton');
+                if (originalStartBtn) {
+                    originalStartBtn.style.display = 'none';
+                    originalStartBtn.style.opacity = '0';
+                    originalStartBtn.style.visibility = 'hidden';
+                    originalStartBtn.style.pointerEvents = 'none';
+                    originalStartBtn.style.zIndex = '-1';
+                }
+                
                 // Get the custom mobile start button
                 const mobileStartButton = document.getElementById('mobile-start-button');
                 if (!mobileStartButton) {
@@ -1481,6 +1502,15 @@
                             newButton.style.zIndex = '9999999';
                             newButton.style.visibility = 'visible';
                             newButton.style.opacity = '1';
+                        }
+                        
+                        // Always ensure the original start button stays hidden
+                        const originalStartBtn = document.getElementById('startButton');
+                        if (originalStartBtn) {
+                            originalStartBtn.style.display = 'none';
+                            originalStartBtn.style.opacity = '0';
+                            originalStartBtn.style.visibility = 'hidden';
+                            originalStartBtn.style.pointerEvents = 'none';
                         }
                     } catch (err) {
                         // Silent catch - don't break anything
