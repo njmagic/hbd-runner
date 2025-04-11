@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HBD Sidescroller</title>
+    <title>Happy Birthday Scroller</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="sketch.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            touch-action: none; /* Prevent browser handling of touch gestures */
-        }
-        /* Prevent double-tap to zoom */
-        * { 
-            touch-action: manipulation;
+            touch-action: none;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             -khtml-user-select: none;
@@ -26,1889 +20,372 @@
             -ms-user-select: none;
             user-select: none;
         }
-        canvas {
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: auto !important; /* Override any inline width */
-            height: auto !important; /* Override any inline height */
-            max-width: 100%;
-            max-height: 100vh;
-            object-fit: contain;
-            touch-action: none !important;
-        }
+        
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
             display: none;
             position: fixed;
-            bottom: 0;
+            top: 0;
             left: 0;
             width: 100%;
-            height: 180px;
-            z-index: 9997;
-            touch-action: manipulation;
-        }
-        #mobileJump {
-            position: absolute;
-            left: 10px;
-            width: 160px;
-            height: 160px;
-            border-radius: 80px;
-            background-color: rgba(0, 255, 0, 0.3);
-            border: 3px solid rgba(0, 255, 0, 0.6);
-            bottom: 10px;
-            z-index: 9998;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-        }
-        #mobileShoot {
-            position: absolute;
-            right: 10px;
-            width: 160px;
-            height: 160px;
-            border-radius: 80px;
-            background-color: rgba(255, 0, 0, 0.3);
-            border: 3px solid rgba(255, 0, 0, 0.6);
-            bottom: 10px;
-            z-index: 9998;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-        }
-        #mobileDuck {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 160px;
-            height: 80px;
-            border-radius: 40px;
-            background-color: rgba(0, 0, 255, 0.3);
-            border: 3px solid rgba(0, 0, 255, 0.6);
-            bottom: 10px;
-            z-index: 9998;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-        }
-        /* Mobile leaderboard submit button - only shows on game over */
-        #submitLeaderboardBtn {
-            display: none; /* Hidden by default, shown conditionally */
-            position: fixed !important; /* Use fixed positioning to ensure it stays on screen */
-            top: 40% !important; /* Position higher on screen for better visibility */
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 300px; /* Larger width for better visibility */
-            height: 100px; /* Taller for better visibility and tap target */
-            text-align: center;
-            line-height: 100px;
-            font-family: 'Courier New', monospace;
-            color: white;
-            font-size: 26px; /* Larger font for better readability */
-            font-weight: bold;
-            background-color: rgba(220, 40, 40, 0.95); /* Brighter red for better visibility */
-            border: 5px solid rgba(255, 255, 255, 0.95); /* Bright white border for contrast */
-            border-radius: 12px;
-            z-index: 999999 !important; /* Extreme z-index to be above everything */
-            pointer-events: auto !important;
-            box-shadow: 0 0 40px rgba(255, 100, 100, 0.9); /* Stronger glow */
-            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9);
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 1 !important;
-            visibility: visible !important;
-            animation: pulseLarge 1.5s infinite alternate; /* Stronger pulsing animation */
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
         }
         
-        /* Stronger pulse animation for the submit score button */
-        @keyframes pulseLarge {
-            from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 40px rgba(255, 100, 100, 0.9); }
-            to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 60px rgba(255, 150, 150, 0.95); }
-        }
-        
-        #submitLeaderboardBtn:active {
-            background-color: rgba(200, 50, 50, 0.95);
-            transform: translate(-50%, -50%) scale(0.95) !important;
-            animation: none; /* Stop pulsing when pressed */
-        }
         .control-area {
             position: absolute;
-            pointer-events: auto; /* These areas catch touch events */
-            background-color: rgba(255, 255, 255, 0.4);
-            border: 4px solid rgba(255, 255, 255, 0.6);
-            border-radius: 15px;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-            transition: all 0.1s ease-in-out;
-        }
-        .control-area:active {
-            transform: scale(0.95);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-        }
-        #leftControl {
-            left: 20px;
-            bottom: 50px; /* Move up from bottom for better visibility */
-            width: 45%;
-            height: 170px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #leftControl::after {
-            content: "TAP: JUMP\AHOLD: DUCK";
-            white-space: pre;
-            color: white;
-            opacity: 1.0;
-            font-family: 'Courier New', monospace;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-        }
-        #rightControl {
-            right: 20px;
-            bottom: 50px; /* Move up from bottom for better visibility */
-            width: 140px;
-            height: 140px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(255, 50, 50, 0.6);
-            border: 5px solid rgba(255, 100, 100, 0.8);
-        }
-        #rightControl::after {
-            content: "SHOOT";
-            color: white;
-            opacity: 1.0;
-            font-family: 'Courier New', monospace;
-            font-size: 26px;
-            font-weight: bold;
-            pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-        }
-        /* For mobile optimization of leaderboard form */
-        #leaderboardForm {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 300px;
-            padding: 20px;
-            background-color: rgba(30, 30, 30, 0.9);
-            border: 1px solid #444;
-            border-radius: 5px;
-            z-index: 10;
-        }
-        /* Hide game control text on mobile devices */
-        @media (max-width: 1024px), (pointer: coarse) {
-            /* This selector targets the screen control instructions */
-            canvas + p {
-                display: none !important;
-            }
-            
-            /* Target any text elements that contain control instructions */
-            text[data-help-text="true"],
-            .controls-text,
-            .key-instructions,
-            p.controls-instruction,
-            div.controls-help {
-                display: none !important;
-            }
-        }
-        input, button {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 8px;
-            font-family: 'Courier New', monospace;
-            background-color: #222;
-            color: #fff;
-            border: 1px solid #555;
-        }
-        input {
-            font-size: 16px; /* Prevent zoom on focus in iOS */
-        }
-        button {
-            background-color: #333;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            height: 44px; /* Better touch target */
-        }
-        button:hover {
-            background-color: #444;
-        }
-        .form-title {
-            color: #fff;
-            text-align: center;
-            margin-bottom: 15px;
-            font-family: 'Courier New', monospace;
-        }
-        .error-message {
-            color: #ff5555;
-            font-size: 12px;
-            margin-top: 5px;
-            display: none;
-        }
-        /* Add restart button styling */
-        #restartButton {
-            display: none; /* Hidden by default, shown only on game over */
-            position: absolute;
-            top: 70%; /* Lower position for better thumb access */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 280px; /* Wider button */
-            height: 90px; /* Taller button */
-            text-align: center;
-            line-height: 90px;
-            font-family: 'Courier New', monospace;
-            color: #FFFFFF;
-            font-size: 24px; /* Larger text */
-            font-weight: bold;
-            background-color: rgba(220, 30, 30, 0.9); /* More opaque red */
-            border: 5px solid rgba(255, 255, 255, 0.95); /* Brighter border */
-            border-radius: 15px;
-            z-index: 10000; /* Ensure it's above everything */
+            width: 50%;
+            height: 100%;
             pointer-events: auto;
-            box-shadow: 0 0 25px rgba(255, 50, 50, 0.8); /* Brighter glow */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            animation: pulse 1.5s infinite alternate;
-            transition: transform 0.2s, background-color 0.3s;
-            touch-action: manipulation; /* Improved mobile touch */
-            
-            /* Ensure the button is always in front */
-            position: fixed !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        
-        /* Add pulsing animation for restart button */
-        @keyframes pulse {
-            from { transform: translateX(-50%) scale(1); }
-            to { transform: translateX(-50%) scale(1.05); }
-        }
-        
-        /* Active state for restart button */
-        #restartButton:active {
-            background-color: rgba(255, 100, 100, 0.95);
-            transform: translateX(-50%) scale(0.95);
-            animation: none; /* Stop pulsing when pressed */
-        }
-        /* Ensure mobile form has proper styling */
-        @media (max-width: 768px), (pointer: coarse) {
-            #leaderboardForm {
-                width: 90% !important;
-                max-width: 320px !important;
-                padding: 25px !important;
-                border: 3px solid rgba(255, 255, 255, 0.9) !important;
-                border-radius: 15px !important;
-                box-shadow: 0 0 30px rgba(0, 0, 0, 0.8) !important;
-                background-color: rgba(30, 30, 30, 0.95) !important;
-                z-index: 10000001 !important;
-            }
-            
-            #leaderboardForm input {
-                height: 50px !important;
-                font-size: 18px !important;
-                padding: 10px 15px !important;
-                margin-bottom: 15px !important;
-                border-radius: 8px !important;
-            }
-            
-            #leaderboardForm button {
-                height: 60px !important;
-                font-size: 20px !important;
-                font-weight: bold !important;
-                text-transform: uppercase !important;
-                margin: 10px 0 !important;
-                border-radius: 8px !important;
-            }
-            
-            #submitScore {
-                background-color: #d32f2f !important;
-                color: white !important;
-                border: 2px solid #ff5252 !important;
-            }
-        }
-        
-        /* Simple mobile start button that appears above the canvas in portrait mode */
-        #mobile-start-button {
-            display: none; /* Hidden by default, shown via JS only on mobile */
-            position: fixed;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 280px;
-            height: 100px;
-            background-color: rgba(50, 50, 50, 0.9);
-            color: white;
-            font-family: 'Courier New', monospace;
-            font-size: 28px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 100px;
-            border-radius: 15px;
-            border: 4px solid white;
-            z-index: 100000;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
-            animation: start-button-pulse 1.5s infinite alternate;
-            text-transform: uppercase;
-            letter-spacing: 1px;
             touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
         }
         
-        @keyframes start-button-pulse {
-            from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
-            to { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.8); }
+        #leftControl {
+            left: 0;
         }
         
-        #mobile-start-button:active {
-            background-color: rgba(80, 80, 80, 0.9);
-            transform: translate(-50%, -50%) scale(0.95);
+        #rightControl {
+            right: 0;
         }
         
-        /* Modify button position in landscape mode */
-        @media (orientation: landscape) {
-            #mobile-start-button {
-                top: 50%;
-                height: 80px;
-                line-height: 80px;
-                font-size: 24px;
-            }
-        }
-        
-        /* Hide the original start button when on mobile devices */
-        @media (max-width: 1024px), (pointer: coarse) {
-            #startButton {
-                display: none !important;
-                opacity: 0 !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-                z-index: -1 !important;
-            }
+        /* Mobile leaderboard submit button - only shows on game over */
+        #submitLeaderboardBtn {
+            font-family: 'Courier New', monospace;
+            font-weight: bold; 
+            letter-spacing: 2px; 
+            text-transform: uppercase; 
+            display: none; 
+            position: fixed !important; 
+            top: 40% !important; 
+            left: 50% !important; 
+            transform: translate(-50%, -50%) !important; 
+            z-index: 999999 !important; 
+            width: 300px !important; 
+            height: 100px !important; 
+            line-height: 100px !important; 
+            background-color: rgba(220, 40, 40, 0.95) !important; 
+            border: 5px solid rgba(255, 255, 255, 0.95) !important; 
+            font-size: 26px !important;
         }
     </style>
-    <script src="libraries/p5.min.js"></script>
-    <!-- Add Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="sketch.js"></script>
-    <!-- Orientation change handler for mobile -->
+    
     <script>
-        // Handle long press for ducking
-        let pressTimer;
-        let isDucking = false;
+        // Make supabase client available globally for the mobile integration
+        window.supabaseClient = null;
         
-        document.getElementById('leftControl').addEventListener('mousedown', startPressTimer);
-        document.getElementById('leftControl').addEventListener('touchstart', startPressTimer);
-        document.getElementById('leftControl').addEventListener('mouseup', endPressTimer);
-        document.getElementById('leftControl').addEventListener('touchend', endPressTimer);
-        document.getElementById('leftControl').addEventListener('mouseleave', endPressTimer);
-        
-        function startPressTimer(e) {
-            console.log("Press started on left control");
-            e.preventDefault();
-            
-            // First immediate jump
-            if (typeof window.mobileJump === 'function') {
-                window.mobileJump();
-            }
-            
-            // Then start timer for duck if held
-            pressTimer = setTimeout(function() {
-                console.log("Long press detected - ducking");
-                isDucking = true;
-                if (typeof window.mobileDuck === 'function') {
-                    window.mobileDuck();
-                }
-            }, 300);
-        }
-        
-        function endPressTimer(e) {
-            console.log("Press ended on left control");
-            clearTimeout(pressTimer);
-            
-            // End ducking if it was active
-            if (isDucking) {
-                isDucking = false;
-                if (window.player && window.player.state === "ducking") {
-                    window.player.state = "running";
-                    console.log("Ducking ended, returning to running state");
-                }
-            }
-        }
-        
-        // Listen for orientation changes
-        window.addEventListener('orientationchange', function() {
-            // Give the browser time to complete the rotation
-            setTimeout(function() {
-                // Resize the canvas
-                if (typeof windowResized === 'function') {
-                    windowResized();
-                }
-            }, 200);
-        });
-        
-        // Prevent pinch zoom
-        document.addEventListener('touchmove', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // Prevent double-tap zoom
-        let lastTapTime = 0;
-        document.addEventListener('touchend', function(e) {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTapTime;
-            if (tapLength < 500 && tapLength > 0) {
-                e.preventDefault();
-            }
-            lastTapTime = currentTime;
-        }, { passive: false });
-
-        // Simple functions for mobile controls
-        /* Pause toggle function removed */
-        
-        function startGame() {
-            console.log("Start game clicked");
-            
-            // Hide the title screen overlay immediately to prevent any double-triggers
-            const titleOverlay = document.getElementById('titleScreenOverlay');
-            if (titleOverlay) {
-                titleOverlay.style.display = 'none';
-            }
-            
-            // Hide start button immediately to prevent double-clicks
-            const startButton = document.getElementById('startButton');
-            if (startButton) {
-                startButton.style.display = 'none';
-            }
-            
-            // Hide mobile start button too
-            const mobileStartButton = document.getElementById('mobile-start-button');
-            if (mobileStartButton) {
-                mobileStartButton.style.display = 'none';
-            }
-            
-            // Give focus back to the canvas for proper game input
-            try {
-                const canvasElement = document.querySelector('canvas');
-                if (canvasElement) {
-                    canvasElement.focus();
-                }
-            } catch (e) {
-                console.error("Error focusing canvas:", e);
-            }
-            
-            // Use a more robust approach to start the game
-            try {
-                console.log("Using robust approach to start game");
-                
-                // First set these core game state variables
-                window.showTitleScreen = false;
-                window.gameState = "playing";
-                
-                // Then call all direct initialization code to ensure proper reset
-                // Initialize core game elements
-                window.score = 0;
-                window.enemiesKilled = 0;
-                window.enemies = [];
-                window.obstacles = [];
-                window.projectiles = [];
-                window.shootEffects = [];
-                window.powerUps = [];
-                window.slowMotion = false;
-                window.slowMotionTimer = 0;
-                window.scrollSpeed = window.normalScrollSpeed;
-                window.screenFlash = 0;
-                
-                // Reset player position
-                if (window.player) {
-                    window.player.y = window.groundY;
-                    window.player.vy = 0;
-                    window.player.state = "running";
-                }
-                
-                // Reset offsets
-                window.groundOffset = 0;
-                window.backgroundOffset = 0;
-                window.midgroundOffset = 0;
-                window.foregroundOffset = 0;
-                
-                window.lastEnemySpawnTime = 0;
-                window.forceEnemySpawnCounter = 0;
-                window.lastPowerUpTime = 0;
-                
-                console.log("Game started successfully");
-            } catch (e) {
-                console.error("Error in direct game start:", e);
-            }
-        }
-        
-        // Fallback function that uses the direct approach if simulation fails
-        function directlyStartGame() {
-            console.log("Using direct approach to start game");
-            window.showTitleScreen = false;
-            window.gameState = "playing";
-            
-            // Reset game elements
-            window.score = 0;
-            window.enemiesKilled = 0;
-            window.enemies = [];
-            window.obstacles = [];
-            window.projectiles = [];
-            window.shootEffects = [];
-            window.powerUps = [];
-            window.slowMotion = false;
-            window.slowMotionTimer = 0;
-            window.scrollSpeed = window.normalScrollSpeed;
-            window.screenFlash = 0;
-            
-            // Reset player position
-            if (window.player) {
-                window.player.y = window.groundY;
-                window.player.vy = 0;
-                window.player.state = "running";
-            }
-            
-            // Reset offsets
-            window.groundOffset = 0;
-            window.backgroundOffset = 0;
-            window.midgroundOffset = 0;
-            window.foregroundOffset = 0;
-            
-            window.lastEnemySpawnTime = 0;
-            window.forceEnemySpawnCounter = 0;
-            window.lastPowerUpTime = 0;
-            
-            // Hide the start button
-            document.getElementById('startButton').style.display = 'none';
-        }
-        
-        /* Add restart game function for mobile - direct implementation of R key functionality */
-        function restartGame() {
-            console.log("Restart button clicked - direct R implementation");
-            
-            try {
-                // This is the EXACT same code that runs when R key is pressed in keyPressed function
-                // Direct implementation of 'if (key === 'r' || key === 'R')' block from sketch.js
-                if (window.gameState === "gameOver" || window.gameState === "leaderboard" || window.gameState === "enteringScore") {
-                    console.log("Directly implementing R key logic to restart game");
-                    
-                    // The exact same code that runs in the R key handler
-                    window.showTitleScreen = true; // Go back to title screen on restart
-                    window.gameState = "start";
-                    
-                    // Reset everything - exact same code as the R key handler
-                    window.score = 0;
-                    window.enemiesKilled = 0;
-                    window.enemies = [];
-                    window.obstacles = [];
-                    window.projectiles = [];
-                    window.shootEffects = [];
-                    window.powerUps = [];
-                    
-                    // Reset power-ups - exact same code as the R key handler
-                    if (window.activePowerUps) {
-                        window.activePowerUps.shield = 0;
-                        window.activePowerUps.beamShot = 0;
-                        window.activePowerUps.rapidFire = 0;
-                    }
-                    
-                    // Reset game state - exact same code as the R key handler
-                    window.slowMotion = false;
-                    window.slowMotionTimer = 0;
-                    window.scrollSpeed = window.normalScrollSpeed;
-                    window.screenFlash = 0;
-                    
-                    // Reset player - exact same code as the R key handler
-                    if (window.player) {
-                        window.player.y = window.groundY;
-                        window.player.vy = 0;
-                        window.player.state = "running";
-                    }
-                    
-                    // Reset environment - exact same code as the R key handler
-                    window.groundOffset = 0;
-                    window.backgroundOffset = 0;
-                    window.midgroundOffset = 0;
-                    window.foregroundOffset = 0;
-                    
-                    // Reset leaderboard submission status - exact same code as the R key handler
-                    window.leaderboardScoreSubmitted = false;
-                    
-                    // Hide any forms that might be showing
-                    const leaderboardForm = document.getElementById('leaderboardForm');
-                    if (leaderboardForm) leaderboardForm.style.display = 'none';
-                    
-                    // Hide restart button
-                    document.getElementById('restartButton').style.display = 'none';
-                    
-                    console.log("Game restart completed via direct implementation");
-                    return;
-                }
-            } catch (e) {
-                console.error("Error during direct game restart:", e);
-            }
-            
-            // Fallback: Only if the direct implementation fails, try the other approaches
-            
-            // APPROACH 1: Try direct key simulation
-            console.log("Falling back to key simulation for restart");
-            
-            // Backup original key state
-            const origKey = window.key;
-            const origKeyCode = window.keyCode;
-            
-            // Set the key state
-            window.key = 'r';
-            window.keyCode = 82; // R key code
-            
-            try {
-                // If keyPressed is a function, call it directly
-                if (typeof window.keyPressed === 'function') {
-                    console.log("Calling keyPressed() directly");
-                    window.keyPressed();
-                }
-            } catch (e) {
-                console.error("Failed to call keyPressed:", e);
-            } finally {
-                // Always restore the original key state after a short delay
-                setTimeout(function() {
-                    window.key = origKey;
-                    window.keyCode = origKeyCode;
-                }, 100);
-            }
-            
-            // APPROACH 2: Force game state directly as last resort
-            if (window.gameState !== "start") {
-                console.log("Force transitioning to title screen");
-                window.gameState = "start";
-                window.showTitleScreen = true;
-            }
-        }
-        
-        // Function to monitor game state and ensure buttons show correctly
-        function setupRestartButtonMonitor() {
-            console.log("Setting up game state monitor for button showing");
-            
-            // Immediately check if we're already in game over state
-            if (window.gameState === "gameOver") {
-                console.log("Game already in gameOver state - showing submit buttons");
-                showAllLeaderboardButtons();
-            }
-            
-            // Set up continuous monitoring
-            const gameStateChecker = setInterval(function() {
-                try {
-                    // Check if game is in game over state
-                    if (window.gameState === "gameOver") {
-                        console.log("Game state monitor detected gameOver - showing submit buttons");
-                        // Show the guarantee button
-                        showAllLeaderboardButtons();
-                        
-                        // Make doubly sure the mobile start button is hidden
-                        const startButton = document.getElementById('mobile-start-button');
-                        if (startButton) {
-                            startButton.style.display = 'none';
-                        }
-                    }
-                    
-                    // Check if game is in playing state
-                    if (window.gameState === "playing") {
-                        // Make sure start button is hidden during gameplay
-                        const startButton = document.getElementById('mobile-start-button');
-                        if (startButton) {
-                            startButton.style.display = 'none';
-                        }
-                    }
-                    
-                    // If we're on title screen, make sure the start button is shown
-                    if (window.gameState === "titleScreen" || window.showTitleScreen) {
-                        const startButton = document.getElementById('mobile-start-button');
-                        if (startButton) {
-                            startButton.style.display = 'block';
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error in game state monitor:", e);
-                }
-            }, 1000);
-            
-            // Also set up a direct draw loop hook to catch game over state
-            try {
-                // Use a safe approach to patch the draw function
-                // We'll use a mutation observer to watch for canvas creation
-                const observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.addedNodes) {
-                            mutation.addedNodes.forEach(function(node) {
-                                if (node.nodeName === 'CANVAS') {
-                                    console.log("Canvas detected - setting up draw loop patch");
-                                    setTimeout(patchDrawLoop, 1000);
-                                    observer.disconnect();
-                                }
-                            });
-                        }
-                    });
-                });
-                
-                observer.observe(document.body, { childList: true, subtree: true });
-                
-                // Also try immediately in case canvas is already there
-                if (document.querySelector('canvas')) {
-                    console.log("Canvas already exists - setting up draw loop patch");
-                    setTimeout(patchDrawLoop, 1000);
-                }
-            } catch (e) {
-                console.error("Error setting up canvas observer:", e);
-            }
-        }
-        
-        // Function to patch the draw loop for direct game state monitoring
-        function patchDrawLoop() {
-            try {
-                // Only run this once
-                if (window._drawLoopPatched) return;
-                window._drawLoopPatched = true;
-                
-                console.log("Attempting to patch p5.js draw loop");
-                
-                // Check for p5 instance
-                const p5Instance = window.p5Instance || window.p || window.draw && window;
-                
-                if (p5Instance && p5Instance.draw) {
-                    console.log("Found draw function to patch");
-                    
-                    // Store original draw function
-                    const originalDraw = p5Instance.draw;
-                    
-                    // Override draw function
-                    p5Instance.draw = function() {
-                        // Call original draw function
-                        originalDraw.apply(this, arguments);
-                        
-                        // ALWAYS ensure start button is hidden during gameplay
-                        if (window.gameState === "playing" || 
-                            window.gameState === "gameOver" || 
-                            (window.gameState !== "titleScreen" && !window.showTitleScreen)) {
-                            const startButton = document.getElementById('mobile-start-button');
-                            if (startButton && startButton.style.display !== 'none') {
-                                startButton.style.display = 'none';
-                                console.log("Start button hidden by draw loop");
-                            }
-                        }
-                        
-                        // Check game state after drawing
-                        if (window.gameState === "gameOver") {
-                            // After a brief delay, show the buttons
-                            if (!window._gameOverActioned) {
-                                window._gameOverActioned = true;
-                                console.log("Draw loop detected gameOver - showing submit buttons");
-                                setTimeout(showAllLeaderboardButtons, 500);
-                                
-                                // Reset the flag after some time to allow for state changes
-                                setTimeout(function() {
-                                    window._gameOverActioned = false;
-                                }, 3000);
-                            }
-                        }
-                    };
-                    
-                    console.log("Successfully patched draw loop for game state monitoring");
-                } else {
-                    console.warn("Could not find p5.js draw function to patch");
-                }
-            } catch (e) {
-                console.error("Error patching draw loop:", e);
-            }
-        }
-        
-        // Function to update leaderboard submit button visibility based on game state
-        function updateLeaderboardButtonVisibility() {
-            try {
-                console.log("updateLeaderboardButtonVisibility called, gameState:", window.gameState, 
-                           "leaderboardScoreSubmitted:", window.leaderboardScoreSubmitted);
-                
-                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                if (!leaderboardBtn) {
-                    console.error("Leaderboard submit button not found!");
-                    // Create the button if it doesn't exist
-                    createLeaderboardButton();
-                    return;
-                }
-                
-                // Only show the button on game over state and when score hasn't been submitted
-                if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                    console.log("SHOWING leaderboard submit button for mobile!");
-                    
-                    // Force display and positioning properties with !important flags
-                    leaderboardBtn.setAttribute('style', 
-                        'display: block !important; ' +
-                        'position: fixed !important; ' +
-                        'top: 40% !important; ' +
-                        'left: 50% !important; ' +
-                        'transform: translate(-50%, -50%) !important; ' +
-                        'z-index: 999999 !important; ' +
-                        'width: 300px !important; ' +
-                        'height: 100px !important; ' +
-                        'line-height: 100px !important; ' +
-                        'text-align: center !important; ' +
-                        'background-color: rgba(220, 40, 40, 0.95) !important; ' +
-                        'border: 5px solid rgba(255, 255, 255, 0.95) !important; ' +
-                        'border-radius: 12px !important; ' +
-                        'font-family: \'Courier New\', monospace !important; ' +
-                        'color: white !important; ' +
-                        'font-size: 26px !important; ' +
-                        'font-weight: bold !important; ' +
-                        'pointer-events: auto !important; ' +
-                        'box-shadow: 0 0 40px rgba(255, 100, 100, 0.9) !important; ' +
-                        'text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9) !important; ' +
-                        'cursor: pointer !important; ' +
-                        'text-transform: uppercase !important; ' +
-                        'letter-spacing: 2px !important; ' +
-                        'opacity: 1 !important; ' +
-                        'visibility: visible !important; ' +
-                        'animation: pulseLarge 1.5s infinite alternate !important;'
-                    );
-                    
-                    // Ensure it's above the canvas and can receive events
-                    leaderboardBtn.style.pointerEvents = 'auto';
-                    
-                    // Ensure button has latest event handlers
-                    addLeaderboardButtonListeners(leaderboardBtn);
-                    
-                    // Also ensure our brute force button is visible as a fallback
-                    const bruteForceButton = document.getElementById('brute-force-mobile-button');
-                    if (bruteForceButton) {
-                        bruteForceButton.style.display = 'block';
-                    }
-                } else {
-                    console.log("HIDING leaderboard submit button (game state or submission status)");
-                    leaderboardBtn.style.display = 'none';
-                    
-                    // Also hide brute force button
-                    const bruteForceButton = document.getElementById('brute-force-mobile-button');
-                    if (bruteForceButton) {
-                        bruteForceButton.style.display = 'none';
-                    }
-                }
-            } catch (e) {
-                console.error("Error updating leaderboard button visibility:", e);
-            }
-        }
-        
-        // Function to create the leaderboard button if it doesn't exist
-        function createLeaderboardButton() {
-            console.log("Creating leaderboard button element");
-            
-            // Create button if it doesn't exist
-            let leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-            
-            if (!leaderboardBtn) {
-                // Create a new button element
-                leaderboardBtn = document.createElement('div');
-                leaderboardBtn.id = 'submitLeaderboardBtn';
-                leaderboardBtn.innerText = 'SUBMIT SCORE';
-                
-                // Add to mobile controls
-                const mobileControls = document.getElementById('mobileControls');
-                if (mobileControls) {
-                    mobileControls.appendChild(leaderboardBtn);
-                    console.log("Leaderboard button added to mobile controls");
-                } else {
-                    // Fallback to body if mobile controls not found
-                    document.body.appendChild(leaderboardBtn);
-                    console.log("Leaderboard button added to body (fallback)");
-                }
-            }
-            
-            // Add event listeners
-            addLeaderboardButtonListeners(leaderboardBtn);
-            
-            return leaderboardBtn;
-        }
-        
-        // Function to submit score to leaderboard from mobile
-        function submitToLeaderboard() {
-            console.log("Mobile submit to leaderboard button clicked");
-            try {
-                // Extra safety check - hide ALL buttons to prevent double submission
-                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                if (leaderboardBtn) {
-                    leaderboardBtn.style.display = 'none';
-                }
-                
-                // Hide brute force button too
-                const bruteForceButton = document.getElementById('brute-force-mobile-button');
-                if (bruteForceButton) {
-                    bruteForceButton.style.display = 'none';
-                }
-                
-                // Hide the guaranteed overlay
-                const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
-                if (guaranteedButton) {
-                    guaranteedButton.style.display = 'none';
-                }
-                
-                // First try using the game's native function if available
-                if (typeof window.showLeaderboardForm === 'function') {
-                    console.log("Using game's native showLeaderboardForm");
-                    window.showLeaderboardForm();
-                    return;
-                }
-                
-                // Create and show a simple form for name input
-                const existingForm = document.getElementById('mobileLeaderboardForm');
-                if (existingForm) {
-                    existingForm.remove();
-                }
-                
-                console.log("Creating mobile leaderboard submission form");
-                
-                const formContainer = document.createElement('div');
-                formContainer.id = 'mobileLeaderboardForm';
-                formContainer.style.position = 'fixed';
-                formContainer.style.top = '0';
-                formContainer.style.left = '0';
-                formContainer.style.width = '100%';
-                formContainer.style.height = '100%';
-                formContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-                formContainer.style.display = 'flex';
-                formContainer.style.justifyContent = 'center';
-                formContainer.style.alignItems = 'center';
-                formContainer.style.flexDirection = 'column';
-                formContainer.style.zIndex = '10000001';
-                formContainer.style.fontFamily = 'Arial, sans-serif';
-                
-                const formTitle = document.createElement('h2');
-                formTitle.textContent = 'SUBMIT YOUR SCORE';
-                formTitle.style.color = 'white';
-                formTitle.style.marginBottom = '20px';
-                formTitle.style.fontSize = '24px';
-                
-                const scoreDisplay = document.createElement('div');
-                scoreDisplay.textContent = 'Score: ' + window.score;
-                scoreDisplay.style.color = 'white';
-                scoreDisplay.style.fontSize = '20px';
-                scoreDisplay.style.marginBottom = '20px';
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.placeholder = 'Enter your name';
-                nameInput.style.padding = '10px';
-                nameInput.style.fontSize = '18px';
-                nameInput.style.marginBottom = '20px';
-                nameInput.style.width = '80%';
-                nameInput.style.maxWidth = '300px';
-                nameInput.style.borderRadius = '5px';
-                nameInput.style.border = 'none';
-                
-                const submitButton = document.createElement('button');
-                submitButton.textContent = 'SUBMIT';
-                submitButton.style.padding = '15px 30px';
-                submitButton.style.fontSize = '20px';
-                submitButton.style.backgroundColor = '#ff3333';
-                submitButton.style.color = 'white';
-                submitButton.style.border = 'none';
-                submitButton.style.borderRadius = '5px';
-                submitButton.style.cursor = 'pointer';
-                
-                formContainer.appendChild(formTitle);
-                formContainer.appendChild(scoreDisplay);
-                formContainer.appendChild(nameInput);
-                formContainer.appendChild(submitButton);
-                
-                document.body.appendChild(formContainer);
-                
-                // Focus the name input for mobile keyboards
-                setTimeout(() => nameInput.focus(), 300);
-                
-                // When the submit button is clicked, submit to Supabase
-                submitButton.addEventListener('click', async function() {
-                    const playerName = nameInput.value.trim();
-                    if (!playerName) {
-                        alert('Please enter your name');
-                        return;
-                    }
-                    
-                    try {
-                        console.log("Submitting score to Supabase: ", {
-                            score: window.score,
-                            player_name: playerName
-                        });
-                        
-                        // Check if we can use the game's built-in submit function
-                        if (typeof window.submitScoreToLeaderboard === 'function') {
-                            console.log("Using game's submitScoreToLeaderboard function");
-                            window.submitScoreToLeaderboard(playerName, window.score);
-                        } 
-                        // Otherwise use direct Supabase access
-                        else if (window.supabaseClient) {
-                            console.log("Using direct Supabase access");
-                            const { data, error } = await window.supabaseClient
-                                .from('leaderboard')
-                                .insert([{
-                                    player_name: playerName,
-                                    score: window.score
-                                }]);
-                                
-                            if (error) {
-                                console.error("Supabase error:", error);
-                                alert('Error submitting score: ' + error.message);
-                                return;
-                            }
-                            
-                            console.log("Score submitted successfully:", data);
-                        } else {
-                            console.error("No submission method available");
-                            alert('Error: Could not connect to leaderboard');
-                            return;
-                        }
-                        
-                        // Show success message
-                        formTitle.textContent = 'SCORE SUBMITTED!';
-                        formContainer.removeChild(nameInput);
-                        formContainer.removeChild(submitButton);
-                        
-                        const newGameButton = document.createElement('button');
-                        newGameButton.textContent = 'PLAY AGAIN';
-                        newGameButton.style.padding = '15px 30px';
-                        newGameButton.style.fontSize = '20px';
-                        newGameButton.style.backgroundColor = '#4CAF50';
-                        newGameButton.style.color = 'white';
-                        newGameButton.style.border = 'none';
-                        newGameButton.style.borderRadius = '5px';
-                        newGameButton.style.cursor = 'pointer';
-                        newGameButton.style.marginTop = '20px';
-                        
-                        formContainer.appendChild(newGameButton);
-                        
-                        newGameButton.addEventListener('click', function() {
-                            formContainer.remove();
-                            location.reload(); // Quick way to restart the game
-                        });
-                        
-                    } catch (e) {
-                        console.error("Error submitting score:", e);
-                        alert('Error submitting score. Please try again.');
-                    }
-                });
-                
-            } catch (e) {
-                console.error("Error in submitToLeaderboard:", e);
-            }
-        }
-        
-        // Enhance the form for better mobile experience
-        function enhanceFormForMobile(form) {
-            console.log("Enhancing form for mobile input");
-            
-            // Get form elements
-            const nameInput = document.getElementById('playerName');
-            const emailInput = document.getElementById('playerEmail');
-            const submitButton = document.getElementById('submitScore');
-            const cancelButton = document.getElementById('cancelSubmit');
-            
-            if (!nameInput || !emailInput || !submitButton || !cancelButton) {
-                console.error("Form elements not found for enhancement");
-                return;
-            }
-            
-            // Set form position and appearance
-            form.style.position = 'fixed';
-            form.style.top = '50%';
-            form.style.left = '50%';
-            form.style.transform = 'translate(-50%, -50%)';
-            form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
-            form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
-            form.style.borderRadius = '15px';
-            form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
-            form.style.padding = '25px';
-            form.style.width = '85%';
-            form.style.maxWidth = '350px';
-            form.style.zIndex = '10000001';
-            
-            // Fix form inputs for reliable touch input
-            const enhanceInput = (input) => {
-                input.style.height = '50px';
-                input.style.fontSize = '18px';
-                input.style.padding = '10px 15px';
-                input.style.marginBottom = '15px';
-                input.style.borderRadius = '8px';
-                input.style.border = '2px solid #555';
-                input.style.backgroundColor = '#fff';
-                input.style.color = '#000';
-                input.style.WebkitAppearance = 'none';
-                input.style.appearance = 'none';
-                input.style.touchAction = 'manipulation';
-                input.style.position = 'relative';
-                input.style.zIndex = '10000002';
-                
-                // Add specific input touch handling with aggressive event capture
-                input.addEventListener('touchstart', function(e) {
-                    // Don't prevent default here to allow focus
-                    e.stopPropagation();
-                    this.focus();
-                }, { capture: true });
-                
-                // Ensure proper focus handling
-                input.addEventListener('focus', function() {
-                    console.log(`Input field '${this.id}' focused`);
-                    this.style.borderColor = '#66aaff';
-                    this.style.boxShadow = '0 0 8px rgba(102, 170, 255, 0.8)';
-                });
-                
-                input.addEventListener('blur', function() {
-                    console.log(`Input field '${this.id}' blurred`);
-                    this.style.borderColor = '#555';
-                    this.style.boxShadow = 'none';
-                });
-            };
-            
-            enhanceInput(nameInput);
-            enhanceInput(emailInput);
-            
-            // Make buttons more tappable
-            const enhanceButton = (button, isSubmit) => {
-                button.style.height = '60px';
-                button.style.fontSize = '20px';
-                button.style.fontWeight = 'bold';
-                button.style.textTransform = 'uppercase';
-                button.style.letterSpacing = '1px';
-                button.style.margin = '15px 0';
-                button.style.borderRadius = '8px';
-                button.style.border = '2px solid #555';
-                button.style.position = 'relative';
-                button.style.zIndex = '10000002';
-                button.style.touchAction = 'manipulation';
-                
-                if (isSubmit) {
-                    button.style.backgroundColor = '#d32f2f';
-                    button.style.color = 'white';
-                    button.style.border = '2px solid #ff5252';
-                        } else {
-                    button.style.backgroundColor = '#333';
-                }
-                
-                // Add specific button touch handling
-                button.addEventListener('touchstart', function(e) {
-                    e.stopPropagation();
-                    this.style.transform = 'scale(0.98)';
-                    this.style.opacity = '0.9';
-                }, { capture: true });
-                
-                button.addEventListener('touchend', function(e) {
-                    e.stopPropagation();
-                    this.style.transform = 'scale(1)';
-                    this.style.opacity = '1';
-                }, { capture: true });
-            };
-            
-            enhanceButton(submitButton, true);
-            enhanceButton(cancelButton, false);
-            
-            // Add a submit button event handler to detect submission success
-            submitButton.addEventListener('click', function(e) {
-                console.log("Submit button clicked on mobile form");
-                // The default form handler will still work
-            });
-            
-            // Add a cancel button event handler
-            cancelButton.addEventListener('click', function(e) {
-                console.log("Cancel button clicked on mobile form");
-                form.style.display = 'none';
-                
-                // Reset game state to bring back to game over screen
-                if (window.gameState === "enteringScore") {
-                    window.gameState = "gameOver";
-                }
-            });
-
-            // Add form title styling
-            const formTitle = form.querySelector('.form-title');
-            if (formTitle) {
-                formTitle.style.fontSize = '24px';
-                formTitle.style.fontWeight = 'bold';
-                formTitle.style.marginBottom = '20px';
-                formTitle.style.textAlign = 'center';
-                formTitle.style.color = 'white';
-            }
-            
-            // Hide error message by default
-            const errorMsg = document.getElementById('emailError');
-            if (errorMsg) {
-                errorMsg.style.display = 'none';
-            }
-            
-            // Ensure scrolling is enabled for the form on mobile
-            form.style.overflowY = 'auto';
-            form.style.maxHeight = '90vh';
-            
-            console.log("Mobile form enhancement complete");
-        }
-        
-        // Initialize mobile controls and button monitoring
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOMContentLoaded - Setting up mobile detection");
+            // Initialize Supabase client and store it on window
+            const supabaseUrl = 'https://pvpwmikhzzvtcafhtidh.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHdtaWtoenp2dGNhZmh0aWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1NDA5MDAsImV4cCI6MjAyOTExNjkwMH0.o71bhbTBK_2FHlJYFrELCngtaLWYtFjuXjiN7SuSHW4';
+            window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
             
             // Make mobile controls visible on mobile devices
             if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                 (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
                 ('ontouchstart' in window) ||
                 (navigator.maxTouchPoints > 0)) {
-                console.log("Mobile device detected via DOMContentLoaded");
                 document.getElementById('mobileControls').style.display = 'block';
-                
-                // Handle mobile start button
-                const mobileStartButton = document.getElementById('mobile-start-button');
-                if (mobileStartButton) {
-                    // Show the button
-                    mobileStartButton.style.display = 'block';
-                    
-                    // Set up click/touch handlers to ensure it disappears after use
-                    mobileStartButton.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        startGame();
-                        this.style.display = 'none';
-                        return false;
-                    };
-                    
-                    mobileStartButton.ontouchstart = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        startGame();
-                        this.style.display = 'none';
-                        return false;
-                    };
-                    
-                    console.log("Mobile start button initialized");
-                }
-                
-                // Set up game state monitoring for button visibility
-                setupRestartButtonMonitor();
-                
-                // Set up aggressive leaderboard button event monitoring
-                addLeaderboardButtonListeners();
-                
-                // Set up periodic event listener refresh
-                setInterval(function() {
-                    addLeaderboardButtonListeners();
-                }, 5000);
             }
-            
-            // Add global event listener for leaderboard button
-            document.addEventListener('touchstart', function(e) {
-                // Check if it's the leaderboard submit button
-                const leaderboardButton = document.getElementById('submitLeaderboardBtn');
-                if (leaderboardButton && e.target === leaderboardButton) {
-                    console.log("Leaderboard submit button touched via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                }
-                
-                // Also check guaranteed-mobile-submit
-                if (e.target.id === 'guaranteed-mobile-submit' || e.target.closest('#guaranteed-mobile-submit')) {
-                    console.log("Guaranteed submit button touched via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                }
-            }, {capture: true, passive: false});
-            
-            document.addEventListener('click', function(e) {
-                // Check if it's the leaderboard submit button
-                const leaderboardButton = document.getElementById('submitLeaderboardBtn');
-                if (leaderboardButton && e.target === leaderboardButton) {
-                    console.log("Leaderboard submit button clicked via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                }
-                
-                // Also check guaranteed-mobile-submit
-                if (e.target.id === 'guaranteed-mobile-submit' || e.target.closest('#guaranteed-mobile-submit')) {
-                    console.log("Guaranteed submit button clicked via global handler");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    submitToLeaderboard();
-                }
-            }, {capture: true, passive: false});
         });
         
-        // Function to test that restart button properly triggers game restart
-        function testRestartButton() {
-            console.log("Testing restart button functionality...");
-            const restartButton = document.getElementById('restartButton');
+        // Functions exposed to window for mobile integration
+        window.showLeaderboardForm = function() {
+            if (typeof showLeaderboardForm === 'function') {
+                showLeaderboardForm();
+            }
+        };
+        
+        window.hideLeaderboardForm = function() {
+            if (typeof hideLeaderboardForm === 'function') {
+                hideLeaderboardForm();
+            }
+        };
+        
+        window.submitScoreToLeaderboard = function(playerName, score) {
+            if (typeof submitScoreToLeaderboard === 'function') {
+                submitScoreToLeaderboard(playerName, score);
+            }
+        };
+        
+        // Mobile control functions
+        function mobileJump() {
+            // Use keyCode 32 (spacebar) for jump
+            const e = new KeyboardEvent('keydown', { 
+                'keyCode': 32,
+                'key': ' ',
+                'code': 'Space',
+                'which': 32,
+                'bubbles': true
+            });
+            document.dispatchEvent(e);
+            console.log("Mobile jump event fired");
             
-            if (restartButton) {
-                // Add an event listener to capture all click events
-                restartButton.addEventListener('click', function(e) {
-                    console.log("Restart button CLICKED - Detail event log:", 
-                               {x: e.clientX, y: e.clientY, timestamp: new Date().toISOString()});
-                }, {capture: true, passive: false});
-                
-                restartButton.addEventListener('touchstart', function(e) {
-                    console.log("Restart button TOUCHED - Detail event log:", 
-                               {touches: e.touches.length, timestamp: new Date().toISOString()});
-                    
-                    // Ensure event propagation
-                    e.stopPropagation();
-                    e.preventDefault();
-                    
-                    // Force trigger restart
-                    restartGame();
-                }, {capture: true, passive: false});
-                
-                console.log("Restart button event listeners added successfully");
-            } else {
-                console.warn("Restart button not found during testing");
+            // Hide start button if on title screen
+            if (window.showTitleScreen) {
+                const startBtn = document.getElementById('mobile-start-button');
+                if (startBtn) startBtn.style.display = 'none';
             }
         }
         
-        // Global helper function to force show restart button
-        window.forceShowRestartButton = function() {
-            console.log("Force showing restart button");
-            const restartButton = document.getElementById('restartButton');
-            if (restartButton) {
-                restartButton.style.display = 'block';
-                restartButton.style.position = 'fixed';
-                restartButton.style.zIndex = '10000';
-                restartButton.style.opacity = '1';
-                restartButton.style.visibility = 'visible';
-                
-                // Make sure it has proper class
-                restartButton.className = 'control-area';
-                
-                // Position at bottom center of screen
-                restartButton.style.top = '70%';
-                restartButton.style.left = '50%';
-                restartButton.style.transform = 'translateX(-50%)';
-                
-                return true;
-            } else {
-                console.error("Restart button element not found!");
-                return false;
+        function mobileShoot() {
+            // Use keyCode 90 (Z key) for shooting
+            const e = new KeyboardEvent('keydown', { 
+                'keyCode': 90,
+                'key': 'z',
+                'code': 'KeyZ', 
+                'which': 90,
+                'bubbles': true
+            });
+            document.dispatchEvent(e);
+            console.log("Mobile shoot event fired");
+            
+            // Hide start button if on title screen
+            if (window.showTitleScreen) {
+                const startBtn = document.getElementById('mobile-start-button');
+                if (startBtn) startBtn.style.display = 'none';
             }
-        };
+        }
         
-        // Global helper function to force show leaderboard button - enhanced version
-        window.forceShowLeaderboardButton = function() {
-            console.log("Force showing leaderboard button with enhanced visibility");
-            let leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+        // Simple function to start the game for mobile
+        function startGameMobile() {
+            console.log("Mobile start game clicked");
             
-            // Create button if it doesn't exist
-            if (!leaderboardBtn) {
-                console.log("Button not found, creating it first");
-                createLeaderboardButton();
-                leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                if (!leaderboardBtn) {
-                    console.error("Failed to create leaderboard button!");
-                    return false;
-                }
+            // Hide the mobile start button
+            const mobileStartButton = document.getElementById('mobile-start-button');
+            if (mobileStartButton) {
+                mobileStartButton.style.display = 'none';
             }
             
-            // Force all essential display properties with inline styles
-            leaderboardBtn.style.cssText = `
-                display: block !important;
-                position: fixed !important;
-                top: 40% !important; 
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 300px !important;
-                height: 100px !important;
-                line-height: 100px !important;
-                font-size: 26px !important;
-                text-align: center !important;
-                font-family: 'Courier New', monospace !important;
-                color: white !important;
-                font-weight: bold !important;
-                background-color: rgba(220, 40, 40, 0.95) !important;
-                border: 5px solid rgba(255, 255, 255, 0.95) !important;
-                border-radius: 12px !important;
-                z-index: 999999 !important;
-                pointer-events: auto !important;
-                box-shadow: 0 0 40px rgba(255, 100, 100, 0.9) !important;
-                text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.9) !important;
-                cursor: pointer !important;
-                text-transform: uppercase !important;
-                letter-spacing: 2px !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-                animation: pulseLarge 1.5s infinite alternate !important;
-                touch-action: manipulation !important;
-                -webkit-user-select: none !important;
-                user-select: none !important;
-                -webkit-touch-callout: none !important;
-            `;
-            
-            // Try setting individual properties for browsers that might ignore cssText
-            leaderboardBtn.style.display = 'block';
-            leaderboardBtn.style.position = 'fixed';
-            leaderboardBtn.style.visibility = 'visible';
-            leaderboardBtn.style.opacity = '1';
-            leaderboardBtn.style.zIndex = '999999';
-            leaderboardBtn.style.pointerEvents = 'auto';
-            
-            // Direct event handlers - most reliable
-            leaderboardBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-            leaderboardBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-            
-            // Ensure it has proper class
-            if (!leaderboardBtn.classList.contains("control-area")) {
-                leaderboardBtn.classList.add("control-area");
+            // Create and dispatch a spacebar keydown event to start the game
+            try {
+                // This will create a properly formed keyboard event that works across browsers
+                const spaceEvent = new KeyboardEvent('keydown', {
+                    key: ' ',
+                    code: 'Space',
+                    keyCode: 32,
+                    which: 32,
+                    bubbles: true
+                });
+                document.dispatchEvent(spaceEvent);
+                console.log("Space keydown event dispatched to start game");
+                
+                // For iOS/Safari which can sometimes be picky about simulated events
+                // Create a fallback method to directly set the game state variables if accessible
+                setTimeout(function() {
+                    console.log("Checking if fallback method needed");
+                    if (window.showTitleScreen === true) {
+                        console.log("Using fallback method to start game");
+                        window.showTitleScreen = false;
+                        if (typeof window.gameState !== 'undefined') {
+                            window.gameState = "playing";
+                        }
+                    }
+                }, 300);
+            } catch (e) {
+                console.error("Error dispatching spacebar event:", e);
             }
             
-            // Add extra DOM attributes for visibility
-            leaderboardBtn.setAttribute('data-visible', 'true');
+            return false; // Prevent default action
+        }
+        
+        // Submit to leaderboard function for mobile
+        function submitToLeaderboard() {
+            console.log("Mobile submit to leaderboard button clicked");
             
-            console.log("Leaderboard button should now be visible with enhanced properties");
+            // Hide the submit button to prevent multiple submissions
+            const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+            if (leaderboardBtn) {
+                leaderboardBtn.style.display = 'none';
+            }
             
-            // Call to add event listeners
-            addLeaderboardButtonListeners(leaderboardBtn);
-            
-            // Also force show the brute force button as a reliable fallback
+            // Hide the brute force button too
             const bruteForceButton = document.getElementById('brute-force-mobile-button');
             if (bruteForceButton) {
-                bruteForceButton.style.display = 'block';
-                bruteForceButton.style.position = 'fixed';
-                bruteForceButton.style.bottom = '30%';
-                bruteForceButton.style.left = '0';
-                bruteForceButton.style.right = '0';
-                bruteForceButton.style.margin = '0 auto';
-                bruteForceButton.style.zIndex = '10000001';
-                bruteForceButton.style.width = '90%';
-                bruteForceButton.style.maxWidth = '320px';
-                bruteForceButton.style.height = '120px';
-                bruteForceButton.style.pointerEvents = 'auto';
-                bruteForceButton.style.cursor = 'pointer';
-                bruteForceButton.style.touchAction = 'manipulation';
-                bruteForceButton.style.webkitUserSelect = 'none';
-                bruteForceButton.style.userSelect = 'none';
-                
-                // Direct event handlers - most reliable
-                bruteForceButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                bruteForceButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                
-                console.log("Brute force button visibility ensured");
+                bruteForceButton.style.display = 'none';
             }
             
-            // Double check visibility after a short delay
-            setTimeout(function() {
-                if (leaderboardBtn.style.display !== 'block') {
-                    console.warn("Button still not visible after forcing, trying again...");
-                    leaderboardBtn.style.display = 'block';
-                    leaderboardBtn.style.visibility = 'visible';
-                }
-            }, 50);
-            
-            return true;
-        };
-        
-        // Function to ensure leaderboard button has proper event listeners
-        function addLeaderboardButtonListeners(button) {
-            const leaderboardBtn = button || document.getElementById('submitLeaderboardBtn');
-            if (!leaderboardBtn) {
-                console.error("Cannot add listeners: Leaderboard button not found");
+            // First try using the game's native function if available
+            if (typeof window.showLeaderboardForm === 'function') {
+                console.log("Using game's native showLeaderboardForm");
+                window.showLeaderboardForm();
                 return;
             }
             
-            console.log("Adding enhanced event listeners to leaderboard button");
+            // If native function not available, create a simple form
+            console.log("Creating mobile submission form");
             
-            // Remove any existing listeners first by cloning the element
-            const newButton = leaderboardBtn.cloneNode(true);
-            if (leaderboardBtn.parentNode) {
-                leaderboardBtn.parentNode.replaceChild(newButton, leaderboardBtn);
-            }
+            const formContainer = document.createElement('div');
+            formContainer.id = 'mobileLeaderboardForm';
+            formContainer.style.position = 'fixed';
+            formContainer.style.top = '0';
+            formContainer.style.left = '0';
+            formContainer.style.width = '100%';
+            formContainer.style.height = '100%';
+            formContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            formContainer.style.display = 'flex';
+            formContainer.style.justifyContent = 'center';
+            formContainer.style.alignItems = 'center';
+            formContainer.style.flexDirection = 'column';
+            formContainer.style.zIndex = '10000001';
+            formContainer.style.fontFamily = 'Arial, sans-serif';
             
-            // Set critical properties directly on the element
-            newButton.style.display = 'block';
-            newButton.style.position = 'fixed';
-            newButton.style.top = '40%';
-            newButton.style.left = '50%';
-            newButton.style.transform = 'translate(-50%, -50%)';
-            newButton.style.zIndex = '9999999';
-            newButton.style.width = '300px';
-            newButton.style.height = '100px';
-            newButton.style.backgroundColor = 'rgba(220, 40, 40, 0.95)';
-            newButton.style.color = 'white';
-            newButton.style.fontWeight = 'bold';
-            newButton.style.pointerEvents = 'auto';
+            const formTitle = document.createElement('h2');
+            formTitle.textContent = 'SUBMIT YOUR SCORE';
+            formTitle.style.color = 'white';
+            formTitle.style.marginBottom = '20px';
+            formTitle.style.fontSize = '24px';
             
-            // Most importantly, set these properties
-            newButton.style.cursor = 'pointer';
-            newButton.style.userSelect = 'none';
-            newButton.style.webkitUserSelect = 'none';
-            newButton.style.touchAction = 'manipulation';
-            newButton.style.webkitTouchCallout = 'none';
+            const scoreDisplay = document.createElement('div');
+            scoreDisplay.textContent = 'Score: ' + window.score;
+            scoreDisplay.style.color = 'white';
+            scoreDisplay.style.fontSize = '20px';
+            scoreDisplay.style.marginBottom = '20px';
             
-            // Add inline event handlers (most reliable method)
-            newButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-            newButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Enter your name';
+            nameInput.style.padding = '10px';
+            nameInput.style.fontSize = '18px';
+            nameInput.style.marginBottom = '20px';
+            nameInput.style.width = '80%';
+            nameInput.style.maxWidth = '300px';
+            nameInput.style.borderRadius = '5px';
+            nameInput.style.border = 'none';
             
-            // Add all possible event types for maximum compatibility
-            const eventTypes = ['click', 'touchstart', 'mousedown', 'pointerdown', 'touchend', 'mouseup'];
+            const submitButton = document.createElement('button');
+            submitButton.textContent = 'SUBMIT';
+            submitButton.style.padding = '15px 30px';
+            submitButton.style.fontSize = '20px';
+            submitButton.style.backgroundColor = '#ff3333';
+            submitButton.style.color = 'white';
+            submitButton.style.border = 'none';
+            submitButton.style.borderRadius = '5px';
+            submitButton.style.cursor = 'pointer';
             
-            eventTypes.forEach(eventType => {
-                newButton.addEventListener(eventType, function(e) {
-                    console.log(`Leaderboard button ${eventType} event triggered`);
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Provide visual feedback
-                    this.style.transform = 'translate(-50%, -50%) scale(0.95)';
-                    this.style.backgroundColor = 'rgba(180, 20, 20, 0.95)';
-                    
-                    // Call the submission function
-                    submitToLeaderboard();
-                    
-                    // Restore button appearance after a short delay
-                    setTimeout(() => {
-                        this.style.transform = 'translate(-50%, -50%) scale(1)';
-                        this.style.backgroundColor = 'rgba(220, 40, 40, 0.95)';
-                    }, 150);
-                    
-                    return false;
-                }, {capture: true, passive: false});
-            });
+            formContainer.appendChild(formTitle);
+            formContainer.appendChild(scoreDisplay);
+            formContainer.appendChild(nameInput);
+            formContainer.appendChild(submitButton);
             
-            // Add support for accessibility
-            newButton.setAttribute('role', 'button');
-            newButton.setAttribute('aria-label', 'Submit your score to the leaderboard');
+            document.body.appendChild(formContainer);
             
-            // Also set up the brute force button
-            const bruteForceButton = document.getElementById('brute-force-mobile-button');
-            if (bruteForceButton) {
-                // Make sure the brute force button is visible
-                bruteForceButton.style.display = 'block';
-                bruteForceButton.style.position = 'fixed';
-                bruteForceButton.style.zIndex = '10000001';
-                bruteForceButton.style.pointerEvents = 'auto';
-                
-                // Ensure it has proper event handlers
-                bruteForceButton.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Brute force button clicked");
-                    submitToLeaderboard();
-                    return false;
-                };
-                
-                bruteForceButton.ontouchstart = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Brute force button touched");
-                    submitToLeaderboard();
-                    return false;
-                };
-            }
+            // Focus the name input for mobile keyboards
+            setTimeout(() => nameInput.focus(), 300);
             
-            return newButton;
-        }
-        
-        // Add a new helper function to show all leaderboard buttons 
-        function showAllLeaderboardButtons() {
-            console.log("Showing ALL leaderboard buttons for maximum reliability");
-            
-            // Most important: Show the guaranteed overlay as a completely reliable method
-            const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
-            if (guaranteedButton) {
-                guaranteedButton.style.display = 'block';
-                guaranteedButton.style.position = 'fixed';
-                guaranteedButton.style.top = '0';
-                guaranteedButton.style.left = '0';
-                guaranteedButton.style.width = '100%';
-                guaranteedButton.style.height = '100%';
-                guaranteedButton.style.zIndex = '10000000';
-                guaranteedButton.style.pointerEvents = 'auto';
-                
-                // Make sure to hide the mobile start button if it's still visible
-                const startButton = document.getElementById('mobile-start-button');
-                if (startButton) {
-                    startButton.style.display = 'none';
+            // Submit button handler
+            submitButton.addEventListener('click', async function() {
+                const playerName = nameInput.value.trim();
+                if (!playerName) {
+                    alert('Please enter your name');
+                    return;
                 }
                 
-                console.log("Guaranteed submit overlay displayed");
-            }
-            
-            // Show the brute force button as another option
-            const bruteForceButton = document.getElementById('brute-force-mobile-button');
-            if (bruteForceButton) {
-                bruteForceButton.style.display = 'block';
-                bruteForceButton.style.position = 'fixed';
-                bruteForceButton.style.zIndex = '9999999';
-                bruteForceButton.style.pointerEvents = 'auto';
-                bruteForceButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                bruteForceButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-            }
-            
-            // Also try the main button as a third option
-            window.forceShowLeaderboardButton();
-        }
-        
-        // Add patch for game loop to ensure buttons are shown
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait for p5.js to initialize
-            setTimeout(function() {
-                console.log("Setting up enhanced draw loop patch and gameState monitor");
-                
-                // Completely separate game state monitor for mobile
-                let lastKnownGameState = "";
-                let monitorInterval = setInterval(function() {
-                    try {
-                        // Check if game state exists
-                        if (typeof window.gameState !== 'undefined') {
-                            const currentState = window.gameState;
-                            
-                            // Log state changes
-                            if (currentState !== lastKnownGameState) {
-                                console.log(`Mobile monitor detected game state change: ${lastKnownGameState} -> ${currentState}`);
-                                lastKnownGameState = currentState;
-                                
-                                // On game over, ensure button visibility
-                                if (currentState === "gameOver") {
-                                    console.log("Game over detected by monitor. Updating button visibility...");
-                                    setTimeout(updateLeaderboardButtonVisibility, 0);
-                                    setTimeout(updateLeaderboardButtonVisibility, 100);
-                                    setTimeout(updateLeaderboardButtonVisibility, 500);
-                                    setTimeout(updateLeaderboardButtonVisibility, 1000);
-                                    setTimeout(window.forceShowLeaderboardButton, 1500);
-                                    setTimeout(showAllLeaderboardButtons, 2000); // Show all buttons after a delay
-                                }
-                            }
-                            
-                            // Continuous check for game over state
-                            if (currentState === "gameOver" && 
-                                typeof window.leaderboardScoreSubmitted !== 'undefined' && 
-                                window.leaderboardScoreSubmitted === false) {
-                                
-                                // Check button visibility
-                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                                if (!leaderboardBtn || leaderboardBtn.style.display !== 'block') {
-                                    console.log("Button not visible during game over, forcing display...");
-                                    window.forceShowLeaderboardButton();
-                                    showAllLeaderboardButtons(); // Show all buttons if main one isn't visible
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error in game state monitor:", e);
-                    }
-                }, 250); // Check 4 times per second
-                
-                // Back up original draw function if it exists
-                if (window.draw && typeof window.draw === 'function') {
-                    const originalDraw = window.draw;
-                    
-                    // Override draw function to ensure button visibility
-                    window.draw = function() {
-                        // Call original draw function
-                        originalDraw.apply(this, arguments);
-                        
-                        try {
-                            // This separate code block only handles mobile button visibility
-                            // Check if we're in game over state and score not submitted
-                            if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                                // Make sure leaderboard button is visible
-                                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                                if (!leaderboardBtn) {
-                                    // Button doesn't exist, create it
-                                    console.log("Button doesn't exist in draw loop, creating...");
-                                    createLeaderboardButton();
-                                    setTimeout(window.forceShowLeaderboardButton, 0);
-                                    setTimeout(showAllLeaderboardButtons, 100); // Show all buttons
-                                } else if (leaderboardBtn.style.display !== 'block') {
-                                    // Button exists but not visible
-                                    console.log("Button exists but not visible in draw loop, showing...");
-                                    window.forceShowLeaderboardButton();
-                                    setTimeout(showAllLeaderboardButtons, 100); // Show all buttons
-                                }
-                            }
-                        } catch (e) {
-                            // Silently catch errors to not disrupt the game
-                            console.error("Error in draw function mobile additions:", e);
-                        }
-                    };
-                    
-                    console.log("Successfully patched draw function with enhanced mobile button detection");
-                } else {
-                    console.warn("Could not find draw function to patch");
-                }
-                
-                // Also check initially after a delay
-                setTimeout(function() {
-                    if (window.gameState === "gameOver" && window.leaderboardScoreSubmitted === false) {
-                        console.log("Initial delayed check for game over state");
-                        updateLeaderboardButtonVisibility();
-                        window.forceShowLeaderboardButton();
-                        showAllLeaderboardButtons(); // Show all buttons
-                    }
-                }, 2000);
-            }, 1000); // Wait for game to initialize
-        });
-        
-        // Add global event listeners that will hide the start button
-        document.addEventListener('keydown', function() {
-            hideStartButton();
-        }, true);
-        
-        document.addEventListener('mousedown', function() {
-            hideStartButton();
-        }, true);
-        
-        document.addEventListener('touchstart', function(e) {
-            // Hide start button on any touch
-            hideStartButton();
-            
-            // For mobile controls, check if we touched specific elements
-            const mobileJump = document.getElementById('mobileJump');
-            const mobileShoot = document.getElementById('mobileShoot');
-            const mobileDuck = document.getElementById('mobileDuck');
-            
-            if (e.target === mobileJump || e.target === mobileShoot || e.target === mobileDuck) {
-                console.log("Mobile control touched - hiding start button");
-                hideStartButton();
-                
-                // If we're on the title screen, also start the game
-                if (window.gameState === "titleScreen" || window.showTitleScreen === true) {
-                    console.log("Starting game via mobile control");
-                    startGame();
-                }
-            }
-        }, true);
-        
-        // Helper function to hide the start button
-        function hideStartButton() {
-            const startButton = document.getElementById('mobile-start-button');
-            if (startButton) {
-                startButton.style.display = 'none';
-                console.log("Start button hidden by global handler");
-            }
-        }
-        
-        // Set up an aggressive monitor to ensure start button is never visible during gameplay
-        function setupStartButtonMonitor() {
-            console.log("Setting up aggressive start button monitor");
-            
-            // Force hide immediately if not on title screen
-            if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
-                hideStartButton();
-            }
-            
-            // Set up frequent monitoring
-            const startButtonChecker = setInterval(function() {
                 try {
-                    // Only show button on title screen, hide in all other states
-                    if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
-                        hideStartButton();
-                    } else {
-                        // On title screen, we can show the button
-                        const startButton = document.getElementById('mobile-start-button');
-                        if (startButton) {
-                            startButton.style.display = 'block';
+                    console.log("Submitting score:", playerName, window.score);
+                    
+                    // Try using the game's function first
+                    if (typeof window.submitScoreToLeaderboard === 'function') {
+                        window.submitScoreToLeaderboard(playerName, window.score);
+                    } 
+                    // Otherwise use Supabase directly
+                    else if (window.supabaseClient) {
+                        const { data, error } = await window.supabaseClient
+                            .from('leaderboard')
+                            .insert([{
+                                player_name: playerName,
+                                score: window.score
+                            }]);
+                            
+                        if (error) {
+                            console.error("Supabase error:", error);
+                            alert('Error submitting score: ' + error.message);
+                            return;
                         }
+                    } else {
+                        alert('Error: Could not connect to leaderboard');
+                        return;
                     }
+                    
+                    // Show success message
+                    formTitle.textContent = 'SCORE SUBMITTED!';
+                    formContainer.removeChild(nameInput);
+                    formContainer.removeChild(submitButton);
+                    
+                    const newGameButton = document.createElement('button');
+                    newGameButton.textContent = 'PLAY AGAIN';
+                    newGameButton.style.padding = '15px 30px';
+                    newGameButton.style.fontSize = '20px';
+                    newGameButton.style.backgroundColor = '#4CAF50';
+                    newGameButton.style.color = 'white';
+                    newGameButton.style.border = 'none';
+                    newGameButton.style.borderRadius = '5px';
+                    newGameButton.style.cursor = 'pointer';
+                    newGameButton.style.marginTop = '20px';
+                    
+                    formContainer.appendChild(newGameButton);
+                    
+                    newGameButton.addEventListener('click', function() {
+                        formContainer.remove();
+                        location.reload();
+                    });
                 } catch (e) {
-                    console.error("Error in start button monitor:", e);
+                    console.error("Error submitting score:", e);
+                    alert('Error submitting score. Please try again.');
                 }
-            }, 100); // Check very frequently
-            
-            // Even more aggressive check for the first few seconds
-            for (let i = 1; i <= 20; i++) {
-                setTimeout(function() {
-                    if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
-                        hideStartButton();
-                    }
-                }, i * 200); // Check every 200ms for first 4 seconds
-            }
+            });
         }
         
-        // Call this setup on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            setupStartButtonMonitor();
-        });
-        
-        // Set up a MutationObserver to watch for canvas clicks
-        function setupCanvasClickWatcher() {
+        // Check game state and show buttons accordingly - simple version
+        setInterval(function() {
             try {
-                // Wait for the canvas to be created
-                const observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.addedNodes) {
-                            mutation.addedNodes.forEach(function(node) {
-                                if (node.nodeName === 'CANVAS') {
-                                    console.log("Canvas detected - setting up click watchers");
-                                    
-                                    // Add direct event listeners to the canvas
-                                    node.addEventListener('click', function() {
-                                        hideStartButton();
-                                    }, true);
-                                    
-                                    node.addEventListener('touchstart', function() {
-                                        hideStartButton();
-                                    }, true);
-                                    
-                                    // Also update game state monitoring to be super aggressive
-                                    const gameStateWatcher = setInterval(function() {
-                                        if (window.gameState === "playing") {
-                                            hideStartButton();
-                                        }
-                                    }, 50); // Check every 50ms
-                                    
-                                    observer.disconnect();
-                                }
-                            });
-                        }
-                    });
-                });
-                
-                observer.observe(document.body, { childList: true, subtree: true });
-                
-                // Also try immediately in case canvas is already there
-                const existingCanvas = document.querySelector('canvas');
-                if (existingCanvas) {
-                    console.log("Canvas already exists - setting up click watchers");
+                // Game over state - show submission buttons
+                if (window.gameState === "gameOver") {
+                    // Show submission buttons
+                    const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                    if (leaderboardBtn) {
+                        leaderboardBtn.style.display = 'block';
+                    }
                     
-                    existingCanvas.addEventListener('click', function() {
-                        hideStartButton();
-                    }, true);
+                    const bruteForceButton = document.getElementById('brute-force-mobile-button');
+                    if (bruteForceButton) {
+                        bruteForceButton.style.display = 'block';
+                    }
                     
-                    existingCanvas.addEventListener('touchstart', function() {
-                        hideStartButton();
-                    }, true);
+                    // Hide start button
+                    const startBtn = document.getElementById('mobile-start-button');
+                    if (startBtn) {
+                        startBtn.style.display = 'none';
+                    }
+                }
+                
+                // Title screen - show start button
+                if ((window.showTitleScreen === true || window.gameState === "titleScreen") && window.gameState !== "playing") {
+                    const startBtn = document.getElementById('mobile-start-button');
+                    if (startBtn) {
+                        startBtn.style.display = 'block';
+                    }
+                }
+                
+                // Playing state - hide start button
+                if (window.gameState === "playing") {
+                    const startBtn = document.getElementById('mobile-start-button');
+                    if (startBtn) {
+                        startBtn.style.display = 'none';
+                    }
                 }
             } catch (e) {
-                console.error("Error setting up canvas click watcher:", e);
+                console.error("Error in game state monitor:", e);
             }
-        }
-        
-        // Call this setup on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            setupCanvasClickWatcher();
-        });
+        }, 500);
     </script>
 </head>
 <body>
     <!-- Simple mobile start button, completely separate from the game's original controls -->
     <div id="mobile-start-button" 
-         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000; z-index: 999999;"
-         onclick="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();" 
-         ontouchstart="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();">
+         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 240px; height: 100px; background-color: rgba(0, 0, 0, 0.7); color: white; font-size: 24px; font-family: Arial, sans-serif; text-align: center; line-height: 100px; border-radius: 10px; border: 4px solid white; z-index: 9999; -webkit-tap-highlight-color: transparent;"
+         onclick="startGameMobile(); return false;" 
+         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
          TAP TO START
     </div>
     
@@ -1916,813 +393,14 @@
     
     <!-- Mobile touch controls overlay -->
     <div id="mobileControls">
-        <div id="mobileJump" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
-        <div id="mobileShoot" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
-        <div id="mobileDuck" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
+        <div id="leftControl" class="control-area" onclick="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" onmousedown="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" ontouchstart="mobileJump(); if(window.showTitleScreen === true) startGameMobile();"></div>
+        <div id="rightControl" class="control-area" onclick="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" onmousedown="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" ontouchstart="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();"></div>
     </div>
     
-    <!-- Leaderboard submission button for mobile - enhanced version -->
-    <div id="submitLeaderboardBtn"
-         onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-         onmousedown="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-         onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
-         ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-         ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
-         ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
-         style="font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: none; position: fixed !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 999999 !important; width: 300px !important; height: 100px !important; line-height: 100px !important; background-color: rgba(220, 40, 40, 0.95) !important; border: 5px solid rgba(255, 255, 255, 0.95) !important; font-size: 26px !important;">
-         SUBMIT SCORE
-    </div>
+    <!-- Leaderboard submission button for mobile -->
+    <div id="submitLeaderboardBtn" onclick="submitToLeaderboard()">SUBMIT SCORE</div>
     
-    <!-- Leaderboard form -->
-    <div id="leaderboardForm">
-        <h3 class="form-title">SUBMIT YOUR SCORE</h3>
-        <input type="text" id="playerName" placeholder="Your Name" maxlength="20">
-        <input type="email" id="playerEmail" placeholder="Your Email" required>
-        <div id="emailError" class="error-message">Please enter a valid email address</div>
-        <button id="submitScore">SUBMIT</button>
-        <button id="cancelSubmit">CANCEL</button>
-    </div>
-
-    <!-- Add this immediately before the end of the body tag -->
-    <div id="guaranteed-mobile-submit" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000000; background-color: rgba(0,0,0,0.8); pointer-events: all;">
-        <div onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 350px; height: 150px; background-color: #ff3333; color: white; text-align: center; font-size: 32px; line-height: 150px; border-radius: 15px; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; border: 8px solid white; box-shadow: 0 0 50px #ff0000; animation: mobilePulse 1s infinite alternate; cursor: pointer;">
-            SUBMIT SCORE
-        </div>
-        <style>
-            @keyframes mobilePulse {
-                from { transform: translate(-50%, -50%) scale(1); }
-                to { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 50px #ff5555; }
-            }
-        </style>
-    </div>
-
-    <!-- Add this right after the closing body tag -->
-    <div id="brute-force-mobile-button" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
-
-    <!-- Simple mobile integration script - directly embedded to avoid external file issues -->
-<script>
-    (function() {
-            // Check if we're on a mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                        (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0);
-                        
-        // Initialize leaderboard buttons immediately with direct event handlers        
-        if (isMobile) {
-            console.log("Mobile device detected - initializing leaderboard buttons with direct handlers");
-            
-            // Set up both buttons immediately
-            setTimeout(function() {
-                // Main submit button
-                const submitBtn = document.getElementById('submitLeaderboardBtn');
-                if (submitBtn) {
-                    submitBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                    submitBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                    console.log("Direct handlers added to main submit button");
-                }
-                
-                // Brute force button
-                const bruteForceBtn = document.getElementById('brute-force-mobile-button');
-                if (bruteForceBtn) {
-                    bruteForceBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                    bruteForceBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                    console.log("Direct handlers added to brute force button");
-                }
-                
-                // Register global touch handler for additional reliability
-                document.addEventListener('touchstart', function(e) {
-                    // For the main submit button
-                    if (e.target.id === 'submitLeaderboardBtn' || e.target.closest('#submitLeaderboardBtn')) {
-                        console.log("Submit button touched via global handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        submitToLeaderboard();
-                        return false;
-                    }
-                    
-                    // For the brute force button
-                    if (e.target.id === 'brute-force-mobile-button' || e.target.closest('#brute-force-mobile-button')) {
-                        console.log("Brute force button touched via global handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        submitToLeaderboard();
-                        return false;
-                    }
-                }, {capture: true, passive: false});
-                
-                // Register similar global click handler
-                document.addEventListener('click', function(e) {
-                    // For the main submit button
-                    if (e.target.id === 'submitLeaderboardBtn' || e.target.closest('#submitLeaderboardBtn')) {
-                        console.log("Submit button clicked via global handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        submitToLeaderboard();
-                        return false;
-                    }
-                    
-                    // For the brute force button
-                    if (e.target.id === 'brute-force-mobile-button' || e.target.closest('#brute-force-mobile-button')) {
-                        console.log("Brute force button clicked via global handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        submitToLeaderboard();
-                        return false;
-                    }
-                }, {capture: true, passive: false});
-                
-                console.log("Global event handlers registered for maximum button reliability");
-            }, 100);
-        }
-        
-            // Add mobile form submission improvements when page loads
-            function initMobileFormImprovements() {
-                if (!isMobile) return;
-                
-                // Find the form and its fields
-                const form = document.getElementById('leaderboardForm');
-                const nameInput = document.getElementById('playerName');
-                const emailInput = document.getElementById('playerEmail');
-                const submitButton = document.getElementById('submitScore');
-                const cancelButton = document.getElementById('cancelSubmit');
-                
-                if (!form || !nameInput || !emailInput || !submitButton || !cancelButton) {
-                    console.log("Mobile form elements not found, will try again later");
-            return;
-        }
-        
-                console.log("Setting up improved mobile form behavior");
-                
-                // Fix email input type to ensure proper keyboard on mobile
-                emailInput.type = "email";
-                emailInput.inputMode = "email";
-                emailInput.autocomplete = "email";
-                
-                // Set name field properties
-                nameInput.autocomplete = "name";
-                nameInput.autocapitalize = "words";
-                nameInput.inputMode = "text";
-                
-                // Add maxlength attribute to prevent too long inputs
-                nameInput.maxLength = 20;
-                emailInput.maxLength = 50;
-                
-                // **** FIX: Ensure form input fields can receive touch events ****
-                form.addEventListener('touchstart', function(e) {
-                    // Don't stop propagation for form inputs - allow interaction
-                    if (e.target === nameInput || e.target === emailInput || 
-                        e.target === submitButton || e.target.id === 'cancelSubmit') {
-                        // Allow event to continue for input fields and buttons
-                        e.stopPropagation();
-                    }
-                }, true);
-
-                // Ensure form inputs can be focused and typed into
-                [nameInput, emailInput].forEach(function(input) {
-                    // Remove any existing listeners by cloning
-                    const newInput = input.cloneNode(true);
-                    input.parentNode.replaceChild(newInput, input);
-                    
-                    // Set pointer-events to auto explicitly
-                    newInput.style.pointerEvents = 'auto';
-                    
-                    // Make sure inputs are focusable
-                    newInput.style.zIndex = '100001';
-                    newInput.style.position = 'relative';
-                    
-                    // Prevent parent handlers from blocking input
-                    newInput.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-                    }, true);
-                    
-                    newInput.addEventListener('touchmove', function(e) {
-                        e.stopPropagation();
-                    }, true);
-                    
-                    newInput.addEventListener('touchend', function(e) {
-                        e.stopPropagation();
-                    }, true);
-                    
-                    // Extra focus handling
-                    newInput.addEventListener('focus', function() {
-                        console.log(`Input ${this.id} focused`);
-                        this.style.borderColor = '#66aaff';
-                        
-                        // Ensure form visibility when input is focused
-                form.style.display = 'block';
-                form.style.opacity = '1';
-                form.style.visibility = 'visible';
-                        form.style.zIndex = '100000';
-                    });
-                });
-                
-                // Update references after DOM changes
-                const newNameInput = document.getElementById('playerName');
-                const newEmailInput = document.getElementById('playerEmail');
-                
-                // Handle tabbing between fields
-                if (newNameInput && newEmailInput) {
-                    newNameInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter' || e.keyCode === 13) {
-                            e.preventDefault();
-                            newEmailInput.focus();
-                        }
-                    });
-                    
-                    newEmailInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter' || e.keyCode === 13) {
-                            e.preventDefault();
-                            submitButton.click();
-                        }
-                    });
-                }
-                
-                // **** NEW APPROACH: Complete replacement of form buttons ****
-                // First, remove original buttons to avoid conflicts
-                const formElement = document.getElementById('leaderboardForm');
-                const submitBtnParent = document.getElementById('submitScore').parentNode;
-                const cancelBtnParent = document.getElementById('cancelSubmit').parentNode;
-                
-                // Remove the original buttons completely
-                submitBtnParent.removeChild(document.getElementById('submitScore'));
-                cancelBtnParent.removeChild(document.getElementById('cancelSubmit'));
-                
-                // Create brand new buttons with basic HTML
-                const newSubmitBtn = document.createElement('button');
-                newSubmitBtn.id = 'submitScore';
-                newSubmitBtn.textContent = 'SUBMIT';
-                newSubmitBtn.type = 'button';
-                
-                const newCancelBtn = document.createElement('button');
-                newCancelBtn.id = 'cancelSubmit';
-                newCancelBtn.textContent = 'CANCEL';
-                newCancelBtn.type = 'button';
-                
-                // Append the new buttons to the form
-                submitBtnParent.appendChild(newSubmitBtn);
-                cancelBtnParent.appendChild(newCancelBtn);
-                
-                // Apply extensive styling to ensure visibility and clickability
-                newSubmitBtn.setAttribute('style', `
-                    display: block !important;
-                    width: 100% !important;
-                    height: 60px !important;
-                    margin: 15px 0 !important;
-                    padding: 10px !important;
-                    font-size: 20px !important;
-                    font-weight: bold !important;
-                    font-family: 'Courier New', monospace !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 1px !important;
-                    border-radius: 8px !important;
-                    border: 2px solid #ff5252 !important;
-                    background-color: #d32f2f !important;
-                    color: #fff !important;
-                    position: relative !important;
-                    z-index: 10000002 !important;
-                    cursor: pointer !important;
-                    touch-action: manipulation !important;
-                    -webkit-appearance: none !important;
-                    appearance: none !important;
-                    pointer-events: auto !important;
-                `);
-                
-                newCancelBtn.setAttribute('style', `
-                    display: block !important;
-                    width: 100% !important;
-                    height: 60px !important;
-                    margin: 15px 0 !important;
-                    padding: 10px !important;
-                    font-size: 20px !important;
-                    font-weight: bold !important;
-                    font-family: 'Courier New', monospace !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 1px !important;
-                    border-radius: 8px !important;
-                    border: 2px solid #555 !important;
-                    background-color: #333 !important;
-                    color: #fff !important;
-                    position: relative !important;
-                    z-index: 10000002 !important;
-                    cursor: pointer !important;
-                    touch-action: manipulation !important;
-                    -webkit-appearance: none !important;
-                    appearance: none !important;
-                    pointer-events: auto !important;
-                `);
-                
-                // Define submission function
-                function handleMobileSubmit(e) {
-                    if (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                    
-                    console.log("SUBMIT button pressed through direct handler");
-                    
-                    // Get current values from inputs
-                    const nameValue = document.getElementById('playerName').value.trim();
-                    const emailValue = document.getElementById('playerEmail').value.trim();
-                    
-                    // Basic validation
-                    if (!nameValue) {
-                        alert("Please enter your name");
-                        return false;
-                    }
-                    
-                    // Email validation
-                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailPattern.test(emailValue)) {
-                        // Show error message
-                        const errorMessage = document.getElementById('emailError');
-                        if (errorMessage) {
-                            errorMessage.style.display = 'block';
-                            document.getElementById('playerEmail').style.borderColor = '#ff5555';
-                } else {
-                            alert("Please enter a valid email address");
-                        }
-                        return false;
-                    }
-                    
-                    // Log the submission attempt
-                    console.log("Submitting score with data:", {
-                        name: nameValue,
-                        email: emailValue,
-                        score: window.score || window.pendingScore || 0
-                    });
-                    
-                    // Try both methods of score submission, starting with the game's native function
-                    try {
-                        // First method: Call the game's native function
-                        if (typeof window.submitLeaderboardScore === 'function') {
-                            window.submitLeaderboardScore(nameValue, emailValue);
-                            console.log("Score submitted via game's native function");
-                        } else if (typeof window.submitScoreToLeaderboard === 'function') {
-                            // Use the exposed game function if available
-                            window.submitScoreToLeaderboard(nameValue, emailValue, window.score || window.pendingScore || 0);
-                            console.log("Score submitted via exposed submitScoreToLeaderboard function");
-                        } else {
-                            console.warn("Game's score submission functions not found");
-                            
-                            // Second method: Try to use Supabase directly if available
-                            if (window.supabaseClient) {
-                                window.supabaseClient
-                                    .from('leaderboard')
-                                    .insert([{ 
-                                        player_name: nameValue, 
-                                        email: emailValue, 
-                                        score: window.score || window.pendingScore || 0 
-                                    }])
-                                    .then(function(response) {
-                                        console.log("Score submitted via direct Supabase client call", response);
-                                    })
-                                    .catch(function(err) {
-                                        console.error("Error in Supabase client submission:", err);
-                                    });
-                            } else if (window.supabase) {
-                                window.supabase
-                                    .from('leaderboard')
-                                    .insert([{ 
-                                        player_name: nameValue, 
-                                        email: emailValue, 
-                                        score: window.score || window.pendingScore || 0 
-                                    }])
-                                    .then(function(response) {
-                                        console.log("Score submitted via direct Supabase call", response);
-                                    })
-                                    .catch(function(err) {
-                                        console.error("Error in Supabase submission:", err);
-                                    });
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error during score submission:", e);
-                    }
-                    
-                    // Mark score as submitted regardless of method used
-                    window.leaderboardScoreSubmitted = true;
-                    
-                    // Hide the form
-                    formElement.style.display = 'none';
-                    
-                    // Update game state
-                    if (window.gameState === "enteringScore") {
-                        window.gameState = "gameOver";
-                    }
-                    
-                    // Show confirmation
-                    alert("Your score has been submitted. Thank you!");
-                    
-                    console.log("Score submission completed");
-                    return true;
-                }
-                
-                // Define cancel function
-                function handleMobileCancel(e) {
-                    if (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                    
-                    console.log("CANCEL button pressed through direct handler");
-                    
-                    // Hide the form
-                    formElement.style.display = 'none';
-                    
-                    // Reset game state
-                    if (window.gameState === "enteringScore") {
-                        window.gameState = "gameOver";
-                    }
-                    
-                    console.log("Form submission cancelled");
-                    return true;
-                }
-                
-                // Add global mobile submit function
-                window.mobileSubmitScore = handleMobileSubmit;
-                window.mobileCancelScore = handleMobileCancel;
-                
-                // CRITICAL: Add multiple event listeners to ensure compatibility across different devices
-                // Add regular click events
-                newSubmitBtn.onclick = handleMobileSubmit;
-                newCancelBtn.onclick = handleMobileCancel;
-                
-                // Add touchend events (more reliable on iOS)
-                newSubmitBtn.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileSubmit(e);
-                }, { capture: true, passive: false });
-                
-                newCancelBtn.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleMobileCancel(e);
-                }, { capture: true, passive: false });
-                
-                // Also intercept the form submission
-                form.onsubmit = function(e) {
-                    e.preventDefault();
-                    handleMobileSubmit(e);
-                    return false;
-                };
-                
-                // Add feedback touch events for better user experience
-                [newSubmitBtn, newCancelBtn].forEach(function(btn) {
-                    // Visual feedback on press
-                    btn.addEventListener('touchstart', function(e) {
-                        e.stopPropagation();
-                        this.style.transform = 'scale(0.95)';
-                        this.style.opacity = '0.9';
-                    }, { capture: true, passive: false });
-                    
-                    btn.addEventListener('mousedown', function(e) {
-                        e.stopPropagation();
-                        this.style.transform = 'scale(0.95)';
-                        this.style.opacity = '0.9';
-                    }, { capture: true, passive: false });
-                    
-                    // Reset appearance
-                    ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(function(evt) {
-                        btn.addEventListener(evt, function() {
-                            this.style.transform = 'scale(1)';
-                            this.style.opacity = '1';
-                        }, { capture: true, passive: false });
-                    });
-                });
-                
-                // Add a direct button handler to the document for maximum compatibility
-                document.addEventListener('click', function(e) {
-                    if (e.target && e.target.id === 'submitScore') {
-                        console.log("Submit button clicked via global document handler");
-                        handleMobileSubmit(e);
-                    } else if (e.target && e.target.id === 'cancelSubmit') {
-                        console.log("Cancel button clicked via global document handler");
-                        handleMobileCancel(e);
-                    }
-                }, true);
-                
-                document.addEventListener('touchend', function(e) {
-                    if (e.target && e.target.id === 'submitScore') {
-                        console.log("Submit button touchend via global document handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleMobileSubmit(e);
-                    } else if (e.target && e.target.id === 'cancelSubmit') {
-                        console.log("Cancel button touchend via global document handler");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleMobileCancel(e);
-                    }
-                }, { capture: true, passive: false });
-                
-                // Disable all default form button behaviors that might interfere
-                form.querySelectorAll('button').forEach(function(button) {
-                    button.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        if (this.id === 'submitScore') {
-                            handleMobileSubmit(e);
-                        } else if (this.id === 'cancelSubmit') {
-                            handleMobileCancel(e);
-                        }
-                        
-                        return false;
-                    }, { capture: true, passive: false });
-                });
-                
-                // **** FIX: Prevent parent events from capturing form interactions ****
-                // When form is visible, disable other touch handlers temporarily
-                const observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.attributeName === 'style') {
-                            const isVisible = form.style.display === 'block';
-                            
-                            // When form becomes visible, temporarily disable other controls
-                            if (isVisible) {
-                                // Apply the fixed button handlers again when form becomes visible
-                                const submitBtn = document.getElementById('submitScore');
-                                const cancelBtn = document.getElementById('cancelSubmit');
-                                
-                                if (submitBtn) submitBtn.onclick = handleMobileSubmit;
-                                if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
-                                
-                                // Disable mobile controls while form is open
-                                const mobileControls = document.getElementById('mobileControls');
-                                if (mobileControls) {
-                                    // Save original pointer-events value
-                                    mobileControls.dataset.originalPointerEvents = mobileControls.style.pointerEvents;
-                                    mobileControls.style.pointerEvents = 'none';
-                                }
-                                
-                                // Focus the name input field when form appears
-                                setTimeout(function() {
-                                    const nameInput = document.getElementById('playerName');
-                                    if (nameInput) {
-                                        nameInput.focus();
-                                        console.log("Auto-focusing name input after form display");
-                                    }
-                                }, 100);
-                } else {
-                                // Restore mobile controls when form is closed
-                                const mobileControls = document.getElementById('mobileControls');
-                                if (mobileControls && mobileControls.dataset.originalPointerEvents) {
-                                    mobileControls.style.pointerEvents = mobileControls.dataset.originalPointerEvents;
-                                }
-                            }
-                        }
-                    });
-                });
-                
-                // Observe form style changes
-                observer.observe(form, { attributes: true });
-                
-                console.log("Enhanced mobile form improvements applied with completely rebuilt buttons");
-                
-                // One final enhancement - ensure the form stays in view when keyboard opens
-                window.addEventListener('resize', function() {
-                    if (form.style.display === 'block') {
-                        // Reposition form to stay in viewport
-                        form.style.top = '40%';
-                        // Scroll to ensure form is visible
-                        setTimeout(() => {
-                            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            
-                            // Re-check buttons after resize
-                            const submitBtn = document.getElementById('submitScore');
-                            const cancelBtn = document.getElementById('cancelSubmit');
-                            
-                            if (submitBtn) submitBtn.onclick = handleMobileSubmit;
-                            if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
-                        }, 100);
-                    }
-                });
-                
-                // Last step: when the submitToLeaderboard function is called, reinstall our button handlers
-                const originalSubmitToLeaderboard = window.submitToLeaderboard;
-                if (typeof originalSubmitToLeaderboard === 'function') {
-                    window.submitToLeaderboard = function() {
-                        // Call the original function
-                        originalSubmitToLeaderboard.apply(this, arguments);
-                        
-                        // After a delay, ensure our button handlers are installed
-                        setTimeout(function() {
-                            const submitBtn = document.getElementById('submitScore');
-                            const cancelBtn = document.getElementById('cancelSubmit');
-                            
-                            if (submitBtn) submitBtn.onclick = handleMobileSubmit;
-                            if (cancelBtn) cancelBtn.onclick = handleMobileCancel;
-                            
-                            console.log("Reinstalled button handlers after leaderboard form was shown");
-        }, 500);
-                    };
-                }
-            }
-            
-            // Try initializing the mobile form improvements multiple times to ensure it works
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                initMobileFormImprovements();
-            }
-            
-            window.addEventListener('DOMContentLoaded', initMobileFormImprovements);
-            window.addEventListener('load', initMobileFormImprovements);
-            
-            // Also try with some delays to ensure DOM elements are available
-            setTimeout(initMobileFormImprovements, 500);
-            setTimeout(initMobileFormImprovements, 1500);
-            setTimeout(initMobileFormImprovements, 3000);
-            
-            // Function to initialize the mobile start button
-            function initMobileStart() {
-                console.log("Mobile integration initializing");
-                
-                if (!isMobile) {
-                    console.log("Not on mobile - mobile start button not needed");
-                    return;
-                }
-                
-                console.log("Mobile device detected - setting up start button");
-                
-                // Explicitly hide the original start button to avoid conflicts
-                const originalStartBtn = document.getElementById('startButton');
-                if (originalStartBtn) {
-                    originalStartBtn.style.display = 'none';
-                    originalStartBtn.style.opacity = '0';
-                    originalStartBtn.style.visibility = 'hidden';
-                    originalStartBtn.style.pointerEvents = 'none';
-                    originalStartBtn.style.zIndex = '-1';
-                }
-                
-                // Get the custom mobile start button
-                const mobileStartButton = document.getElementById('mobile-start-button');
-                if (!mobileStartButton) {
-                    console.error("Mobile start button not found in DOM");
-                    return;
-                }
-                
-                // Show the button immediately
-                mobileStartButton.style.display = 'block';
-                
-                // Function to start the game - with multiple fallback approaches
-                const startTheGame = function(e) {
-                    // Prevent default touch behavior
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log("Mobile start button pressed - starting game with direct approach");
-                    
-                    // Visual feedback - change button color
-                    this.style.backgroundColor = 'rgba(100, 100, 100, 0.9)';
-                    
-                    // Hide the button immediately
-                    mobileStartButton.style.display = 'none';
-                    
-                    try {
-                        // APPROACH 1: First try to call the game's startGame function
-                        if (typeof window.startGame === 'function') {
-                            console.log("APPROACH 1: Calling original startGame function");
-                            window.startGame();
-                        }
-                        
-                        // APPROACH 2: After a tiny delay, directly set game state variables
-                        // This is the most reliable approach
-                        setTimeout(function() {
-                            console.log("APPROACH 2: Direct game variable manipulation");
-                            
-                            // Hide any game overlays
-                            const titleOverlay = document.getElementById('titleScreenOverlay');
-                            if (titleOverlay) {
-                                titleOverlay.style.display = 'none';
-                            }
-                            
-                            // Hide the original start button
-                            const originalStartBtn = document.getElementById('startButton');
-                            if (originalStartBtn) {
-                                originalStartBtn.style.display = 'none';
-                            }
-                            
-                            // These are the critical game state variables
-                            window.showTitleScreen = false;
-                            window.gameState = "playing";
-                            
-                            // Ensure game elements are reset properly
-                            window.score = 0;
-                            window.enemies = [];
-                            window.obstacles = [];
-                            window.projectiles = [];
-                            
-                            // Reset player position if it exists
-                            if (window.player) {
-                                window.player.y = window.groundY;
-                                window.player.vy = 0;
-                                window.player.state = "running";
-                            }
-                            
-                            console.log("Game state directly set to playing");
-                        }, 50);
-                        
-                        // APPROACH 3: Simulate spacebar press as an extra fallback
-                        setTimeout(function() {
-                            console.log("APPROACH 3: Simulating spacebar press");
-                            
-                            // Store original key state
-                            const origKey = window.key;
-                            const origKeyCode = window.keyCode;
-                            
-                            // Set to spacebar
-                            window.key = ' ';
-                            window.keyCode = 32;
-                            
-                            // If keyPressed exists, call it
-                            if (typeof window.keyPressed === 'function') {
-                                try {
-                                    window.keyPressed();
-                } catch (e) {
-                                    console.error("Error in keyPressed:", e);
-                                }
-                            }
-                            
-                            // Restore original key state
-                            setTimeout(function() {
-                                window.key = origKey;
-                                window.keyCode = origKeyCode;
-                            }, 100);
-                        }, 150);
-                    } catch (err) {
-                        console.error("Error starting game:", err);
-                        
-                        // Extreme fallback - direct state change
-                        window.showTitleScreen = false;
-                        window.gameState = "playing";
-                    }
-                    
-                    return false;
-                };
-                
-                // Apply mobile button optimizations
-                mobileStartButton.style.display = 'block';
-                mobileStartButton.style.zIndex = '9999999'; // Ensure it's above everything
-                mobileStartButton.style.position = 'fixed';
-                mobileStartButton.style.visibility = 'visible';
-                mobileStartButton.style.opacity = '1';
-                mobileStartButton.style.pointerEvents = 'auto';
-                mobileStartButton.style.touchAction = 'manipulation';
-                
-                // Remove any existing listeners by cloning
-                const newButton = mobileStartButton.cloneNode(true);
-                mobileStartButton.parentNode.replaceChild(newButton, mobileStartButton);
-                
-                // Add event listeners for all possible events
-                ['touchstart', 'click', 'mousedown'].forEach(function(eventType) {
-                    newButton.addEventListener(eventType, startTheGame, { capture: true, passive: false });
-                });
-                
-                console.log("Mobile start button fully configured");
-                
-                // Monitor game state to ensure the button is shown/hidden appropriately
-                setInterval(function() {
-                    try {
-                        // If game is playing, ensure button is hidden
-                        if (window.gameState === 'playing') {
-                            newButton.style.display = 'none';
-                        }
-                        // If at title screen, ensure button is shown
-                        else if (window.gameState === 'start' && window.showTitleScreen) {
-                            newButton.style.display = 'block';
-                            newButton.style.zIndex = '9999999';
-                            newButton.style.visibility = 'visible';
-                            newButton.style.opacity = '1';
-                        }
-                        
-                        // Always ensure the original start button stays hidden
-                        const originalStartBtn = document.getElementById('startButton');
-                        if (originalStartBtn) {
-                            originalStartBtn.style.display = 'none';
-                            originalStartBtn.style.opacity = '0';
-                            originalStartBtn.style.visibility = 'hidden';
-                            originalStartBtn.style.pointerEvents = 'none';
-                        }
-                    } catch (err) {
-                        // Silent catch - don't break anything
-                    }
-                }, 300);
-            }
-            
-            // Initialize immediately
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                initMobileStart();
-            } else {
-                // Also add both load and DOMContentLoaded for maximum reliability
-                window.addEventListener('DOMContentLoaded', initMobileStart);
-                window.addEventListener('load', initMobileStart);
-            }
-            
-            // Also initialize after a delay for maximum reliability
-            setTimeout(initMobileStart, 500);
-            setTimeout(initMobileStart, 1000);
-    })();
-</script>
+    <!-- Brute force button for mobile submission -->
+    <div id="brute-force-mobile-button" onclick="submitToLeaderboard()" style="display: none; position: fixed; bottom: 20%; left: 0; right: 0; margin: 0 auto; width: 200px; height: 60px; background: red; color: white; font-size: 18px; text-align: center; line-height: 60px; border-radius: 10px; border: 3px solid white; z-index: 99999;">SUBMIT SCORE</div>
 </body>
 </html>
