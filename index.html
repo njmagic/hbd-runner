@@ -153,7 +153,8 @@
         
         /* Mobile START GAME button above canvas */
         #mobile-canvas-start-button {
-            display: block; visibility: visible;
+            display: none; /* Hidden by default - only shown on mobile via script */
+            visibility: hidden;
             position: fixed;
             top: 25%;
             left: 50%;
@@ -191,32 +192,62 @@
         window.mobileButtonsShown = false;
         window.gameStarted = false;
         
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Supabase client and store it on window
-            const supabaseUrl = 'https://pvpwmikhzzvtcafhtidh.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHdtaWtoenp2dGNhZmh0aWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1NDA5MDAsImV4cCI6MjAyOTExNjkwMH0.o71bhbTBK_2FHlJYFrELCngtaLWYtFjuXjiN7SuSHW4';
-            window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-            
-            // Initialize mobile detection
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
-                ('ontouchstart' in window) ||
-                (navigator.maxTouchPoints > 0);
-            
-            // Store mobile status globally
-            window.isMobileDevice = isMobile;
-            
-            if (isMobile) {
-                console.log("Mobile device detected");
+        // STRICT DEVICE DETECTION - Guaranteed not to affect desktop
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
+                   ('ontouchstart' in window) ||
+                   (navigator.maxTouchPoints > 0);
+        }
+        
+        // Only run mobile code if this is a mobile device
+        if (isMobileDevice()) {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize Supabase client and store it on window
+                const supabaseUrl = 'https://pvpwmikhzzvtcafhtidh.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHdtaWtoenp2dGNhZmh0aWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1NDA5MDAsImV4cCI6MjAyOTExNjkwMH0.o71bhbTBK_2FHlJYFrELCngtaLWYtFjuXjiN7SuSHW4';
+                window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                
+                console.log("Mobile device detected - setting up mobile environment");
                 setupMobileEnvironment();
                 
                 // Add canvas activation after a short delay
                 setTimeout(activateCanvas, 1000);
-            }
-        });
+                
+                // Setup P5 animation
+                setTimeout(ensureP5Animation, 800);
+                
+                // Center canvas
+                setTimeout(centerCanvasForMobile, 500);
+                
+                // Setup state monitor
+                setupMobileStateMonitor();
+            });
+        } else {
+            console.log("Desktop detected - no mobile code will run");
+            
+            // Hide mobile elements on desktop
+            document.addEventListener('DOMContentLoaded', function() {
+                // Hide the START GAME button on desktop
+                const startButton = document.getElementById('mobile-canvas-start-button');
+                if (startButton) {
+                    startButton.style.display = 'none';
+                    startButton.style.visibility = 'hidden';
+                }
+                
+                // Hide mobile controls on desktop
+                const mobileControls = document.getElementById('mobileControls');
+                if (mobileControls) {
+                    mobileControls.style.display = 'none';
+                    mobileControls.style.visibility = 'hidden';
+                }
+            });
+        }
         
         // Set up the mobile environment cleanly
         function setupMobileEnvironment() {
+            if (!isMobileDevice()) return; // Safety check
+            
             // Show only the START GAME button initially
             const startButton = document.getElementById('mobile-canvas-start-button');
             if (startButton) {
@@ -239,11 +270,52 @@
             }
         }
         
+        // Setup mobile state monitor
+        function setupMobileStateMonitor() {
+            if (!isMobileDevice()) return; // Safety check
+            
+            setInterval(function() {
+                // Game over state
+                if (window.gameState === "gameOver") {
+                    // Hide controls
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'none';
+                        mobileControls.style.visibility = 'hidden';
+                    }
+                    
+                    // Show submission button
+                    const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
+                    if (leaderboardBtn) {
+                        leaderboardBtn.style.display = 'block';
+                        leaderboardBtn.style.visibility = 'visible';
+                    }
+                }
+                // Playing state - just ensure the controls are visible
+                else if (window.gameState === "playing" && window.gameStarted && !window.mobileButtonsShown) {
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'block';
+                        mobileControls.style.visibility = 'visible';
+                        window.mobileButtonsShown = true;
+                    }
+                    
+                    // Make sure the start button stays hidden
+                    const startButton = document.getElementById('mobile-canvas-start-button');
+                    if (startButton) {
+                        startButton.style.display = 'none';
+                        startButton.style.visibility = 'hidden';
+                    }
+                }
+            }, 500);
+        }
+        
         // Simple function to start the game for mobile
         function startGameMobile() {
+            if (!isMobileDevice()) return; // Safety check
             if (window.gameStarted) return; // Prevent multiple calls
-            window.gameStarted = true;
             
+            window.gameStarted = true;
             console.log("Mobile start game clicked");
             
             // 1. Hide the start button immediately and permanently
@@ -269,20 +341,7 @@
                 window.gameState = "playing";
             }
             
-            // 4. Try to access p5 instance directly
-            const p5Instance = window.p5Instance || window.p5;
-            if (p5Instance && typeof p5Instance.loop === 'function') {
-                p5Instance.loop();
-                console.log("Called p5 loop directly");
-            }
-            
-            // 5. Attempt to access any globally exposed game functions
-            if (typeof window.startGame === 'function') {
-                window.startGame();
-                console.log("Called global startGame function");
-            }
-            
-            // 6. Send a single, properly-formed space keydown event
+            // 4. Send a single, properly-formed space keydown event
             const spaceKeyEvent = new KeyboardEvent('keydown', {
                 bubbles: true,
                 cancelable: true,
@@ -292,23 +351,11 @@
                 code: 'Space'
             });
             document.dispatchEvent(spaceKeyEvent);
-            
-            // 7. Force animation restart if not already running
-            if (typeof window.requestAnimationFrame === 'function') {
-                window.requestAnimationFrame(function() {
-                    // Force redraw
-                    const canvas = document.querySelector('canvas');
-                    if (canvas && typeof canvas.getContext === 'function') {
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) {
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        }
-                    }
-                });
-            }
         }
         
         function mobileJump() {
+            if (!isMobileDevice()) return; // Safety check
+            
             console.log("Mobile jump pressed");
             const jumpEvent = new KeyboardEvent('keydown', {
                 bubbles: true,
@@ -322,6 +369,8 @@
         }
         
         function mobileShoot() {
+            if (!isMobileDevice()) return; // Safety check
+            
             console.log("Mobile shoot pressed");
             const shootEvent = new KeyboardEvent('keydown', {
                 bubbles: true,
@@ -334,47 +383,10 @@
             document.dispatchEvent(shootEvent);
         }
         
-        // Much simpler state check that won't cause glitching
-        setInterval(function() {
-            // Skip if we're not on mobile
-            if (!window.isMobileDevice) return;
-            
-            // Game over state
-            if (window.gameState === "gameOver") {
-                // Hide controls
-                const mobileControls = document.getElementById('mobileControls');
-                if (mobileControls) {
-                    mobileControls.style.display = 'none';
-                    mobileControls.style.visibility = 'hidden';
-                }
-                
-                // Show submission button
-                const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                if (leaderboardBtn) {
-                    leaderboardBtn.style.display = 'block';
-                    leaderboardBtn.style.visibility = 'visible';
-                }
-            }
-            // Playing state - just ensure the controls are visible
-            else if (window.gameState === "playing" && window.gameStarted && !window.mobileButtonsShown) {
-                const mobileControls = document.getElementById('mobileControls');
-                if (mobileControls) {
-                    mobileControls.style.display = 'block';
-                    mobileControls.style.visibility = 'visible';
-                    window.mobileButtonsShown = true;
-                }
-                
-                // Make sure the start button stays hidden
-                const startButton = document.getElementById('mobile-canvas-start-button');
-                if (startButton) {
-                    startButton.style.display = 'none';
-                    startButton.style.visibility = 'hidden';
-                }
-            }
-        }, 500);
-        
         // Simple function to center canvas for mobile
         function centerCanvasForMobile() {
+            if (!isMobileDevice()) return; // Safety check
+            
             // Check for existing canvas
             const canvas = document.querySelector('canvas');
             if (canvas) {
@@ -392,17 +404,9 @@
             }
         }
         
-        // Call canvas centering function after a short delay to allow for game initialization
-        setTimeout(function() {
-            if (window.isMobileDevice) {
-                centerCanvasForMobile();
-            }
-        }, 500);
-        
         // Watch for p5.js initialization and ensure proper setup
         function ensureP5Animation() {
-            // Only run this on mobile devices
-            if (!window.isMobileDevice) return false;
+            if (!isMobileDevice()) return false; // Safety check
             
             // Check if the p5 instance is available now
             if (typeof window.p5 !== 'undefined') {
@@ -452,15 +456,75 @@
             return false;
         }
         
-        // Start the p5 animation checker - only if we're on a mobile device
-        setTimeout(function() {
-            if (window.isMobileDevice) {
-                ensureP5Animation();
+        // Function to specifically activate the canvas and ensure animations run
+        function activateCanvas() {
+            if (!isMobileDevice()) return; // Safety check
+            
+            // Check if the p5 instance exists and is initialized
+            if (typeof window.p5 !== 'undefined' && typeof window.loop === 'function') {
+                // Ensure the p5 loop is running
+                window.loop();
+                console.log("Activated p5 animation loop");
             }
-        }, 800);
+            
+            // Force any animation frame-based animations to run
+            if (typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(function() {
+                    console.log("Forcing animation frame");
+                });
+            }
+            
+            // Check for canvas and ensure it's active
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                // Make sure the canvas is visible and interactive
+                canvas.style.pointerEvents = 'auto';
+                canvas.style.visibility = 'visible';
+                canvas.style.display = 'block';
+                
+                // Try to dispatch some events to wake up the canvas
+                ['click', 'mousemove', 'touchstart'].forEach(function(eventType) {
+                    canvas.dispatchEvent(new Event(eventType, {
+                        bubbles: true,
+                        cancelable: true
+                    }));
+                });
+                
+                // If the canvas has a context, try to trigger a redraw
+                if (typeof canvas.getContext === 'function') {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx && typeof ctx.clearRect === 'function') {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                }
+            }
+            
+            // Schedule another check for canvas activation
+            setTimeout(checkCanvasStatus, 500);
+        }
+        
+        // Check if the canvas is actually active and animations are running
+        function checkCanvasStatus() {
+            if (!isMobileDevice()) return; // Safety check
+            
+            // Look for signs of animation on the title screen
+            if (typeof window.frameCount !== 'undefined') {
+                console.log("Frame count detected:", window.frameCount);
+                // If frameCount is not advancing, try to restart the loop
+                const currentFrame = window.frameCount;
+                setTimeout(function() {
+                    if (window.frameCount === currentFrame && typeof window.loop === 'function') {
+                        window.loop();
+                        console.log("Restarted animation loop");
+                    }
+                }, 500);
+            }
+        }
         
         // Submit to leaderboard function
         function submitToLeaderboard() {
+            if (!isMobileDevice()) return; // Safety check
+            
             console.log("Submit to leaderboard");
             // Hide the button to prevent multiple submissions
             const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
@@ -548,79 +612,11 @@
                 }
             });
         }
-        
-        // Function to specifically activate the canvas and ensure animations run
-        function activateCanvas() {
-            // Only run this on mobile devices
-            if (!window.isMobileDevice) return;
-            
-            // Check if the p5 instance exists and is initialized
-            if (typeof window.p5 !== 'undefined' && typeof window.loop === 'function') {
-                // Ensure the p5 loop is running
-                window.loop();
-                console.log("Activated p5 animation loop");
-            }
-            
-            // Force any animation frame-based animations to run
-            if (typeof window.requestAnimationFrame === 'function') {
-                window.requestAnimationFrame(function() {
-                    console.log("Forcing animation frame");
-                });
-            }
-            
-            // Check for canvas and ensure it's active
-            const canvas = document.querySelector('canvas');
-            if (canvas) {
-                // Make sure the canvas is visible and interactive
-                canvas.style.pointerEvents = 'auto';
-                canvas.style.visibility = 'visible';
-                canvas.style.display = 'block';
-                
-                // Try to dispatch some events to wake up the canvas
-                ['click', 'mousemove', 'touchstart'].forEach(function(eventType) {
-                    canvas.dispatchEvent(new Event(eventType, {
-                        bubbles: true,
-                        cancelable: true
-                    }));
-                });
-                
-                // If the canvas has a context, try to trigger a redraw
-                if (typeof canvas.getContext === 'function') {
-                    const ctx = canvas.getContext('2d');
-                    if (ctx && typeof ctx.clearRect === 'function') {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-                }
-            }
-            
-            // Schedule another check for canvas activation
-            setTimeout(checkCanvasStatus, 500);
-        }
-        
-        // Check if the canvas is actually active and animations are running
-        function checkCanvasStatus() {
-            // Only run this on mobile devices
-            if (!window.isMobileDevice) return;
-            
-            // Look for signs of animation on the title screen
-            if (typeof window.frameCount !== 'undefined') {
-                console.log("Frame count detected:", window.frameCount);
-                // If frameCount is not advancing, try to restart the loop
-                const currentFrame = window.frameCount;
-                setTimeout(function() {
-                    if (window.frameCount === currentFrame && typeof window.loop === 'function') {
-                        window.loop();
-                        console.log("Restarted animation loop");
-                    }
-                }, 500);
-            }
-        }
     </script>
 </head>
 <body>
-    <!-- Mobile START GAME button above canvas -->
+    <!-- Mobile START GAME button above canvas - Only visible on mobile -->
     <div id="mobile-canvas-start-button" 
-         style="display: block; visibility: visible;"
          onclick="startGameMobile()">
         START GAME
     </div>
