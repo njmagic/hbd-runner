@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HBD Sidescroller (Fixed)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border: 2px solid #333;
+        }
+    </style>
+    <script src="libraries/p5.min.js"></script>
+    <script>
+        // Global variables
+        let gameState = "start";
+        let debugMode = true;
+        
+        let player = {
+            x: 100,
+            y: 0,
+            vy: 0,
+            state: "running",
+            animFrame: 0,
+            animTimer: 0
+        };
+        
+        let enemies = [];
+        let obstacles = [];
+        let projectiles = [];
+        let groundY = 380;
+        let gravity = 0.5;
+        let jumpStrength = -12;
+        let scrollSpeed = 5;
+        let score = 0;
+        
+        // Images and graphics
+        let playerGraphic;
+        let obstacleGraphic;
+        let flyingObstacleGraphic;
+        
+        function setup() {
+            createCanvas(800, 400);
+            
+            // Set player's initial position
+            player.y = groundY;
+            
+            // Create player graphic
+            playerGraphic = createGraphics(32, 32);
+            playerGraphic.fill(255);
+            playerGraphic.noStroke();
+            playerGraphic.ellipse(16, 16, 30, 30);
+            
+            // Create obstacle graphic
+            obstacleGraphic = createGraphics(30, 30);
+            obstacleGraphic.fill(200);
+            obstacleGraphic.noStroke();
+            obstacleGraphic.rect(0, 0, 30, 30);
+            
+            // Create flying obstacle graphic
+            flyingObstacleGraphic = createGraphics(30, 30);
+            flyingObstacleGraphic.fill(150);
+            flyingObstacleGraphic.noStroke();
+            flyingObstacleGraphic.triangle(0, 30, 15, 0, 30, 30);
+            
+            console.log("Game setup completed");
+        }
+        
+        function draw() {
+            // Check for title screen
+            if (gameState === "start") {
+                drawTitleScreen();
+                return;
+            }
+            
+            if (gameState === "playing") {
+                // Main game drawing
+                background(20);
+                
+                // Draw a skyline
+                drawSkyline();
+                
+                // Draw ground
+                fill(40);
+                rect(0, groundY, width, height - groundY);
+                
+                // Update player jumping
+                if (player.state === "jumping") {
+                    player.y += player.vy;
+                    player.vy += gravity;
+                    if (player.y >= groundY) {
+                        player.y = groundY;
+                        player.vy = 0;
+                        player.state = "running";
+                    }
+                }
+                
+                // Draw player
+                fill(255);
+                if (player.state === "ducking") {
+                    rect(player.x, player.y - 15, 30, 15); // Shorter when ducking
+                } else {
+                    image(playerGraphic, player.x, player.y - 32);
+                }
+                
+                // Spawn obstacles randomly
+                if (random() < 0.01) {
+                    obstacles.push({ 
+                        x: width + 50, 
+                        y: groundY,
+                        width: 30,
+                        height: 30,
+                        type: "ground"
+                    });
+                }
+                
+                if (random() < 0.005) {
+                    obstacles.push({ 
+                        x: width + 50, 
+                        y: groundY - 100 + random(-30, 30),
+                        width: 30,
+                        height: 30,
+                        type: "flying",
+                        swingOffset: random(0, TWO_PI)
+                    });
+                }
+                
+                // Special cake obstacle - 18% chance when spawning a ground obstacle
+                if (random() < 0.002) {
+                    if (random() < 0.18) {
+                        obstacles.push({ 
+                            x: width + 50, 
+                            y: groundY,
+                            width: 30,
+                            height: 30,
+                            type: "cake"
+                        });
+                        console.log("Cake obstacle spawned");
+                    }
+                }
+                
+                // Update and draw obstacles
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    let obstacle = obstacles[i];
+                    obstacle.x -= scrollSpeed;
+                    
+                    // Draw obstacle based on type
+                    drawObstacle(obstacle);
+                    
+                    // Check collision with player
+                    if (checkCollision(getPlayerHitbox(), getObstacleHitbox(obstacle))) {
+                        console.log("Collision with obstacle: " + obstacle.type);
+                        gameState = "gameover";
+                    }
+                    
+                    // Remove if off screen
+                    if (obstacle.x < -50) {
+                        obstacles.splice(i, 1);
+                    }
+                }
+                
+                // Update score
+                score += 0.1;
+                
+                // Display score
+                fill(255);
+                textSize(20);
+                text("Score: " + Math.floor(score), 20, 30);
+            }
+            
+            // Game over state
+            if (gameState === "gameover") {
+                textSize(48);
+                textAlign(CENTER);
+                fill(255, 0, 0);
+                text("GAME OVER", width/2, height/2);
+                
+                textSize(24);
+                fill(255);
+                text("Score: " + Math.floor(score), width/2, height/2 + 40);
+                text("Press SPACE to restart", width/2, height/2 + 80);
+                
+                if (keyIsPressed && key === ' ') {
+                    resetGame();
+                }
+            }
+        }
+        
+        function drawTitleScreen() {
+            background(0);
+            
+            // Draw title
+            fill(255);
+            textSize(48);
+            textAlign(CENTER);
+            text("HBD SIDESCROLLER", width/2, height/2 - 50);
+            
+            // Draw instructions
+            textSize(24);
+            text("SPACE to jump, DOWN to duck", width/2, height/2 + 20);
+            
+            // Flashing prompt
+            if (frameCount % 60 < 30) {
+                textSize(28);
+                text("Press SPACE to start", width/2, height/2 + 80);
+            }
+            
+            // Check for start
+            if (keyIsPressed && key === ' ') {
+                gameState = "playing";
+            }
+        }
+        
+        function drawSkyline() {
+            // Draw stars
+            for (let i = 0; i < 50; i++) {
+                fill(255, 100);
+                ellipse(
+                    (i * 37 + frameCount * 0.1) % width, 
+                    50 + noise(i) * 100, 
+                    2, 
+                    2
+                );
+            }
+            
+            // Draw city skyline
+            fill(40);
+            // Draw buildings
+            for (let i = 0; i < 10; i++) {
+                let buildingX = (i * 100 - frameCount * 0.2) % width;
+                if (buildingX < -80) buildingX += width;
+                
+                rect(buildingX, 200, 80, 180);
+                
+                // Windows
+                fill(60);
+                for (let w = 0; w < 5; w++) {
+                    for (let h = 0; h < 8; h++) {
+                        if (random() < 0.3) { // Some windows lit
+                            rect(buildingX + 10 + w*15, 220 + h*20, 10, 15);
+                        }
+                    }
+                }
+                fill(40);
+            }
+        }
+        
+        function drawObstacle(obstacle) {
+            push();
+            translate(obstacle.x, obstacle.y);
+            
+            // Display hitbox in debug mode
+            if (debugMode) {
+                noFill();
+                stroke(255, 0, 0);
+                let hitbox = getObstacleHitbox(obstacle);
+                rectMode(CENTER);
+                rect(0, -hitbox.height/2, hitbox.width, hitbox.height);
+                noStroke();
+                fill(255);
+                textAlign(CENTER);
+                text(obstacle.type, 0, -50);
+                rectMode(CORNER);
+            }
+            
+            if (obstacle.type === "ground") {
+                // Ground obstacle
+                image(obstacleGraphic, -15, -30);
+            } else if (obstacle.type === "flying") {
+                // Apply swinging motion
+                let yAdjust = sin(frameCount * 0.05 + obstacle.swingOffset) * 10;
+                image(flyingObstacleGraphic, -15, -15 + yAdjust);
+            } else if (obstacle.type === "cake") {
+                // Cake obstacle
+                drawCake();
+            }
+            
+            pop();
+        }
+        
+        function drawCake() {
+            // Draw cake
+            fill(240);
+            ellipse(0, -15, 30, 20);
+            rect(-15, -30, 30, 15, 5);
+            
+            // Candles
+            fill(200);
+            rect(-10, -35, 3, 8);
+            rect(0, -35, 3, 8);
+            rect(10, -35, 3, 8);
+            
+            // Flames
+            fill(255, 100, 0);
+            ellipse(-9, -38, 5, 7);
+            ellipse(1, -38, 5, 7);
+            ellipse(11, -38, 5, 7);
+        }
+        
+        function getPlayerHitbox() {
+            if (player.state === "ducking") {
+                return {
+                    x: player.x,
+                    y: player.y - 15,
+                    width: 30,
+                    height: 15,
+                    type: "player"
+                };
+            } else {
+                return {
+                    x: player.x + 5,
+                    y: player.y - 32,
+                    width: 22,
+                    height: 32,
+                    type: "player"
+                };
+            }
+        }
+        
+        function getObstacleHitbox(obstacle) {
+            if (obstacle.type === "ground") {
+                return {
+                    x: obstacle.x - 15,
+                    y: obstacle.y - 30,
+                    width: 30,
+                    height: 30,
+                    type: "ground_obstacle"
+                };
+            } else if (obstacle.type === "flying") {
+                let yAdjust = sin(frameCount * 0.05 + obstacle.swingOffset) * 10;
+                return {
+                    x: obstacle.x - 15,
+                    y: obstacle.y - 15 + yAdjust,
+                    width: 30,
+                    height: 30,
+                    type: "flying_obstacle"
+                };
+            } else if (obstacle.type === "cake") {
+                return {
+                    x: obstacle.x - 15,
+                    y: obstacle.y - 30,
+                    width: 30,
+                    height: 30,
+                    type: "ground_obstacle"
+                };
+            }
+        }
+        
+        function checkCollision(rect1, rect2) {
+            // Skip collision check if boxes are undefined
+            if (!rect1 || !rect2) return false;
+            
+            let collision = rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+            
+            // Debug logging
+            if (collision && debugMode) {
+                console.log("Collision detected:", rect1.type, "with", rect2.type);
+            }
+            
+            // Special case for jumping on obstacles
+            if (collision && rect1.type === "player" && 
+                (rect2.type === "ground_obstacle" || rect2.type === "flying_obstacle")) {
+                let playerBottom = rect1.y + rect1.height;
+                let obstacleTop = rect2.y;
+                
+                if (player.vy > 0 && playerBottom < obstacleTop + 10) {
+                    // Player is landing on top
+                    player.y = obstacleTop - rect1.height + 1;
+                    player.vy = 0;
+                    player.state = "running";
+                    return false; // No collision
+                }
+            }
+            
+            return collision;
+        }
+        
+        function resetGame() {
+            // Reset game state
+            gameState = "playing";
+            score = 0;
+            obstacles = [];
+            
+            // Reset player
+            player.y = groundY;
+            player.vy = 0;
+            player.state = "running";
+        }
+        
+        // Handle keyboard input
+        function keyPressed() {
+            if (gameState === "playing") {
+                if (key === ' ' || keyCode === UP_ARROW) {
+                    if (player.state === "running") {
+                        player.vy = jumpStrength;
+                        player.state = "jumping";
+                    }
+                } else if (keyCode === DOWN_ARROW) {
+                    if (player.state === "running") {
+                        player.state = "ducking";
+                    }
+                }
+            }
+        }
+        
+        function keyReleased() {
+            if (keyCode === DOWN_ARROW) {
+                if (player.state === "ducking") {
+                    player.state = "running";
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- Game will be rendered by p5.js -->
+</body>
+</html> 

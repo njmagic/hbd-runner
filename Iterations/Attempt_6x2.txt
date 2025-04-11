@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5JS Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+    <script src="sketch.js"></script>
+</head>
+<body>
+</body>
+</html>
+
+// Global variables
+let gameState = "start";
+let player = {
+  x: 100,
+  y: 0,
+  vy: 0,
+  state: "running",
+  animFrame: 0,
+  animTimer: 0
+};
+let enemies = [];
+let obstacles = [];
+let projectiles = [];
+let backgroundGfx;
+let midgroundGfx;
+let foregroundGfx;
+let cloudGfx;
+let clouds = [];
+let groundTile;
+let playerRunningFrames = [];
+let playerJumpingFrame;
+let playerDuckingFrame;
+let enemyGfx = {}; // Object to hold different enemy graphics
+let groundObstacleGfx;
+let flyingObstacleGfx;
+let projectileGfx;
+let groundOffset = 0;
+let backgroundOffset = 0;
+let midgroundOffset = 0;
+let foregroundOffset = 0;
+let scrollSpeed = 5;
+let gravity = 0.5;
+let jumpStrength = -10;
+let score = 0;
+let enemiesKilled = 0;
+let shootEffects = []; // Array to hold shooting visual effects
+// Slow-motion effect for dramatic kills
+let slowMotion = false;
+let slowMotionTimer = 0;
+let slowMotionDuration = 30; // 0.5 seconds at 60fps
+let normalScrollSpeed = 5;
+// Screen effects
+let screenFlash = 0;
+let groundY = 380; // Adjusted ground level to be closer to bottom of screen
+let playerCenterX = 100; // Center point for the player's position
+// let playerGroundTile; // Removing special player ground tile
+
+function setup() {
+  createCanvas(800, 400);
+  frameRate(60);
+
+  // Set the player's y position to the ground level
+  player.y = groundY;
+
+  // Far background with only black/white colors
+  backgroundGfx = createGraphics(800, 400);
+  backgroundGfx.background(0); // Pure black background
+  
+  // Stars - white only, more varied and atmospheric
+  backgroundGfx.fill(255, 150);
+  for (let i = 0; i < 150; i++) {
+    let x = random(0, 800);
+    let y = random(0, 250);
+    let size = random(0.5, 2);
+    backgroundGfx.noStroke();
+    backgroundGfx.ellipse(x, y, size, size);
+    
+    // Add subtle glow to some stars
+    if (random() < 0.2) {
+      backgroundGfx.fill(255, 50);
+      backgroundGfx.ellipse(x, y, size + 2, size + 2);
+    }
+  }
+  
+  // More dramatic distant city silhouette - black only
+  backgroundGfx.fill(0);
+  
+  // Create an array of building heights for a more interesting skyline
+  let skylinePoints = [];
+  for (let x = 0; x < 800; x += 20) {
+    // Create varied heights with some taller skyscrapers
+    let h;
+    if (random() < 0.1) {
+      // Tall skyscraper
+      h = random(120, 200);
+    } else {
+      // Regular buildings
+      h = random(40, 100);
+    }
+    skylinePoints.push({x: x, h: h});
+  }
+  
+  // Sort some adjacent buildings to create a nicer silhouette
+  for (let i = 1; i < skylinePoints.length - 1; i++) {
+    if (random() < 0.5) {
+      // Create ascending or descending patterns
+      if (skylinePoints[i-1].h < skylinePoints[i].h) {
+        skylinePoints[i+1].h = min(skylinePoints[i].h + random(-20, 30), 200);
+      } else {
+        skylinePoints[i+1].h = max(skylinePoints[i].h + random(-30, 20), 30);
+      }
+    }
+  }
+  
+  // Draw the skyline
+  for (let i = 0; i < skylinePoints.length; i++) {
+    let x = skylinePoints[i].x;
+    let w = random(20, 50);
+    let h = skylinePoints[i].h;
+    backgroundGfx.rect(x, 400 - h, w, h);
+    
+    // Add some lit windows - white only
+    backgroundGfx.fill(255, 100);
+    let windows = floor(random(1, 5));
+    let windowSize = 2;
+    for (let j = 0; j < windows; j++) {
+      backgroundGfx.rect(x + random(5, w-5), 400 - h + random(10, h-10), windowSize, windowSize);
+    }
+    backgroundGfx.fill(0);
+  }
+  
+  // Moon is removed from here and will be drawn directly in the draw function
+  
+  // Distant city silhouette - black only
+  backgroundGfx.fill(0);
+  for (let i = 0; i < 20; i++) {
+    let x = random(0, 800);
+    let w = random(30, 120);
+    let h = random(40, 100);
+    backgroundGfx.rect(x, 400 - h, w, h);
+    
+    // Some lit windows - white only
+    backgroundGfx.fill(255, 100);
+    let windows = floor(random(2, 6));
+    let windowSize = 3;
+    for (let j = 0; j < windows; j++) {
+      backgroundGfx.rect(x + random(5, w-5), 400 - h + random(10, h-10), windowSize, windowSize);
+    }
+    backgroundGfx.fill(0);
+  }
+  
+  // Create cloud graphics
+  cloudGfx = createGraphics(100, 60);
+  cloudGfx.noStroke();
+  // Dark noir clouds
+  cloudGfx.fill(20, 180);
+  cloudGfx.ellipse(30, 30, 50, 40);
+  cloudGfx.ellipse(60, 25, 60, 40);
+  cloudGfx.ellipse(80, 35, 40, 30);
+  cloudGfx.ellipse(50, 40, 60, 35);
+  cloudGfx.ellipse(30, 40, 40, 30);
+  
+  // Initialize some clouds with random positions and speeds
+  for (let i = 0; i < 5; i++) {
+    clouds.push({
+      x: random(0, width),
+      y: random(20, 150),
+      speed: random(0.3, 1.2),
+      scale: random(0.5, 1.5),
+      alpha: random(150, 230)
+    });
+  }
+  
+  // Midground (medium-sized buildings)
+  midgroundGfx = createGraphics(1200, 400);
+  midgroundGfx.background(0, 0, 0, 0); // Transparent background
+  
+  // Mid-distance buildings with more dramatic silhouettes
+  for (let i = 0; i < 15; i++) {
+    let x = random(0, 1200);
+    let w = random(60, 140);
+    let h = random(100, 180);
+    
+    // Building base
+    midgroundGfx.fill(12); // Very dark gray for buildings
+    midgroundGfx.rect(x, 400 - h, w, h);
+    
+    // Add interesting rooftop features - water towers, antennas
+    if (random() < 0.5) {
+      // Water tower on roof
+      midgroundGfx.fill(8);
+      let towerSize = w * 0.4;
+      midgroundGfx.rect(x + w/2 - towerSize/2, 400 - h - towerSize, towerSize, towerSize);
+      midgroundGfx.rect(x + w/2 - towerSize/4, 400 - h - towerSize*1.3, towerSize/2, towerSize*0.3);
+    } else if (random() < 0.3) {
+      // Antenna/spire
+      midgroundGfx.fill(5);
+      let spireWidth = w * 0.1;
+      let spireHeight = random(30, 60);
+      midgroundGfx.rect(x + w/2 - spireWidth/2, 400 - h - spireHeight, spireWidth, spireHeight);
+    }
+    
+    // Windows pattern - only white with more varied patterns
+    midgroundGfx.fill(255, 100);
+    let windowSize = 5;
+    let windowSpace = 12;
+    
+    // Create random window patterns
+    if (random() < 0.6) {
+      // Regular grid
+      for (let wx = x + 10; wx < x + w - 10; wx += windowSpace) {
+        for (let wy = 400 - h + 15; wy < 390; wy += windowSpace + random(-2, 2)) {
+          if (random() < 0.3) { // Fewer windows lit
+            midgroundGfx.rect(wx, wy, windowSize, windowSize);
+          }
+        }
+      }
+    } else if (random() < 0.5) {
+      // Vertical strips of windows
+      for (let wx = x + 10; wx < x + w - 10; wx += windowSpace * 2) {
+        for (let wy = 400 - h + 15; wy < 390; wy += windowSpace) {
+          if (random() < 0.4) {
+            midgroundGfx.rect(wx, wy, windowSize, windowSize * 3);
+          }
+        }
+      }
+    } else {
+      // Horizontal strips
+      for (let wy = 400 - h + 15; wy < 390; wy += windowSpace * 3) {
+        for (let wx = x + 10; wx < x + w - 10; wx += windowSpace) {
+          if (random() < 0.4) {
+            midgroundGfx.rect(wx, wy, windowSize * 3, windowSize);
+          }
+        }
+      }
+    }
+  }
+  
+  // Foreground (larger, more detailed buildings)
+  foregroundGfx = createGraphics(1600, 400);
+  foregroundGfx.background(0, 0, 0, 0); // Transparent background
+  
+  // Add different styled noir buildings
+  for (let i = 0; i < 12; i++) {
+    let x = random(0, 1600);
+    let w = random(80, 200);
+    let h = random(180, 300);
+    let buildingType = floor(random(3));
+    
+    if (buildingType === 0) {
+      // Art deco style
+      foregroundGfx.fill(5); // Almost black
+      foregroundGfx.rect(x, 400 - h, w, h);
+      
+      // Decorative top
+      foregroundGfx.fill(15);
+      foregroundGfx.rect(x + w/4, 400 - h - 20, w/2, 20);
+      
+      // Windows
+      foregroundGfx.fill(255, 120);
+      for (let wx = 0; wx < floor(w/15); wx++) {
+        for (let wy = 0; wy < floor(h/20); wy++) {
+          if (random() < 0.3) { // Fewer windows lit
+            foregroundGfx.rect(x + wx * 15 + 5, 400 - h + wy * 20 + 5, 10, 15);
+          }
+        }
+      }
+    } else if (buildingType === 1) {
+      // Warehouse/industrial
+      foregroundGfx.fill(10);
+      foregroundGfx.rect(x, 400 - h, w, h);
+      
+      // Windows
+      foregroundGfx.fill(255, 100);
+      let rows = floor(h/40);
+      for (let wy = 0; wy < rows; wy++) {
+        for (let wx = 0; wx < 3; wx++) {
+          if (random() < 0.3) { // Fewer windows lit
+            foregroundGfx.rect(x + wx * (w/3) + 10, 400 - h + wy * 40 + 10, w/3 - 20, 25);
+          }
+        }
+      }
+    } else {
+      // Modern style
+      foregroundGfx.fill(8);
+      foregroundGfx.rect(x, 400 - h, w, h);
+      
+      // Window grid
+      foregroundGfx.fill(255, 110);
+      for (let wx = 0; wx < floor(w/20); wx++) {
+        for (let wy = 0; wy < floor(h/25); wy++) {
+          if (random() < 0.4) { // Fewer windows lit
+            foregroundGfx.rect(x + wx * 20 + 5, 400 - h + wy * 25 + 5, 15, 20);
+          }
+        }
+      }
+    }
+    
+    // Add occasional white neon signs or billboards
+    if (random() < 0.3) {
+      foregroundGfx.fill(255, 180);
+      foregroundGfx.rect(x + random(10, w-50), 400 - h + random(30, 60), random(30, 50), 15);
+    }
+  }
+
+  // Create clean, simple ground/floor for the entire bottom
+  groundTile = createGraphics(128, 64);
+  groundTile.background(0, 0, 0, 0); // Transparent background
+  
+  // Street base - pure black
+  groundTile.fill(0); // Pure black asphalt
+  groundTile.noStroke();
+  groundTile.rect(0, 0, 128, 64);
+  
+  // Simple horizontal line for floor edge - align with player feet
+  groundTile.fill(60);
+  groundTile.rect(0, 0, 128, 2); // Move to the top of the tile
+  
+  // Minimal texture - just a few specks
+  groundTile.fill(30);
+  for (let i = 0; i < 15; i++) {
+    let x = random(0, 128);
+    let y = random(5, 60); // Below the line
+    let size = random(1, 2);
+    groundTile.ellipse(x, y, size, size);
+  }
+  
+  // Very subtle highlights
+  groundTile.fill(255, 10);
+  for (let i = 0; i < 3; i++) {
+    let x = random(0, 128);
+    let y = random(10, 60); // Below the line
+    let w = random(10, 20);
+    let h = random(1, 2);
+    groundTile.ellipse(x, y, w, h);
+  }
+
+  // Create player running animation frames (4 frames, 32x32 each)
+  for (let f = 0; f < 4; f++) {
+    let gfx = createGraphics(32, 32);
+    gfx.background(0, 0, 0, 0); // Transparent background
+    
+    // Female superhero in white/gray with red accent
+    gfx.noStroke(); // Remove outlines
+    gfx.fill(255); // White fill for character
+    
+    // Head with longer hair for female silhouette
+    gfx.ellipse(16, 8, 10, 10); // Head
+    
+    // Hair flowing in the wind
+    if (f % 2 == 0) {
+      gfx.fill(220);
+      gfx.beginShape();
+      gfx.vertex(11, 4);
+      gfx.vertex(16, 0);
+      gfx.vertex(22, 2);
+      gfx.vertex(24, 8);
+      gfx.vertex(21, 6);
+      gfx.vertex(16, 5);
+      gfx.endShape(CLOSE);
+    } else {
+      gfx.fill(220);
+      gfx.beginShape();
+      gfx.vertex(13, 4);
+      gfx.vertex(18, 1);
+      gfx.vertex(24, 4);
+      gfx.vertex(22, 10);
+      gfx.vertex(19, 7);
+      gfx.vertex(16, 6);
+      gfx.endShape(CLOSE);
+    }
+    
+    gfx.fill(255);
+    // Sleek heroic body with curves to suggest femininity
+    gfx.beginShape();
+    gfx.vertex(14, 12);
+    gfx.vertex(13, 15);
+    gfx.vertex(14, 21);
+    gfx.vertex(18, 21);
+    gfx.vertex(19, 15);
+    gfx.vertex(18, 12);
+    gfx.endShape(CLOSE);
+    
+    // Red accent as superhero emblem
+    gfx.fill(255, 0, 0); 
+    gfx.beginShape();
+    gfx.vertex(16, 14);
+    gfx.vertex(13, 18);
+    gfx.vertex(16, 16);
+    gfx.vertex(19, 18);
+    gfx.endShape(CLOSE);
+    
+    gfx.fill(255);
+    if (f == 0 || f == 2) { // Legs together, arms at sides
+      // Left arm
+      gfx.beginShape();
+      gfx.vertex(13, 14);
+      gfx.vertex(10, 14);
+      gfx.vertex(10, 16);
+      gfx.vertex(13, 16);
+      gfx.endShape(CLOSE);
+      
+      // Right arm
+      gfx.beginShape();
+      gfx.vertex(19, 14);
+      gfx.vertex(22, 14);
+      gfx.vertex(22, 16);
+      gfx.vertex(19, 16);
+      gfx.endShape(CLOSE);
+      
+      // Legs with slight curve
+      gfx.beginShape();
+      gfx.vertex(12, 22);
+      gfx.vertex(11, 30);
+      gfx.vertex(13, 30);
+      gfx.vertex(14, 22);
+      gfx.endShape(CLOSE);
+      
+      gfx.beginShape();
+      gfx.vertex(18, 22);
+      gfx.vertex(19, 30);
+      gfx.vertex(21, 30);
+      gfx.vertex(20, 22);
+      gfx.endShape(CLOSE);
+    } else if (f == 1) { // Left leg forward, right arm forward
+      // Left arm extended
+      gfx.beginShape();
+      gfx.vertex(13, 14);
+      gfx.vertex(8, 14);
+      gfx.vertex(8, 16);
+      gfx.vertex(13, 16);
+      gfx.endShape(CLOSE);
+      
+      // Right arm
+      gfx.beginShape();
+      gfx.vertex(19, 14);
+      gfx.vertex(22, 14);
+      gfx.vertex(22, 16);
+      gfx.vertex(19, 16);
+      gfx.endShape(CLOSE);
+      
+      // Left leg forward
+      gfx.beginShape();
+      gfx.vertex(10, 22);
+      gfx.vertex(9, 30);
+      gfx.vertex(11, 30);
+      gfx.vertex(12, 22);
+      gfx.endShape(CLOSE);
+      
+      // Right leg back
+      gfx.beginShape();
+      gfx.vertex(20, 22);
+      gfx.vertex(22, 30);
+      gfx.vertex(24, 30);
+      gfx.vertex(22, 22);
+      gfx.endShape(CLOSE);
+    } else if (f == 3) { // Right leg forward, left arm forward
+      // Left arm
+      gfx.beginShape();
+      gfx.vertex(13, 14);
+      gfx.vertex(10, 14);
+      gfx.vertex(10, 16);
+      gfx.vertex(13, 16);
+      gfx.endShape(CLOSE);
+      
+      // Right arm extended
+      gfx.beginShape();
+      gfx.vertex(19, 14);
+      gfx.vertex(24, 14);
+      gfx.vertex(24, 16);
+      gfx.vertex(19, 16);
+      gfx.endShape(CLOSE);
+      
+      // Left leg back
+      gfx.beginShape();
+      gfx.vertex(12, 22);
+      gfx.vertex(14, 30);
+      gfx.vertex(16, 30);
+      gfx.vertex(14, 22);
+      gfx.endShape(CLOSE);
+      
+      // Right leg forward
+      gfx.beginShape();
+      gfx.vertex(16, 22);
+      gfx.vertex(15, 30);
+      gfx.vertex(17, 30);
+      gfx.vertex(18, 22);
+      gfx.endShape(CLOSE);
+    }
+    
+    // Dramatic cape flowing in the wind
+    gfx.fill(180); // Light gray cape
+    if (f == 0 || f == 2) {
+      gfx.beginShape();
+      gfx.vertex(14, 12);
+      gfx.vertex(6, 17);
+      gfx.vertex(8, 19);
+      gfx.vertex(10, 18);
+      gfx.vertex(14, 20);
+      gfx.endShape(CLOSE);
+    } else if (f == 1) {
+      gfx.beginShape();
+      gfx.vertex(14, 12);
+      gfx.vertex(4, 15);
+      gfx.vertex(6, 17);
+      gfx.vertex(10, 16);
+      gfx.vertex(14, 19);
+      gfx.endShape(CLOSE);
+    } else {
+      gfx.beginShape();
+      gfx.vertex(14, 12);
+      gfx.vertex(5, 19);
+      gfx.vertex(7, 21);
+      gfx.vertex(10, 19);
+      gfx.vertex(14, 21);
+      gfx.endShape(CLOSE);
+    }
+    
+    playerRunningFrames.push(gfx);
+  }
+
+  // Create player jumping frame (32x32)
+  playerJumpingFrame = createGraphics(32, 32);
+  playerJumpingFrame.background(0, 0, 0, 0); // Transparent background
+  playerJumpingFrame.noStroke(); // Remove outlines
+  playerJumpingFrame.fill(255); // White fill
+  
+  // Head with flowing hair
+  playerJumpingFrame.ellipse(16, 8, 10, 10); // Head
+  
+  // Dynamic flowing hair
+  playerJumpingFrame.fill(220);
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(11, 4);
+  playerJumpingFrame.vertex(16, 0);
+  playerJumpingFrame.vertex(26, 0);
+  playerJumpingFrame.vertex(24, 10);
+  playerJumpingFrame.vertex(20, 8);
+  playerJumpingFrame.vertex(16, 5);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  playerJumpingFrame.fill(255);
+  // Body with heroic pose
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(14, 12);
+  playerJumpingFrame.vertex(13, 15);
+  playerJumpingFrame.vertex(14, 21);
+  playerJumpingFrame.vertex(18, 21);
+  playerJumpingFrame.vertex(19, 15);
+  playerJumpingFrame.vertex(18, 12);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  // Red emblem
+  playerJumpingFrame.fill(255, 0, 0);
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(16, 14);
+  playerJumpingFrame.vertex(13, 18);
+  playerJumpingFrame.vertex(16, 16);
+  playerJumpingFrame.vertex(19, 18);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  playerJumpingFrame.fill(255);
+  // Extended arms for dynamic pose
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(13, 14);
+  playerJumpingFrame.vertex(8, 12);
+  playerJumpingFrame.vertex(8, 14);
+  playerJumpingFrame.vertex(13, 16);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(19, 14);
+  playerJumpingFrame.vertex(24, 12);
+  playerJumpingFrame.vertex(24, 14);
+  playerJumpingFrame.vertex(19, 16);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  // Bent legs
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(14, 20);
+  playerJumpingFrame.vertex(12, 23);
+  playerJumpingFrame.vertex(14, 24);
+  playerJumpingFrame.vertex(16, 21);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(16, 20);
+  playerJumpingFrame.vertex(18, 23);
+  playerJumpingFrame.vertex(20, 24);
+  playerJumpingFrame.vertex(18, 21);
+  playerJumpingFrame.endShape(CLOSE);
+  
+  // Cape flowing dramatically behind
+  playerJumpingFrame.fill(180);
+  playerJumpingFrame.beginShape();
+  playerJumpingFrame.vertex(14, 12);
+  playerJumpingFrame.vertex(2, 15);
+  playerJumpingFrame.vertex(4, 19);
+  playerJumpingFrame.vertex(8, 18);
+  playerJumpingFrame.vertex(14, 22);
+  playerJumpingFrame.endShape(CLOSE);
+
+  // Create player ducking frame (32x16)
+  playerDuckingFrame = createGraphics(32, 16);
+  playerDuckingFrame.background(0, 0, 0, 0); // Transparent background
+  playerDuckingFrame.noStroke(); // Remove outlines
+  playerDuckingFrame.fill(255); // White fill
+  
+  // Head
+  playerDuckingFrame.ellipse(16, 4, 10, 10); 
+  
+  // Hair tucked in when ducking
+  playerDuckingFrame.fill(220);
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(11, 2);
+  playerDuckingFrame.vertex(16, 0);
+  playerDuckingFrame.vertex(22, 2);
+  playerDuckingFrame.vertex(20, 6);
+  playerDuckingFrame.vertex(16, 4);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  playerDuckingFrame.fill(255);
+  // Crouched body
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(14, 8);
+  playerDuckingFrame.vertex(13, 10);
+  playerDuckingFrame.vertex(14, 14);
+  playerDuckingFrame.vertex(18, 14);
+  playerDuckingFrame.vertex(19, 10);
+  playerDuckingFrame.vertex(18, 8);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  // Red emblem still visible when ducking
+  playerDuckingFrame.fill(255, 0, 0);
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(16, 9);
+  playerDuckingFrame.vertex(14, 12);
+  playerDuckingFrame.vertex(16, 11);
+  playerDuckingFrame.vertex(18, 12);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  playerDuckingFrame.fill(255);
+  // Arms
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(13, 10);
+  playerDuckingFrame.vertex(10, 10);
+  playerDuckingFrame.vertex(10, 12);
+  playerDuckingFrame.vertex(13, 12);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(19, 10);
+  playerDuckingFrame.vertex(22, 10);
+  playerDuckingFrame.vertex(22, 12);
+  playerDuckingFrame.vertex(19, 12);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  // Legs tucked under
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(12, 14);
+  playerDuckingFrame.vertex(12, 16);
+  playerDuckingFrame.vertex(14, 16);
+  playerDuckingFrame.vertex(14, 14);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(18, 14);
+  playerDuckingFrame.vertex(18, 16);
+  playerDuckingFrame.vertex(20, 16);
+  playerDuckingFrame.vertex(20, 14);
+  playerDuckingFrame.endShape(CLOSE);
+  
+  // Cape wrapped around when ducking
+  playerDuckingFrame.fill(180);
+  playerDuckingFrame.beginShape();
+  playerDuckingFrame.vertex(14, 8);
+  playerDuckingFrame.vertex(8, 10);
+  playerDuckingFrame.vertex(10, 11);
+  playerDuckingFrame.vertex(12, 10);
+  playerDuckingFrame.vertex(14, 12);
+  playerDuckingFrame.endShape(CLOSE);
+
+  // Create enemy graphics (32x32 anti-hero villain)
+  // Regular enemy
+  enemyGfx.regular = createGraphics(32, 32);
+  enemyGfx.regular.background(0, 0, 0, 0); // Transparent background
+  enemyGfx.regular.noStroke(); // Remove outlines
+  
+  // Noir-style thug/hitman
+  
+  // Suit jacket
+  enemyGfx.regular.fill(35, 35, 40); // Dark suit
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(11, 14);
+  enemyGfx.regular.vertex(21, 14);
+  enemyGfx.regular.vertex(22, 24);
+  enemyGfx.regular.vertex(10, 24);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  // Suit lapels
+  enemyGfx.regular.fill(25, 25, 30);
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(14, 14);
+  enemyGfx.regular.vertex(16, 22);
+  enemyGfx.regular.vertex(18, 14);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  // Shirt
+  enemyGfx.regular.fill(60, 60, 65);
+  enemyGfx.regular.rect(14, 14, 4, 10);
+  
+  // Hat - noir detective hat
+  enemyGfx.regular.fill(30, 30, 35);
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(9, 6);
+  enemyGfx.regular.vertex(23, 6);
+  enemyGfx.regular.vertex(21, 9);
+  enemyGfx.regular.vertex(11, 9);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  enemyGfx.regular.fill(25, 25, 30);
+  enemyGfx.regular.ellipse(16, 4, 14, 4);
+  
+  // Face in shadow
+  enemyGfx.regular.fill(20, 20, 25);
+  enemyGfx.regular.ellipse(16, 12, 8, 6);
+  
+  // Red glowing eyes
+  enemyGfx.regular.fill(255, 0, 0);
+  enemyGfx.regular.ellipse(14, 12, 2, 1);
+  enemyGfx.regular.ellipse(18, 12, 2, 1);
+  enemyGfx.regular.fill(255, 50, 50, 150);
+  enemyGfx.regular.ellipse(14, 12, 3, 2);
+  enemyGfx.regular.ellipse(18, 12, 3, 2);
+  
+  // Legs
+  enemyGfx.regular.fill(30, 30, 35);
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(12, 24);
+  enemyGfx.regular.vertex(11, 32);
+  enemyGfx.regular.vertex(15, 32);
+  enemyGfx.regular.vertex(15, 24);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(17, 24);
+  enemyGfx.regular.vertex(17, 32);
+  enemyGfx.regular.vertex(21, 32);
+  enemyGfx.regular.vertex(20, 24);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  // Gun in hand
+  enemyGfx.regular.fill(50, 50, 55);
+  enemyGfx.regular.rect(22, 20, 6, 2);
+  enemyGfx.regular.rect(24, 18, 2, 4);
+  
+  // Knife in other hand
+  enemyGfx.regular.fill(140, 140, 150);
+  enemyGfx.regular.beginShape();
+  enemyGfx.regular.vertex(8, 18);
+  enemyGfx.regular.vertex(4, 18);
+  enemyGfx.regular.vertex(7, 20);
+  enemyGfx.regular.vertex(8, 22);
+  enemyGfx.regular.endShape(CLOSE);
+  
+  // -------------------------
+  // Flying enemy
+  // -------------------------
+  enemyGfx.flying = createGraphics(32, 32);
+  enemyGfx.flying.background(0, 0, 0, 0);
+  enemyGfx.flying.noStroke();
+  
+  // Noir-style winged assassin/nightmare creature
+  // Dark flowing cloak/wings
+  enemyGfx.flying.fill(20, 20, 25);
+  
+  // Wings/cloak
+  enemyGfx.flying.beginShape();
+  enemyGfx.flying.vertex(16, 15);
+  enemyGfx.flying.vertex(5, 5);
+  enemyGfx.flying.vertex(2, 12);
+  enemyGfx.flying.vertex(8, 14);
+  enemyGfx.flying.vertex(16, 15);
+  enemyGfx.flying.endShape(CLOSE);
+  
+  enemyGfx.flying.beginShape();
+  enemyGfx.flying.vertex(16, 15);
+  enemyGfx.flying.vertex(27, 5);
+  enemyGfx.flying.vertex(30, 12);
+  enemyGfx.flying.vertex(24, 14);
+  enemyGfx.flying.vertex(16, 15);
+  enemyGfx.flying.endShape(CLOSE);
+  
+  // Fluttering wing/cloak edges
+  enemyGfx.flying.fill(40, 40, 45);
+  enemyGfx.flying.beginShape();
+  enemyGfx.flying.vertex(5, 5);
+  enemyGfx.flying.vertex(3, 2);
+  enemyGfx.flying.vertex(2, 8);
+  enemyGfx.flying.vertex(2, 12);
+  enemyGfx.flying.endShape(CLOSE);
+  
+  enemyGfx.flying.beginShape();
+  enemyGfx.flying.vertex(27, 5);
+  enemyGfx.flying.vertex(29, 2);
+  enemyGfx.flying.vertex(30, 8);
+  enemyGfx.flying.vertex(30, 12);
+  enemyGfx.flying.endShape(CLOSE);
+  
+  // Hooded figure body
+  enemyGfx.flying.fill(30, 30, 35);
+  enemyGfx.flying.ellipse(16, 16, 10, 16);
+  
+  // Face in shadow
+  enemyGfx.flying.fill(10, 10, 10);
+  enemyGfx.flying.ellipse(16, 14, 6, 4);
+  
+  // Red glowing eyes
+  enemyGfx.flying.fill(255, 0, 0);
+  enemyGfx.flying.ellipse(14, 14, 2, 1);
+  enemyGfx.flying.ellipse(18, 14, 2, 1);
+  enemyGfx.flying.fill(255, 50, 50, 150);
+  enemyGfx.flying.ellipse(14, 14, 3, 2);
+  enemyGfx.flying.ellipse(18, 14, 3, 2);
+  
+  // -------------------------
+  // Henchman enemy - replaces tank
+  // -------------------------
+  enemyGfx.henchman = createGraphics(40, 40);
+  enemyGfx.henchman.background(0, 0, 0, 0);
+  enemyGfx.henchman.noStroke();
+  
+  // Noir-style large henchman with trenchcoat
+  
+  // Trenchcoat body
+  enemyGfx.henchman.fill(30, 30, 35); // Dark fabric
+  enemyGfx.henchman.rect(12, 15, 16, 25, 2); // Torso
+  
+  // Broad shoulders
+  enemyGfx.henchman.rect(8, 15, 24, 8, 2); // Shoulders
+  
+  // Head
+  enemyGfx.henchman.fill(30, 30, 35);
+  enemyGfx.henchman.ellipse(20, 10, 12, 12);
+  
+  // Face in shadow
+  enemyGfx.henchman.fill(15, 15, 20);
+  enemyGfx.henchman.ellipse(20, 10, 10, 8);
+  
+  // Red eyes
+  enemyGfx.henchman.fill(255, 0, 0);
+  enemyGfx.henchman.ellipse(17, 10, 2, 2);
+  enemyGfx.henchman.ellipse(23, 10, 2, 2);
+  
+  // Arms
+  enemyGfx.henchman.fill(20, 20, 25);
+  // Left arm
+  enemyGfx.henchman.rect(6, 18, 6, 15, 2);
+  // Right arm
+  enemyGfx.henchman.rect(28, 18, 6, 15, 2);
+  
+  // Legs
+  enemyGfx.henchman.fill(25, 25, 30);
+  // Left leg
+  enemyGfx.henchman.rect(14, 35, 6, 5, 1);
+  // Right leg
+  enemyGfx.henchman.rect(20, 35, 6, 5, 1);
+  
+  // Noir hat
+  enemyGfx.henchman.fill(15, 15, 20);
+  enemyGfx.henchman.arc(20, 6, 16, 8, PI, TWO_PI);
+  enemyGfx.henchman.rect(12, 6, 16, 2);
+  
+  // Weapon - club or bat
+  enemyGfx.henchman.fill(50, 50, 55);
+  enemyGfx.henchman.rect(30, 22, 8, 4, 1);
+  
+  // Create ground obstacle graphics - concrete barriers with broken rebar
+  groundObstacleGfx = createGraphics(32, 32);
+  groundObstacleGfx.background(0, 0, 0, 0); // Transparent background
+  groundObstacleGfx.noStroke(); // Remove outlines
+  
+  // Noir-style overturned trash bin or broken fire hydrant
+  groundObstacleGfx.fill(50, 50, 55); // Dark metal
+  groundObstacleGfx.ellipse(16, 16, 20, 14); // Base of trash can
+  groundObstacleGfx.rect(6, 16, 20, 16); // Bottom half of can
+  
+  // Metal rim details
+  groundObstacleGfx.fill(70, 70, 75);
+  groundObstacleGfx.rect(6, 16, 20, 2);
+  groundObstacleGfx.rect(6, 26, 20, 2);
+  
+  // Trash spilling out
+  groundObstacleGfx.fill(40, 40, 45);
+  groundObstacleGfx.beginShape();
+  groundObstacleGfx.vertex(6, 20);
+  groundObstacleGfx.vertex(2, 24);
+  groundObstacleGfx.vertex(4, 28);
+  groundObstacleGfx.vertex(8, 26);
+  groundObstacleGfx.endShape(CLOSE);
+  
+  // Dents and damage
+  groundObstacleGfx.fill(30, 30, 35);
+  groundObstacleGfx.ellipse(22, 22, 6, 4);
+  groundObstacleGfx.ellipse(10, 28, 4, 3);
+  
+  // Wet/reflective spots
+  groundObstacleGfx.fill(80, 80, 85, 120);
+  groundObstacleGfx.ellipse(18, 19, 3, 2);
+  groundObstacleGfx.ellipse(12, 23, 2, 2);
+
+  // Create flying obstacle graphics - spinning noir blades/broken ceiling fan
+  flyingObstacleGfx = createGraphics(32, 32);
+  flyingObstacleGfx.background(0, 0, 0, 0); // Transparent background
+  flyingObstacleGfx.noStroke(); // Remove outlines
+  
+  // Center hub
+  flyingObstacleGfx.fill(60, 60, 65);
+  flyingObstacleGfx.ellipse(16, 16, 10, 10);
+  
+  // Inner ring
+  flyingObstacleGfx.fill(40, 40, 45);
+  flyingObstacleGfx.ellipse(16, 16, 6, 6);
+  
+  // Blades (3 asymmetric blades for noir style)
+  flyingObstacleGfx.fill(50, 50, 55);
+  
+  // Blade 1
+  flyingObstacleGfx.beginShape();
+  flyingObstacleGfx.vertex(16, 16);
+  flyingObstacleGfx.vertex(30, 8);
+  flyingObstacleGfx.vertex(32, 12);
+  flyingObstacleGfx.vertex(22, 18);
+  flyingObstacleGfx.endShape(CLOSE);
+  
+  // Blade 2
+  flyingObstacleGfx.beginShape();
+  flyingObstacleGfx.vertex(16, 16);
+  flyingObstacleGfx.vertex(4, 24);
+  flyingObstacleGfx.vertex(2, 28);
+  flyingObstacleGfx.vertex(14, 22);
+  flyingObstacleGfx.endShape(CLOSE);
+  
+  // Blade 3
+  flyingObstacleGfx.beginShape();
+  flyingObstacleGfx.vertex(16, 16);
+  flyingObstacleGfx.vertex(20, 2);
+  flyingObstacleGfx.vertex(24, 4);
+  flyingObstacleGfx.vertex(18, 14);
+  flyingObstacleGfx.endShape(CLOSE);
+  
+  // Metallic highlights
+  flyingObstacleGfx.fill(80, 80, 85);
+  flyingObstacleGfx.arc(16, 16, 8, 8, 0, PI/2);
+  
+  // Shine/reflections
+  flyingObstacleGfx.fill(100, 100, 110, 150);
+  flyingObstacleGfx.ellipse(14, 14, 2, 2);
+  
+  // Dark edges/shadows for depth
+  flyingObstacleGfx.fill(20, 20, 25);
+  flyingObstacleGfx.arc(16, 16, 10, 10, PI, PI + PI/2);
+
+  // Create projectile graphics - noir-style bullet/gunshot
+  projectileGfx = createGraphics(12, 12); // Increased from 8x8 to 12x12
+  projectileGfx.background(0, 0, 0, 0); // Transparent background
+  projectileGfx.noStroke(); // Remove outlines
+  
+  // Bullet tracer - red glow
+  projectileGfx.fill(255, 0, 0, 120);
+  projectileGfx.ellipse(6, 6, 12, 3);
+  
+  // Bullet core - bright red
+  projectileGfx.fill(255, 0, 0);
+  projectileGfx.ellipse(6, 6, 6, 3);
+  
+  // Muzzle flash glow - orange-red
+  projectileGfx.fill(255, 100, 0, 60);
+  projectileGfx.ellipse(3, 6, 4, 4);
+}
+
+function draw() {
+  if (gameState === "start") {
+    // Noir-style start screen
+    background(0); // Pure black background
+    
+    // Add atmospheric fog instead of rain
+    drawAtmosphericFog();
+    
+    // Title with dramatic styling
+    textAlign(CENTER);
+    textSize(70);
+    
+    // Shadow/glow effect
+    fill(255, 0, 0, 120);
+    text("HBD", width / 2 + 4, height / 2 - 60 + sin(frameCount * 0.05) * 2);
+    
+    // Main text
+    fill(255);
+    text("HBD", width / 2, height / 2 - 60);
+    
+    // Tagline
+    textSize(24);
+    fill(200);
+    text("HEROES BE DAMNED", width / 2, height / 2 - 20);
+    
+    // Instructions
+    textSize(18);
+    fill(255);
+    text("Press SPACE to jump, DOWN to slide, Z to attack", width / 2, height / 2 + 40);
+    
+    // Start prompt with flickering
+    if (frameCount % 30 < 20) {
+      fill(255);
+    } else {
+      fill(255, 0, 0);
+    }
+    textSize(24);
+    text("Press SPACE to start", width / 2, height / 2 + 80);
+    
+    if (keyIsDown(32)) { // 32 is the keyCode for SPACE
+      // Reset game state
+      gameState = "playing";
+      score = 0;
+      enemiesKilled = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      shootEffects = [];
+      slowMotion = false;
+      slowMotionTimer = 0;
+      scrollSpeed = normalScrollSpeed;
+      screenFlash = 0;
+      
+      // Reset clouds to new random positions
+      clouds = [];
+      for (let i = 0; i < 5; i++) {
+        clouds.push({
+          x: random(0, width),
+          y: random(20, 150),
+          speed: random(0.3, 1.2),
+          scale: random(0.5, 1.5),
+          alpha: random(150, 230)
+        });
+      }
+      
+      player.y = groundY;
+      player.vy = 0;
+      player.state = "running";
+      groundOffset = 0;
+      backgroundOffset = 0;
+      midgroundOffset = 0;
+      foregroundOffset = 0;
+    }
+  } else if (gameState === "playing") {
+    // Handle slow motion effect - we're disabling this by just keeping scrollSpeed at normal
+    scrollSpeed = normalScrollSpeed;
+    
+    // Update scrolling ground and parallax backgrounds
+    groundOffset += scrollSpeed;
+    if (groundOffset > groundTile.width) {
+      groundOffset -= groundTile.width;
+    }
+
+    // Update parallax offsets at different speeds
+    backgroundOffset += scrollSpeed * 0.1; // Slowest (distant background)
+    midgroundOffset += scrollSpeed * 0.4;  // Medium speed (midground)
+    foregroundOffset += scrollSpeed * 0.7; // Faster (foreground, but still slower than ground)
+    
+    // Wrap offsets when they exceed the layer width
+    if (backgroundOffset >= backgroundGfx.width) backgroundOffset -= backgroundGfx.width;
+    if (midgroundOffset >= midgroundGfx.width) midgroundOffset -= midgroundGfx.width;
+    if (foregroundOffset >= foregroundGfx.width) foregroundOffset -= foregroundGfx.width;
+
+    // Draw gradient sky background - pure black to very dark gray
+    background(0);
+    
+    // Draw stars - white dots
+    drawTwinklingStars();
+    
+    // Draw background city skyline
+    image(backgroundGfx, -backgroundOffset, 0);
+    if (backgroundOffset > backgroundGfx.width - width) {
+      image(backgroundGfx, -backgroundOffset + backgroundGfx.width, 0);
+    }
+    
+    // Draw stationary moon - draw it here to be fixed in position
+    drawMoon(600, 80);
+    
+    // Update and draw clouds
+    for (let i = 0; i < clouds.length; i++) {
+      let cloud = clouds[i];
+      cloud.x -= cloud.speed;
+      
+      // Wrap clouds around when they move off-screen
+      if (cloud.x < -100 * cloud.scale) {
+        cloud.x = width + random(0, 100);
+        cloud.y = random(20, 150);
+      }
+      
+      // Draw cloud with varying opacity and scale
+      push();
+      tint(255, cloud.alpha);
+      image(cloudGfx, cloud.x, cloud.y, 
+            cloudGfx.width * cloud.scale, 
+            cloudGfx.height * cloud.scale);
+      noTint();
+      pop();
+    }
+    
+    // Draw midground buildings (wrapping around when needed)
+    image(midgroundGfx, -midgroundOffset, 0);
+    if (midgroundOffset > midgroundGfx.width - width) {
+      image(midgroundGfx, -midgroundOffset + midgroundGfx.width, 0);
+    }
+    
+    // Draw foreground buildings (wrapping around when needed)
+    image(foregroundGfx, -foregroundOffset, 0);
+    if (foregroundOffset > foregroundGfx.width - width) {
+      image(foregroundGfx, -foregroundOffset + foregroundGfx.width, 0);
+    }
+    
+    // Draw street fog - grayscale only (reduced amount)
+    drawStreetFog();
+    
+    // Draw a simple continuous floor at ground level - adjust position
+    let xOffset = -(groundOffset % groundTile.width);
+    for (let x = xOffset - 128; x < width + 128; x += groundTile.width) {
+      // Position the floor so its top edge aligns with groundY
+      image(groundTile, x, groundY);
+    }
+    
+    // Add a solid floor line where player's feet rest
+    push();
+    stroke(60);
+    strokeWeight(1);
+    line(0, groundY, width, groundY);
+    pop();
+    
+    // Draw street reflections - white only (reduced)
+    drawStreetReflections();
+
+    // Update player position (jumping)
+    if (player.state === "jumping") {
+      player.y += player.vy;
+      player.vy += gravity;
+      if (player.y >= groundY) {
+        player.y = groundY;
+        player.vy = 0;
+        player.state = "running";
+      }
+    }
+
+    // Update player animation
+    if (player.state === "running") {
+      player.animTimer++;
+      if (player.animTimer >= 5) {
+        player.animTimer = 0;
+        player.animFrame = (player.animFrame + 1) % 4;
+      }
+    }
+
+    // Draw player shadow
+    drawPlayerShadow();
+
+    // Draw player based on state
+    if (player.state === "running") {
+      image(playerRunningFrames[player.animFrame], player.x, player.y - playerRunningFrames[player.animFrame].height);
+    } else if (player.state === "jumping") {
+      image(playerJumpingFrame, player.x, player.y - playerJumpingFrame.height);
+    } else if (player.state === "ducking") {
+      image(playerDuckingFrame, player.x, player.y - playerDuckingFrame.height);
+    }
+
+    // Update and draw enemies with enhanced size and appeal
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let enemy = enemies[i];
+      
+      // Apply different movement patterns based on enemy type
+      if (enemy.type === 'flying') {
+        // Flying enemy moves in a wave pattern
+        enemy.x -= scrollSpeed;
+        enemy.y = enemy.baseY + sin(frameCount * 0.05 + enemy.offset) * 40; // Smoother, larger wave pattern
+      } else if (enemy.type === 'henchman') {
+        // Henchman enemy moves slower but steadily
+        enemy.x -= scrollSpeed * 0.7;
+      } else if (enemy.type === 'chase') {
+        // Chasing enemy moves faster but stays on ground level
+        enemy.x -= scrollSpeed * 1.2;
+        enemy.y = groundY; // Always stay at ground level
+      } else {
+        // Regular enemy
+        enemy.x -= scrollSpeed;
+      }
+      
+      if (enemy.x < -40) {
+        enemies.splice(i, 1);
+      } else {
+        // Draw shadows for ground-based enemies - larger and more dramatic
+        if (enemy.type !== 'flying') {
+          push();
+          noStroke();
+          fill(0, 0, 0, 40);
+          if (enemy.type === 'henchman') {
+            ellipse(enemy.x + 25, groundY + 2, 45, 6); // Larger shadow for henchman
+          } else {
+            ellipse(enemy.x + 16, groundY + 2, 30, 4); // Slightly larger shadow for regular
+          }
+          pop();
+        }
+        
+        // Draw based on enemy type - position all at ground level with enhanced size
+        if (enemy.type === 'flying') {
+          // Draw flying enemy at 1.25x scale
+          push();
+          // Remove red glow effect
+          
+          // Draw actual enemy image larger
+          imageMode(CENTER);
+          image(enemyGfx.flying, enemy.x + 20, enemy.y + 20, enemyGfx.flying.width * 1.25, enemyGfx.flying.height * 1.25);
+          imageMode(CORNER);
+          pop();
+          
+          // Flying enemy shadow (fainter and stretched based on height)
+          push();
+          noStroke();
+          let shadowSize = map(enemy.y, groundY - 150, groundY, 15, 30);
+          let shadowAlpha = map(enemy.y, groundY - 150, groundY, 10, 40);
+          fill(0, 0, 0, shadowAlpha);
+          ellipse(enemy.x + 20, groundY + 2, shadowSize, 3);
+          pop();
+        } else if (enemy.type === 'henchman') {
+          // Draw henchman enemy
+          push();
+          
+          // Draw health indicators based on remaining health
+          let henchmanGfx = createGraphics(enemyGfx.henchman.width, enemyGfx.henchman.height);
+          henchmanGfx.image(enemyGfx.henchman, 0, 0);
+          
+          // Add health indicators
+          henchmanGfx.noStroke();
+          henchmanGfx.fill(255, 0, 0);
+          
+          // Different health indicators based on health
+          if (enemy.health >= 3) {
+            // Full health - three red dots
+            henchmanGfx.ellipse(10, 15, 4, 4);
+            henchmanGfx.ellipse(20, 15, 4, 4);
+            henchmanGfx.ellipse(30, 15, 4, 4);
+          } else if (enemy.health === 2) {
+            // Two health - two red dots
+            henchmanGfx.ellipse(15, 15, 4, 4);
+            henchmanGfx.ellipse(25, 15, 4, 4);
+          } else if (enemy.health === 1) {
+            // One health - one red dot
+            henchmanGfx.ellipse(20, 15, 4, 4);
+          }
+          
+          // Draw henchman enemy 1.5x scale
+          imageMode(CENTER);
+          image(henchmanGfx, enemy.x + 20, groundY - enemyGfx.henchman.height/2, enemyGfx.henchman.width * 1.5, enemyGfx.henchman.height * 1.5);
+          imageMode(CORNER);
+          pop();
+        } else if (enemy.type === 'chase') {
+          // Remove threatening glow for chase enemy
+          push();
+          // Draw chase enemy at 1.25x scale
+          imageMode(CENTER);
+          image(enemyGfx.regular, enemy.x + 16, enemy.y - enemyGfx.regular.height/2, enemyGfx.regular.width * 1.25, enemyGfx.regular.height * 1.25);
+          imageMode(CORNER);
+          pop();
+        } else {
+          // Remove subtle glow for regular enemy
+          push();
+          // Draw regular enemy 1.2x scale
+          imageMode(CENTER);
+          image(enemyGfx.regular, enemy.x + 16, groundY - enemyGfx.regular.height/2, enemyGfx.regular.width * 1.2, enemyGfx.regular.height * 1.2);
+          imageMode(CORNER);
+          pop();
+        }
+      }
+    }
+
+    // Update and draw obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+      obstacle.x -= scrollSpeed;
+      if (obstacle.x < -32) {
+        obstacles.splice(i, 1);
+      } else {
+        // Draw shadows for obstacles
+        if (obstacle.type === "ground") {
+          fill(0, 0, 0, 70);
+          ellipse(obstacle.x + 16, groundY + 2, 28, 4);
+          image(groundObstacleGfx, obstacle.x, groundY - groundObstacleGfx.height);
+        } else if (obstacle.type === "flying") {
+          // Flying obstacle shadow
+          let shadowSize = map(obstacle.y, groundY - 150, groundY, 10, 24);
+          let shadowAlpha = map(obstacle.y, groundY - 150, groundY, 20, 60);
+          fill(0, 0, 0, shadowAlpha);
+          ellipse(obstacle.x + 16, groundY + 2, shadowSize, 3);
+          
+          image(flyingObstacleGfx, obstacle.x, obstacle.y);
+        }
+      }
+    }
+
+    // Update and draw projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      let projectile = projectiles[i];
+      projectile.x += 10; // Projectile speed
+      if (projectile.x > width) {
+        projectiles.splice(i, 1);
+      } else {
+        // Draw projectile larger
+        image(projectileGfx, projectile.x, projectile.y - 6, projectileGfx.width * 1.5, projectileGfx.height * 1.5);
+      }
+    }
+
+    // Update and draw shoot effects
+    for (let i = shootEffects.length - 1; i >= 0; i--) {
+      let effect = shootEffects[i];
+      
+      // If this is an enemy defeat particle
+      if (effect.vx !== undefined && effect.vy !== undefined) {
+        effect.x += effect.vx;
+        effect.y += effect.vy;
+      } else {
+        effect.size += 2;
+      }
+      
+      effect.alpha -= 25;
+      effect.life--;
+      
+      if (effect.life <= 0) {
+        shootEffects.splice(i, 1);
+      } else {
+        push();
+        noStroke();
+        
+        // If it's an enemy defeat effect, use red for blood splatter
+        if (effect.vx !== undefined) {
+          if (effect.isBlood) {
+            // Draw irregular blood splatter - red only
+            fill(255, 0, 0, effect.alpha);
+            
+            // Irregular shape for blood splatter
+            beginShape();
+            let splatterPoints = 6;
+            for (let p = 0; p < splatterPoints; p++) {
+              let ang = p * TWO_PI / splatterPoints;
+              let rad = effect.size * (0.5 + noise(effect.x + p, effect.y, frameCount * 0.05) * 0.8);
+              vertex(effect.x + cos(ang) * rad, effect.y + sin(ang) * rad);
+            }
+            endShape(CLOSE);
+          } else {
+            // Normal explosion particle - white only
+            fill(255, effect.alpha);
+            ellipse(effect.x, effect.y, effect.size, effect.size);
+          }
+        } else {
+          // White and red for projectile impact
+          if (effect.size % 4 < 2) {
+            fill(255, 0, 0, effect.alpha); // Changed to red
+          } else {
+            fill(255, 100, 0, effect.alpha); // Changed to orange-red
+          }
+          ellipse(effect.x, effect.y, effect.size, effect.size);
+        }
+        
+        pop();
+      }
+    }
+
+    // Collision detection - complete rewrite for safer approach
+    let playerHitbox = getPlayerHitbox();
+    
+    // Check collision with obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+      let obstacleHitbox = getObstacleHitbox(obstacle);
+      if (checkCollision(playerHitbox, obstacleHitbox)) {
+        console.log("Game over - obstacle collision");
+        gameState = "gameOver";
+        break; // Exit loop if game over
+      }
+    }
+    
+    // Only check enemy collisions if game is still in playing state
+    if (gameState === "playing") {
+      // First check if player collides with any enemy
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        let enemy = enemies[i];
+        let enemyHitbox = getEnemyHitbox(enemy);
+        
+        if (checkCollision(playerHitbox, enemyHitbox)) {
+          console.log("Game over - enemy collision");
+          gameState = "gameOver";
+          break; // Exit loop if game over
+        }
+      }
+    }
+    
+    // Separate loop for projectile collisions to avoid modifying the array while iterating
+    if (gameState === "playing") {
+      // Collect indices to remove rather than splicing immediately
+      let enemyIndices = [];
+      let projectileIndices = [];
+      
+      // Check all projectile-enemy collisions
+      for (let j = 0; j < projectiles.length; j++) {
+        let projectile = projectiles[j];
+        let projectileHitbox = { x: projectile.x, y: projectile.y - 4, width: 8, height: 8 };
+        let hitEnemy = false;
+        
+        for (let i = 0; i < enemies.length; i++) {
+          let enemy = enemies[i];
+          let enemyHitbox = getEnemyHitbox(enemy);
+          
+          // If collision detected
+        if (checkCollision(projectileHitbox, enemyHitbox)) {
+            // Mark projectile for removal
+            if (!projectileIndices.includes(j)) {
+              projectileIndices.push(j);
+            }
+            
+            // For henchman enemies, reduce health instead of immediately removing
+            if (enemy.type === 'henchman') {
+              enemy.health--;
+              
+              // Create hit effect
+              createEnemyHitEffect(enemy);
+              
+              // Only mark henchman for removal if health is depleted
+              if (enemy.health <= 0) {
+                createEnemyDefeatEffects(enemy);
+                if (!enemyIndices.includes(i)) {
+                  enemyIndices.push(i);
+                }
+                enemiesKilled++;
+                score += 300; // Bonus points for henchman
+                
+                // Add screen flash effect only, without slow motion
+                screenFlash = 30;
+              }
+            } else {
+              // Regular enemies die in one hit
+              createEnemyDefeatEffects(enemy);
+              if (!enemyIndices.includes(i)) {
+                enemyIndices.push(i);
+              }
+              enemiesKilled++;
+              
+              // Award points based on enemy type
+              if (enemy.type === 'flying') {
+                score += 200;
+              } else if (enemy.type === 'chase') {
+                score += 150;
+              } else {
+                score += 100;
+              }
+            }
+            
+            hitEnemy = true;
+            break; // A projectile can only hit one enemy
+          }
+        }
+      }
+      
+      // Remove projectiles (in reverse order to maintain correct indices)
+      projectileIndices.sort((a, b) => b - a);
+      for (let i = 0; i < projectileIndices.length; i++) {
+        projectiles.splice(projectileIndices[i], 1);
+      }
+      
+      // Remove enemies (in reverse order to maintain correct indices)
+      enemyIndices.sort((a, b) => b - a);
+      for (let i = 0; i < enemyIndices.length; i++) {
+        enemies.splice(enemyIndices[i], 1);
+      }
+    }
+
+    // Spawn new enemies and obstacles
+    // Calculate spawn probability based on score to increase difficulty
+    let difficultyFactor = 1 + (score / 5000); // Gradually increase difficulty
+    let groundObstacleChance = 0.005 * difficultyFactor;
+    let flyingObstacleChance = 0.005 * difficultyFactor;
+    let enemyChance = 0.003 * difficultyFactor;
+    
+    // Check if we can spawn an obstacle (not too close to obstacles)
+    let minDistanceBetweenObstacles = 150;
+    let canSpawnObstacle = true;
+    
+    for (let obstacle of obstacles) {
+      if (obstacle.x > width - minDistanceBetweenObstacles) {
+        canSpawnObstacle = false;
+        break;
+      }
+    }
+    
+    if (canSpawnObstacle) {
+      if (random() < groundObstacleChance) {
+        obstacles.push({ x: width + random(0, 50), y: groundY, type: "ground" });
+      }
+      if (random() < flyingObstacleChance) {
+        obstacles.push({ x: width + random(0, 50), y: groundY - 100 + random(-30, 30), type: "flying" });
+      }
+    }
+    
+    // Check if we can spawn an enemy (not too close to obstacles)
+    let canSpawnEnemy = true;
+    for (let obstacle of obstacles) {
+      if (obstacle.x > width - minDistanceBetweenObstacles) {
+        canSpawnEnemy = false;
+        break;
+      }
+    }
+    
+    if (canSpawnEnemy && random() < enemyChance) {
+      // Decide which type of enemy to spawn based on score and randomness
+      let enemyRoll = random();
+      
+      if (score > 2000 && enemyRoll < 0.2) {
+        // Henchman enemy - 20% chance after score 2000
+        enemies.push({
+          x: width + random(0, 50),
+          y: groundY, // Ground level 
+          type: 'henchman',
+          health: 3 // Henchman takes 3 hits to defeat
+        });
+      } else if (score > 1000 && enemyRoll < 0.4) {
+        // Flying enemy - 20% chance after score 1000
+        enemies.push({
+          x: width + random(0, 50),
+          y: groundY - 100, // Flying height - higher up from ground
+          baseY: groundY - 100, // Base height for wave pattern
+          offset: random(0, TWO_PI),
+          type: 'flying'
+        });
+      } else if (score > 500 && enemyRoll < 0.6) {
+        // Chasing enemy - 20% chance after score 500
+        enemies.push({
+          x: width + random(0, 50),
+          y: groundY, // Ground level
+          type: 'chase'
+        });
+      } else {
+        // Regular enemy - always available
+        enemies.push({
+          x: width + random(0, 50),
+          y: groundY, // Ground level
+          type: 'regular'
+        });
+      }
+    }
+
+    // Update and display score with noir styling
+    score += 1;
+    push();
+    fill(255);
+    textSize(18);
+    textAlign(LEFT);
+    text("SCORE: " + score, 20, 30);
+    pop();
+    
+    // Render screen flash effect - keep RED
+    if (screenFlash > 0) {
+      push();
+      noStroke();
+      // Fade from red to transparent
+      fill(255, 0, 0, map(screenFlash, 30, 0, 150, 0));
+      rect(0, 0, width, height);
+      screenFlash--;
+      pop();
+    }
+  } else if (gameState === "gameOver") {
+    console.log("Drawing game over screen");
+    
+    // Simple black background
+    background(0);
+    
+    // Simple game over text
+    push();
+    textAlign(CENTER);
+    
+    // Game over title
+    textSize(64);
+    fill(255, 0, 0);
+    text("GAME OVER", width / 2, height / 2 - 60);
+    
+    // Display score
+    textSize(24);
+    fill(255);
+    text("FINAL SCORE: " + score, width / 2, height / 2);
+    
+    // Display enemies killed
+    textSize(24);
+    fill(255);
+    text("ENEMIES KILLED: " + enemiesKilled, width / 2, height / 2 + 40);
+    
+    // Restart prompt
+    textSize(24);
+    fill(255, 0, 0);
+    text("PRESS R TO RESTART", width / 2, height / 2 + 120);
+    
+    pop();
+    
+    // Check for R key press to restart
+    if (keyIsDown(82)) { // 82 is the keyCode for 'R'
+      console.log("R key pressed, returning to start screen");
+      gameState = "start";
+    }
+  }
+}
+
+// Helper function to draw twinkling stars - pure white
+function drawTwinklingStars() {
+  push();
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let x = (i * 29) % width;
+    let y = ((i * 37) % 150) + 20;
+    let twinkle = noise(x, y, frameCount * 0.01);
+    fill(255, twinkle * 220);
+    ellipse(x, y, 1.5, 1.5);
+  }
+  pop();
+}
+
+// Helper function to draw street fog - grayscale only (reduced amount)
+function drawStreetFog() {
+  push();
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    let x = (i * 250 + frameCount * scrollSpeed * 0.2) % (width + 400) - 200;
+    let y = groundY + 10 + (i % 3) * 10; // Adjust to be below ground level
+    let w = 250 + (i % 4) * 50;
+    let h = 30 + (i % 3) * 5;
+    
+    fill(255, 15);
+    ellipse(x, y, w, h);
+  }
+  pop();
+}
+
+// Helper function to draw street reflections - white only (reduced)
+function drawStreetReflections() {
+  push();
+  noStroke();
+  fill(255, 10);
+  for (let i = 0; i < 3; i++) {
+    let x = (i * 200 + frameCount * scrollSpeed * 0.3) % (width + 200) - 100;
+    let y = groundY + 5; // Adjust to be below ground line
+    let w = 30 + (i % 3) * 15;
+    let h = 1;
+    rect(x, y, w, h);
+  }
+  pop();
+}
+
+// Helper function to draw player shadow - pure black
+function drawPlayerShadow() {
+  push();
+  noStroke();
+  
+  // Ground-level shadow
+  if (player.state === "jumping") {
+    // Shadow gets smaller when jumping higher
+    let shadowSize = map(player.y, groundY - 150, groundY, 15, 30);
+    let shadowAlpha = map(player.y, groundY - 150, groundY, 40, 80);
+    fill(0, shadowAlpha);
+    ellipse(player.x + 16, groundY + 2, shadowSize, 4); // Slightly below ground line
+  } else if (player.state === "ducking") {
+    // Wider shadow when ducking
+    fill(0, 80);
+    ellipse(player.x + 16, groundY + 2, 35, 4); // Slightly below ground line
+  } else {
+    // Normal shadow
+    fill(0, 80);
+    ellipse(player.x + 16, groundY + 2, 30, 4); // Slightly below ground line
+  }
+  
+  pop();
+}
+
+// Helper functions for collision detection
+function getPlayerHitbox() {
+  let height = player.state === "ducking" ? playerDuckingFrame.height : playerJumpingFrame.height;
+  return { x: player.x, y: player.y - height, width: 32, height: height };
+}
+
+function getObstacleHitbox(obstacle) {
+  let height = obstacle.type === "ground" ? groundObstacleGfx.height : flyingObstacleGfx.height;
+  let y = obstacle.type === "ground" ? obstacle.y - height : obstacle.y;
+  return { x: obstacle.x, y: y, width: 32, height: height };
+}
+
+function getEnemyHitbox(enemy) {
+  if (enemy.type === 'flying') {
+    // Flying enemy hitbox
+    return { x: enemy.x, y: enemy.y - 16, width: 32, height: 16 };
+  } else if (enemy.type === 'henchman') {
+    // Henchman enemy hitbox
+    return { x: enemy.x, y: groundY - 40, width: 40, height: 40 };
+  } else if (enemy.type === 'chase') {
+    // Chase enemy hitbox
+    return { x: enemy.x, y: enemy.y - 32, width: 32, height: 32 };
+  } else {
+    // Regular enemy hitbox
+    return { x: enemy.x, y: groundY - 32, width: 32, height: 32 };
+  }
+}
+
+function checkCollision(rect1, rect2) {
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+// Handle user input
+function keyPressed() {
+  if (gameState === "playing") {
+    if (key === ' ' || keyCode === UP_ARROW) {
+      if (player.state === "running") {
+        player.vy = jumpStrength;
+        player.state = "jumping";
+      }
+    } else if (keyCode === DOWN_ARROW) {
+      if (player.state === "running") {
+        player.state = "ducking";
+      }
+    } else if (key === 'z' || key === 'Z') {
+      projectiles.push({ x: player.x + 32, y: player.y - 16 });
+      
+      // Enhanced shooting effect
+      let shootEffect = {
+        x: player.x + 32, 
+        y: player.y - 16,
+        size: 20, // Increased from 12
+        alpha: 255,
+        life: 15 // Increased from 10
+      };
+      
+      shootEffects.push(shootEffect);
+      
+      // Add additional particles for more dramatic effect
+      for (let i = 0; i < 5; i++) {
+        let angle = random(-PI/4, PI/4);
+        let speed = random(2, 4);
+        let particle = {
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          size: random(4, 8),
+          alpha: 255,
+          life: 10
+        };
+        shootEffects.push(particle);
+      }
+    } else if (key === 'g' || key === 'G') {
+      // Debug key to force game over
+      console.log("Forcing game over for testing");
+      gameState = "gameOver";
+    }
+  }
+}
+
+function keyReleased() {
+  if (keyCode === DOWN_ARROW) {
+    if (player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+}
+
+// Visual effect for enemy defeat - enhance the death effects
+function createEnemyDefeatEffects(enemy) {
+  // More particles for enemy defeat
+  for (let k = 0; k < 12; k++) {
+    let angle = k * (PI/6);
+    let speed = random(1.5, 3);
+    let effect = {
+      x: enemy.x + 16,
+      y: enemy.y - 16,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(6, 10),
+      alpha: 255,
+      life: 25
+    };
+    shootEffects.push(effect);
+  }
+  
+  // More dramatic blood splatter
+  for (let k = 0; k < 6; k++) {
+    let angle = random(0, TWO_PI);
+    let distance = random(10, 30);
+    let splatter = {
+      x: enemy.x + 16 + cos(angle) * distance,
+      y: enemy.y - 16 + sin(angle) * distance,
+      vx: cos(angle) * 0.5,
+      vy: sin(angle) * 0.5 + 0.2, // More downward drift
+      size: random(5, 15),
+      alpha: 255,
+      life: 35,
+      isBlood: true
+    };
+    shootEffects.push(splatter);
+  }
+  
+  // Add a flash of light
+  let flash = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    size: 5,
+    alpha: 200,
+    life: 15
+  };
+  shootEffects.push(flash);
+}
+
+// Create a new function for hit effects (for tank enemies that take multiple hits)
+function createEnemyHitEffect(enemy) {
+  // Small hit effect
+  for (let k = 0; k < 6; k++) {
+    let angle = k * (PI/3);
+    let speed = random(1, 2);
+    let effect = {
+      x: enemy.x + 16,
+      y: enemy.y - 16,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      size: random(4, 8),
+      alpha: 255,
+      life: 15
+    };
+    shootEffects.push(effect);
+  }
+  
+  // Small flash
+  let flash = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    size: 3,
+    alpha: 150,
+    life: 8
+  };
+  shootEffects.push(flash);
+}
+
+// In the spawnEnemy function, replace tank with henchman
+function spawnEnemy() {
+  // Remove this entire function as we're using a different approach for spawning enemies
+  // The enemy spawning logic is already implemented in the draw function
+}
+
+// Replace the moon drawing function with a more dramatic art deco version
+function drawMoon(x, y) {
+  push();
+  noStroke();
+  
+  // Add subtle atmospheric glow
+  for (let i = 3; i > 0; i--) {
+    fill(255, 5 * i);
+    ellipse(x, y, 140 + (3-i)*15, 140 + (3-i)*15);
+  }
+  
+  // Main moon body - slightly off-white for a vintage feel
+  fill(250, 250, 245);
+  ellipse(x, y, 120, 120);
+  
+  // Art deco architectural patterns
+  fill(240, 240, 235);
+  
+  // Create a series of concentric geometric shapes
+  let centerX = x;
+  let centerY = y;
+  
+  // Outer ring with 8 segments
+  beginShape();
+  for (let i = 0; i < 8; i++) {
+    let angle = i * PI / 4;
+    let radius = 55;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Middle ring with 6 segments
+  fill(230, 230, 225);
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let angle = i * PI / 3;
+    let radius = 40;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Inner ring with 4 segments
+  fill(220, 220, 215);
+  beginShape();
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let radius = 25;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Central architectural detail
+  fill(210, 210, 205);
+  beginShape();
+  vertex(centerX - 10, centerY - 10);
+  vertex(centerX + 10, centerY - 10);
+  vertex(centerX + 10, centerY + 10);
+  vertex(centerX - 10, centerY + 10);
+  endShape(CLOSE);
+  
+  // Add subtle architectural lines
+  stroke(200, 200, 195, 100);
+  strokeWeight(1);
+  
+  // Vertical lines
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let startRadius = 30;
+    let endRadius = 50;
+    let startX = centerX + cos(angle) * startRadius;
+    let startY = centerY + sin(angle) * startRadius;
+    let endX = centerX + cos(angle) * endRadius;
+    let endY = centerY + sin(angle) * endRadius;
+    line(startX, startY, endX, endY);
+  }
+  
+  // Add subtle shimmer effect
+  if (frameCount % 120 < 60) {
+    fill(255, 20);
+    let shimmerX = x + sin(frameCount * 0.05) * 30;
+    let shimmerY = y + cos(frameCount * 0.05) * 30;
+    ellipse(shimmerX, shimmerY, 15, 15);
+  }
+  
+  pop();
+}
+
+// Add new atmospheric effects to replace rain
+function drawAtmosphericFog() {
+  push();
+  noStroke();
+  // Create subtle fog patches
+  for (let i = 0; i < 8; i++) {
+    let x = (i * 120 + frameCount * 0.2) % width;
+    let y = 200 + (i * 30) % 180;
+    let fogSize = 150 + sin(frameCount * 0.01 + i) * 30;
+    fill(255, 5 + sin(frameCount * 0.01 + i * 0.5) * 4);
+    ellipse(x, y, fogSize, fogSize * 0.6);
+  }
+  pop();
+}
+
+function drawDramaticLighting() {
+  push();
+  noStroke();
+  
+  // Create dramatic light beams with higher opacity
+  for (let i = 0; i < 3; i++) {
+    let x = width/2 + (i - 1) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let width = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Draw light beam with higher opacity
+    fill(255, 30); // Increased from 8 to 30
+    beginShape();
+    vertex(x, 0);
+    vertex(x + width/2, 0);
+    vertex(x + width/2 + cos(angle) * length, height);
+    vertex(x - width/2 + cos(angle) * length, height);
+    vertex(x - width/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Add central spot light
+  fill(255, 40);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  
+  // Add some dust particles in the beams
+  fill(255, 60); // Increased from 20 to 60
+  for (let i = 0; i < 30; i++) { // Increased from 20 to 30
+    let x = width/2 + sin(frameCount * 0.01 + i) * 150;
+    let y = (i * 37 + frameCount * 0.5) % height;
+    let size = 2 + sin(frameCount * 0.05 + i) * 1;
+    ellipse(x, y, size, size);
+  }
+  pop();
+}

@@ -1,0 +1,292 @@
+// HBD Runner - Attempt 6x4
+// Fixing issues from previous version:
+// 1. Improved 90s arcade-style AC/DC inspired logo
+// 2. Fixed Game Over screen
+// 3. Restored original scoring style with pop effect
+// 4. Fixed performance issues with fog/vignette
+
+// IMPORTANT FIXES - Replace these functions in sketch.js:
+
+// Create an improved HBD logo with 90s arcade style and AC/DC vibe
+function createLogoGraphics() {
+  logoGfx = createGraphics(300, 150);
+  logoGfx.background(0, 0); // Transparent background
+  
+  // AC/DC inspired lightning bolt
+  logoGfx.stroke(220, 30, 30);
+  logoGfx.strokeWeight(3);
+  logoGfx.noFill();
+  
+  // Draw lightning bolt
+  logoGfx.beginShape();
+  logoGfx.vertex(140, 20);
+  logoGfx.vertex(130, 50);
+  logoGfx.vertex(150, 50);
+  logoGfx.vertex(140, 80);
+  logoGfx.vertex(160, 50);
+  logoGfx.vertex(140, 50);
+  logoGfx.endShape(CLOSE);
+  
+  // 90s arcade style text with sharp angles
+  logoGfx.textSize(80);
+  logoGfx.textAlign(CENTER, CENTER);
+  
+  // Red edge glow
+  logoGfx.fill(220, 30, 30);
+  logoGfx.text("HBD", 150, 80);
+  
+  // White core
+  logoGfx.fill(255);
+  logoGfx.textSize(76);
+  logoGfx.text("HBD", 150, 80);
+  
+  // Metal/chrome effect
+  logoGfx.fill(200);
+  logoGfx.textSize(74);
+  logoGfx.text("HBD", 150, 80);
+  
+  // Add sharp angled border like arcade cabinet
+  logoGfx.noFill();
+  logoGfx.stroke(220, 30, 30);
+  logoGfx.strokeWeight(3);
+  logoGfx.beginShape();
+  logoGfx.vertex(20, 20);
+  logoGfx.vertex(280, 20);
+  logoGfx.vertex(280, 130);
+  logoGfx.vertex(20, 130);
+  logoGfx.endShape(CLOSE);
+  
+  // Add diagonal lines in corners for arcade feel
+  logoGfx.line(20, 20, 40, 40);
+  logoGfx.line(280, 20, 260, 40);
+  logoGfx.line(20, 130, 40, 110);
+  logoGfx.line(280, 130, 260, 110);
+}
+
+// Fix the vignette effect to be much more subtle and not affect performance
+function drawVignette() {
+  push();
+  noFill();
+  // Create a much more subtle gradient with fewer elements
+  for (let i = 0; i < 3; i++) {
+    let alpha = map(i, 0, 2, 60, 20);
+    stroke(0, alpha);
+    strokeWeight(40);
+    rect(0, 0, width, height, 100);
+  }
+  pop();
+}
+
+// Make atmospheric fog much lighter and less resource-intensive
+function drawAtmosphericFog() {
+  push();
+  noStroke();
+  // Create more subtle atmospheric fog with fewer shapes
+  for (let i = 0; i < 5; i++) { // Reduced from 12 to 5
+    let x = (i * 200 + frameCount * 0.2) % width;
+    let y = 200 + (i * 40) % 180;
+    let fogSize = 120 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Reduce opacity significantly
+    let baseOpacity = map(y, 200, 380, 8, 3); // Reduced from 15,5 to 8,3
+    let timeVariation = sin(frameCount * 0.01 + i * 0.5) * 2; // Reduced variation
+    fill(255, baseOpacity + timeVariation);
+    
+    // Simplify shape to just an ellipse for better performance
+    ellipse(x, y, fogSize * 1.2, fogSize * 0.7);
+  }
+  pop();
+}
+
+// Simplified Game Over screen with better performance
+function drawGameOverScreen() {
+  push();
+  
+  // Draw darkened background
+  drawSkyGradient();
+  drawMoon(width - 120, 100);
+  
+  // Darken the entire screen
+  fill(0, 0, 0, 200);
+  rect(0, 0, width, height);
+  
+  // Add dramatic lighting effect with reduced detail
+  push();
+  noStroke();
+  
+  // Create dramatic light beams with moderate opacity
+  for (let i = 0; i < 2; i++) {
+    let x = width/2 + (i - 0.5) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let beamWidth = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Draw light beam
+    fill(255, 20);
+    beginShape();
+    vertex(x, 0);
+    vertex(x + beamWidth/2, 0);
+    vertex(x + beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2 + cos(angle) * length, height);
+    vertex(x - beamWidth/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Add central spot light
+  fill(255, 30);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  
+  // Add some dust particles in the beams
+  fill(255, 40);
+  for (let i = 0; i < 15; i++) {
+    let x = width/2 + sin(frameCount * 0.01 + i) * 150;
+    let y = (i * 37 + frameCount * 0.5) % height;
+    let size = 2 + sin(frameCount * 0.05 + i) * 1;
+    ellipse(x, y, size, size);
+  }
+  pop();
+  
+  // Add vignette with simplified approach
+  drawVignette();
+  
+  // Draw game over text with film noir style
+  textAlign(CENTER);
+  
+  // "Game Over" with dramatic styling
+  push();
+  translate(width/2, height/3 - 20);
+  // Add slight rotation for dramatic effect
+  rotate(sin(frameCount * 0.01) * 0.02);
+  
+  // Shadow/glow effect
+  textSize(80);
+  fill(220, 30, 30, 150);
+  text("GAME OVER", 4, 4);
+  
+  // Main text
+  fill(255);
+  text("GAME OVER", 0, 0);
+  pop();
+  
+  // Score display
+  textSize(30);
+  fill(200);
+  text("FINAL SCORE: " + score, width/2, height/2 - 20);
+  
+  // High score
+  if (score > highScore) {
+    highScore = score;
+    fill(220, 30, 30);
+    text("NEW HIGH SCORE!", width/2, height/2 + 20);
+  } else {
+    fill(150);
+    text("HIGH SCORE: " + highScore, width/2, height/2 + 20);
+  }
+  
+  // Enemies defeated
+  fill(180);
+  textSize(24);
+  text("ENEMIES DEFEATED: " + enemiesKilled, width/2, height/2 + 60);
+  
+  // Comic book promotion (subtle)
+  push();
+  textSize(16);
+  fill(150);
+  text("Watch for HBD - Coming soon", width/2, height - 120);
+  
+  // Draw a subtle logo
+  textSize(14);
+  // Flicker effect
+  if (frameCount % 60 < 40) {
+    fill(220, 30, 30, 150);
+  } else {
+    fill(200, 200, 200, 100);
+  }
+  text("#HBD", width/2, height - 100);
+  pop();
+  
+  // Restart prompt
+  textSize(24);
+  if (frameCount % 60 < 30) {
+    fill(255);
+  } else {
+    fill(220, 30, 30);
+  }
+  text("PRESS SPACE TO CONTINUE", width/2, height - 60);
+  
+  // After the restart prompt, add email subscription option
+  if (!emailSubmitted) {
+    // Show email subscription button or confirmation
+    if (!showEmailPrompt) {
+      // Show a "Get Updates" button
+      push();
+      rectMode(CENTER);
+      if (mouseX > width/2 - 100 && mouseX < width/2 + 100 && 
+          mouseY > height - 40 - 20 && mouseY < height - 40 + 20) {
+        // Hover state
+        fill(220, 30, 30);
+        cursor(HAND);
+      } else {
+        fill(100);
+        cursor(ARROW);
+      }
+      rect(width/2, height - 40, 200, 40, 5);
+      
+      // Button text
+      fill(255);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("GET UPDATES ON HBD", width/2, height - 40);
+      pop();
+    } else {
+      // Show the "Thank you" message
+      push();
+      fill(50);
+      rectMode(CENTER);
+      rect(width/2, height - 40, 300, 40, 5);
+      
+      fill(200);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("THANKS! WATCH FOR HBD UPDATES SOON", width/2, height - 40);
+      pop();
+    }
+  }
+  
+  pop();
+}
+
+// INSTRUCTIONS:
+// 1. Replace the above functions in sketch.js
+// 2. Make sure the score display is working in the original style:
+//    score += 1;
+//    push();
+//    // Apply the scale effect to the score text for pop feedback
+//    scoreDisplayScale = lerp(scoreDisplayScale, 1, 0.1);
+//    translate(20, 30);
+//    scale(scoreDisplayScale);
+//    fill(255);
+//    textSize(18);
+//    textAlign(LEFT);
+//    text("SCORE: " + score, 0, 0);
+//    pop();
+//
+//    // Display kills count in a separate unscaled draw
+//    push();
+//    fill(255);
+//    textSize(18);
+//    textAlign(LEFT);
+//    text("KILLS: " + enemiesKilled, 20, 55);
+//    pop();
+//
+// 3. Make sure enemy defeat still increases scoreDisplayScale for the pop effect:
+//    - For regular enemies: scoreDisplayScale = 1.15
+//    - For ninja enemies: scoreDisplayScale = 1.25
+//    - For flying enemies: scoreDisplayScale = 1.25
+//    - For henchman enemies: scoreDisplayScale = 1.3
+//
+// These changes fix the issues while keeping the enhancements:
+// - 90s arcade style AC/DC-inspired logo
+// - Game Over screen with promotion
+// - Original score style with pop effect
+// - Performance improvements for fog and vignette 

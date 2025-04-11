@@ -1,0 +1,917 @@
+// ... existing code ...
+
+for (let i = 0; i < 50; i++) {
+  let x = (i * 29) % width;
+  let y = ((i * 37) % 150) + 20;
+  let twinkle = noise(x, y, frameCount * 0.01);
+  fill(255, twinkle * 220);
+  ellipse(x, y, 1.5, 1.5);
+}
+pop();
+}
+
+// Helper function to draw street fog - grayscale only (reduced amount)
+function drawStreetFog() {
+push();
+noStroke();
+// Create more dramatic fog layers
+for (let i = 0; i < 8; i++) {
+  let x = (i * 250 + frameCount * scrollSpeed * 0.2) % (width + 400) - 200;
+  let y = groundY + 10 + (i % 3) * 10;
+  let w = 250 + (i % 4) * 50;
+  let h = 30 + (i % 3) * 5;
+  
+  // Vary opacity based on distance
+  let opacity = map(i, 0, 7, 25, 5);
+  fill(255, opacity);
+  ellipse(x, y, w, h);
+}
+pop();
+}
+
+// Helper function to draw street reflections - white only (reduced)
+function drawStreetReflections() {
+push();
+noStroke();
+// Create more dramatic street reflections
+for (let i = 0; i < 5; i++) {
+  let x = (i * 200 + frameCount * scrollSpeed * 0.3) % (width + 200) - 100;
+  let y = groundY + 5;
+  let w = 30 + (i % 3) * 15;
+  let h = 1;
+  
+  // Vary opacity based on distance
+  let opacity = map(i, 0, 4, 20, 5);
+  fill(255, opacity);
+  rect(x, y, w, h);
+}
+pop();
+}
+
+// Helper function to draw player shadow - pure black
+function drawPlayerShadow() {
+push();
+noStroke();
+
+// Ground-level shadow
+if (player.state === "jumping") {
+  // Shadow gets smaller when jumping higher
+  let shadowSize = map(player.y, groundY - 150, groundY, 15, 30);
+  let shadowAlpha = map(player.y, groundY - 150, groundY, 40, 80);
+  fill(0, shadowAlpha);
+  ellipse(player.x + 16, groundY + 2, shadowSize, 4); // Slightly below ground line
+} else if (player.state === "ducking") {
+  // Wider shadow when ducking
+  fill(0, 80);
+  ellipse(player.x + 16, groundY + 2, 35, 4); // Slightly below ground line
+} else {
+  // Normal shadow
+  fill(0, 80);
+  ellipse(player.x + 16, groundY + 2, 30, 4); // Slightly below ground line
+}
+
+pop();
+}
+
+// Helper functions for collision detection
+function getPlayerHitbox() {
+let height = player.state === "ducking" ? playerDuckingFrame.height : playerJumpingFrame.height;
+return { x: player.x, y: player.y - height, width: 32, height: height };
+}
+
+function getObstacleHitbox(obstacle) {
+let height = obstacle.type === "ground" ? groundObstacleGfx.height : flyingObstacleGfx.height;
+let y = obstacle.type === "ground" ? obstacle.y - height : obstacle.y;
+return { x: obstacle.x, y: y, width: 32, height: height };
+}
+
+function getEnemyHitbox(enemy) {
+if (enemy.type === 'flying') {
+  // Flying enemy hitbox
+  return { x: enemy.x, y: enemy.y - 16, width: 32, height: 16 };
+} else if (enemy.type === 'henchman') {
+  // Henchman enemy hitbox
+  return { x: enemy.x, y: groundY - 40, width: 40, height: 40 };
+} else if (enemy.type === 'chase') {
+  // Chase enemy hitbox
+  return { x: enemy.x, y: enemy.y - 32, width: 32, height: 32 };
+} else if (enemy.type === 'ninja') {
+  // Ninja enemy hitbox
+  return { x: enemy.x, y: enemy.y - 16, width: 32, height: 16 };
+} else {
+  // Regular enemy hitbox
+  return { x: enemy.x, y: groundY - 32, width: 32, height: 32 };
+}
+}
+
+function checkCollision(rect1, rect2) {
+return rect1.x < rect2.x + rect2.width &&
+       rect1.x + rect1.width > rect2.x &&
+       rect1.y < rect2.y + rect2.height &&
+       rect1.y + rect1.height > rect2.y;
+}
+
+// Handle user input
+function keyPressed() {
+if (gameState === "playing") {
+  if (key === ' ' || keyCode === UP_ARROW) {
+    if (player.state === "running") {
+      player.vy = jumpStrength;
+      player.state = "jumping";
+    }
+  } else if (keyCode === DOWN_ARROW) {
+    if (player.state === "running") {
+      player.state = "ducking";
+    }
+  } else if (key === 'z' || key === 'Z') {
+    projectiles.push({ x: player.x + 32, y: player.y - 16 });
+    
+    // Enhanced shooting effect
+    let shootEffect = {
+      x: player.x + 32, 
+      y: player.y - 16,
+      size: 20, // Increased from 12
+      alpha: 255,
+      life: 15 // Increased from 10
+    };
+    
+    shootEffects.push(shootEffect);
+    
+    // Add additional particles for more dramatic effect
+    for (let i = 0; i < 5; i++) {
+      let angle = random(-PI/4, PI/4);
+      let speed = random(2, 4);
+      let particle = {
+        x: player.x + 32,
+        y: player.y - 16,
+        vx: cos(angle) * speed,
+        vy: sin(angle) * speed,
+        size: random(4, 8),
+        alpha: 255,
+        life: 10
+      };
+      shootEffects.push(particle);
+    }
+  } else if (key === 'g' || key === 'G') {
+    // Debug key to force game over
+    console.log("Forcing game over for testing");
+    gameState = "gameOver";
+  }
+} else if (gameState === "gameOver") {
+  // Add restart logic for game over screen
+  if (key === ' ' || keyCode === ENTER) {
+    showTitleScreen = true; // Go back to title screen on restart
+    gameState = "start";
+  }
+}
+}
+
+function keyReleased() {
+if (keyCode === DOWN_ARROW) {
+  if (player.state === "ducking") {
+    player.state = "running";
+  }
+}
+}
+
+// Visual effect for enemy defeat - enhance the death effects
+function createEnemyDefeatEffects(enemy) {
+// Ink-splatter style particles
+for (let k = 0; k < 15; k++) {
+  let angle = k * (PI/7.5);
+  let speed = random(2, 4);
+  let effect = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    vx: cos(angle) * speed,
+    vy: sin(angle) * speed,
+    size: random(8, 12),
+    alpha: 255,
+    life: 30,
+    isInk: true // New flag for ink-style effects
+  };
+  shootEffects.push(effect);
+}
+
+// Dramatic shadow dispersion
+for (let k = 0; k < 8; k++) {
+  let angle = random(0, TWO_PI);
+  let distance = random(15, 35);
+  let shadow = {
+    x: enemy.x + 16 + cos(angle) * distance,
+    y: enemy.y - 16 + sin(angle) * distance,
+    vx: cos(angle) * 0.8,
+    vy: sin(angle) * 0.8 + 0.3,
+    size: random(10, 20),
+    alpha: 255,
+    life: 40,
+    isShadow: true // New flag for shadow effects
+  };
+  shootEffects.push(shadow);
+}
+
+// Dramatic flash
+let flash = {
+  x: enemy.x + 16,
+  y: enemy.y - 16,
+  size: 8,
+  alpha: 200,
+  life: 20
+};
+shootEffects.push(flash);
+}
+
+// Create a new function for hit effects (for tank enemies that take multiple hits)
+function createEnemyHitEffect(enemy) {
+// Small hit effect
+for (let k = 0; k < 6; k++) {
+  let angle = k * (PI/3);
+  let speed = random(1, 2);
+  let effect = {
+    x: enemy.x + 16,
+    y: enemy.y - 16,
+    vx: cos(angle) * speed,
+    vy: sin(angle) * speed,
+    size: random(4, 8),
+    alpha: 255,
+    life: 15
+  };
+  shootEffects.push(effect);
+}
+
+// Small flash
+let flash = {
+  x: enemy.x + 16,
+  y: enemy.y - 16,
+  size: 3,
+  alpha: 150,
+  life: 8
+};
+shootEffects.push(flash);
+}
+
+// In the spawnEnemy function, replace tank with henchman
+function spawnEnemy() {
+// Remove this entire function as we're using a different approach for spawning enemies
+// The enemy spawning logic is already implemented in the draw function
+}
+
+// Replace the moon drawing function with a more dramatic art deco version
+function drawMoon(x, y) {
+  push();
+  noStroke();
+  
+  // Add subtle atmospheric glow
+  for (let i = 3; i > 0; i--) {
+    fill(255, 5 * i);
+    ellipse(x, y, 140 + (3-i)*15, 140 + (3-i)*15);
+  }
+  
+  // Main moon body - slightly off-white for a vintage feel
+  fill(250, 250, 245);
+  ellipse(x, y, 120, 120);
+  
+  // Art deco architectural patterns
+  fill(240, 240, 235);
+  
+  // Create a series of concentric geometric shapes
+  let centerX = x;
+  let centerY = y;
+  
+  // Outer ring with 8 segments
+  beginShape();
+  for (let i = 0; i < 8; i++) {
+    let angle = i * PI / 4;
+    let radius = 55;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Middle ring with 6 segments
+  fill(230, 230, 225);
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let angle = i * PI / 3;
+    let radius = 40;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Inner ring with 4 segments
+  fill(220, 220, 215);
+  beginShape();
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let radius = 25;
+    let vx = centerX + cos(angle) * radius;
+    let vy = centerY + sin(angle) * radius;
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+  
+  // Central architectural detail
+  fill(210, 210, 205);
+  beginShape();
+  vertex(centerX - 10, centerY - 10);
+  vertex(centerX + 10, centerY - 10);
+  vertex(centerX + 10, centerY + 10);
+  vertex(centerX - 10, centerY + 10);
+  endShape(CLOSE);
+  
+  // Add subtle architectural lines
+  stroke(200, 200, 195, 100);
+  strokeWeight(1);
+  
+  // Vertical lines
+  for (let i = 0; i < 4; i++) {
+    let angle = i * PI / 2;
+    let startRadius = 30;
+    let endRadius = 50;
+    let startX = centerX + cos(angle) * startRadius;
+    let startY = centerY + sin(angle) * startRadius;
+    let endX = centerX + cos(angle) * endRadius;
+    let endY = centerY + sin(angle) * endRadius;
+    line(startX, startY, endX, endY);
+  }
+  
+  // Add subtle shimmer effect
+  if (frameCount % 120 < 60) {
+    fill(255, 20);
+    let shimmerX = x + sin(frameCount * 0.05) * 30;
+    let shimmerY = y + cos(frameCount * 0.05) * 30;
+    ellipse(shimmerX, shimmerY, 15, 15);
+  }
+  
+  pop();
+}
+
+// Add new atmospheric effects to replace rain
+function drawAtmosphericFog() {
+  push();
+  noStroke();
+  // Create more dramatic atmospheric fog
+  for (let i = 0; i < 12; i++) {
+    let x = (i * 120 + frameCount * 0.2) % width;
+    let y = 200 + (i * 30) % 180;
+    let fogSize = 150 + sin(frameCount * 0.01 + i) * 30;
+    
+    // Vary opacity based on height and time
+    let baseOpacity = map(y, 200, 380, 15, 5);
+    let timeVariation = sin(frameCount * 0.01 + i * 0.5) * 4;
+    fill(255, baseOpacity + timeVariation);
+    
+    // Create more organic shapes
+    beginShape();
+    for (let j = 0; j < 8; j++) {
+      let angle = j * TWO_PI / 8;
+      let radius = fogSize * (0.5 + noise(x + j, y, frameCount * 0.01) * 0.5);
+      let vx = x + cos(angle) * radius;
+      let vy = y + sin(angle) * radius * 0.6;
+      vertex(vx, vy);
+    }
+    endShape(CLOSE);
+  }
+  pop();
+}
+
+function drawDramaticLighting() {
+  push();
+  noStroke();
+  
+  // Create dramatic light beams with higher opacity
+  for (let i = 0; i < 3; i++) {
+    let x = width/2 + (i - 1) * 150;
+    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
+    let length = height * 1.5;
+    let width = 100 + sin(frameCount * 0.01 + i) * 20;
+    
+    // Draw light beam with higher opacity
+    fill(255, 30); // Increased from 8 to 30
+    beginShape();
+    vertex(x, 0);
+    vertex(x + width/2, 0);
+    vertex(x + width/2 + cos(angle) * length, height);
+    vertex(x - width/2 + cos(angle) * length, height);
+    vertex(x - width/2, 0);
+    endShape(CLOSE);
+  }
+  
+  // Add central spot light
+  fill(255, 40);
+  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
+  
+  // Add some dust particles in the beams
+  fill(255, 60); // Increased from 20 to 60
+  for (let i = 0; i < 30; i++) { // Increased from 20 to 30
+    let x = width/2 + sin(frameCount * 0.01 + i) * 150;
+    let y = (i * 37 + frameCount * 0.5) % height;
+    let size = 2 + sin(frameCount * 0.05 + i) * 1;
+    ellipse(x, y, size, size);
+  }
+  pop();
+}
+
+// Add title screen variables
+let showTitleScreen = true;
+let logoGfx; // Graphics buffer for the HBD logo
+let titlePulseAmount = 0; // For subtle animation
+
+// Add variables for score display
+let scoreDisplayScale = 1; // For score pop effect
+let highScore = 0; // Track high score across sessions
+
+// Add variable for email opt-in
+let showEmailPrompt = false;
+let emailSubmitted = false;
+
+function setup() {
+  createCanvas(800, 400);
+  
+  // Create the logo graphics
+  createLogoGraphics();
+  
+  // ... existing setup code ...
+}
+
+// In the draw function, at the beginning
+function draw() {
+  // Check if we should show the title screen
+  if (showTitleScreen) {
+    drawTitleScreen();
+    return; // Skip the rest of the draw function
+  }
+  
+  if (gameState === "playing") {
+    // ... existing gameplay code ...
+    
+    // After all gameplay drawing is complete, draw the score display
+    drawScoreDisplay();
+  } else if (gameState === "gameOver") {
+    // Enhance the game over screen
+    drawGameOverScreen();
+  }
+  
+  // ... rest of draw function ...
+}
+
+// Create the HBD logo with pixelated Squealer-inspired font
+function createLogoGraphics() {
+  logoGfx = createGraphics(300, 150);
+  logoGfx.background(0, 0); // Transparent background
+  
+  // Create pixelated "HBD" logo
+  logoGfx.noStroke();
+  
+  // H letter
+  const pixelSize = 6;
+  const letterSpacing = 10;
+  let xOffset = 5;
+  
+  // Draw H
+  logoGfx.fill(255); // White
+  // Left vertical bar
+  for (let y = 0; y < 15; y++) {
+    for (let x = 0; x < 4; x++) {
+      logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+  // Middle horizontal bar
+  for (let y = 6; y < 9; y++) {
+    for (let x = 0; x < 10; x++) {
+      logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+  // Right vertical bar
+  for (let y = 0; y < 15; y++) {
+    for (let x = 6; x < 10; x++) {
+      logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+  
+  // B letter
+  xOffset += 70;
+  // Vertical bar
+  for (let y = 0; y < 15; y++) {
+    for (let x = 0; x < 4; x++) {
+      logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+  // Top curved part
+  for (let y = 0; y < 3; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (x > 3) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  // Middle bar
+  for (let y = 6; y < 9; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (x > 3) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  // Bottom curved part
+  for (let y = 12; y < 15; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (x > 3) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  // Connecting parts for B
+  for (let x = 4; x < 10; x++) {
+    for (let y = 3; y < 6; y++) {
+      if (x == 9) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+    for (let y = 9; y < 12; y++) {
+      if (x == 9) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  
+  // D letter
+  xOffset += 70;
+  // Vertical bar
+  for (let y = 0; y < 15; y++) {
+    for (let x = 0; x < 4; x++) {
+      logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+  // Top curved part
+  for (let y = 0; y < 3; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (x > 3) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  // Bottom curved part
+  for (let y = 12; y < 15; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (x > 3) {
+        logoGfx.rect(xOffset + x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+  // Right curved part
+  for (let y = 3; y < 12; y++) {
+    logoGfx.rect(xOffset + 9 * pixelSize, y * pixelSize, pixelSize, pixelSize);
+  }
+  
+  // Add subtle red outline glow effect
+  logoGfx.strokeWeight(2);
+  logoGfx.stroke(220, 30, 30, 100);
+  logoGfx.noFill();
+  
+  // Outline for H
+  xOffset = 5;
+  logoGfx.beginShape();
+  logoGfx.vertex(xOffset, 0);
+  logoGfx.vertex(xOffset + 4 * pixelSize, 0);
+  logoGfx.vertex(xOffset + 4 * pixelSize, 6 * pixelSize);
+  logoGfx.vertex(xOffset + 10 * pixelSize, 6 * pixelSize);
+  logoGfx.vertex(xOffset + 10 * pixelSize, 0);
+  logoGfx.vertex(xOffset + 10 * pixelSize + 4 * pixelSize, 0);
+  logoGfx.vertex(xOffset + 10 * pixelSize + 4 * pixelSize, 15 * pixelSize);
+  logoGfx.vertex(xOffset + 10 * pixelSize, 15 * pixelSize);
+  logoGfx.vertex(xOffset + 10 * pixelSize, 9 * pixelSize);
+  logoGfx.vertex(xOffset + 4 * pixelSize, 9 * pixelSize);
+  logoGfx.vertex(xOffset + 4 * pixelSize, 15 * pixelSize);
+  logoGfx.vertex(xOffset, 15 * pixelSize);
+  logoGfx.vertex(xOffset, 0);
+  logoGfx.endShape();
+  
+  // No need to outline B and D in detail - the red glow will be subtle
+}
+
+// Draw the title screen
+function drawTitleScreen() {
+  // Update pulse animation
+  titlePulseAmount = sin(frameCount * 0.05) * 0.1;
+  
+  push();
+  
+  // Draw darkened version of the game background
+  drawSkyGradient();
+  drawMoon(width - 120, 100);
+  
+  // Fade background for better text visibility
+  fill(0, 150);
+  rect(0, 0, width, height);
+  
+  // Draw silhouettes of destroyed buildings
+  fill(20, 20, 20, 200);
+  for (let i = 0; i < 8; i++) {
+    let buildingWidth = random(80, 150);
+    let buildingHeight = random(100, 200);
+    let damage = int(random(3, 7)); // Number of "chunks" destroyed
+    
+    beginShape();
+    // Bottom left corner
+    vertex(i * width/8, height);
+    
+    // Create jagged top with damage
+    for (let j = 0; j <= buildingWidth; j += buildingWidth/damage) {
+      let topY = height - buildingHeight + random(-30, 30);
+      vertex(i * width/8 + j, topY);
+    }
+    
+    // Bottom right corner
+    vertex(i * width/8 + buildingWidth, height);
+    endShape(CLOSE);
+  }
+  
+  // Draw atmospheric fog
+  drawAtmosphericFog();
+  
+  // Add vignette effect
+  drawVignette();
+  
+  // Draw the HBD logo with scaling pulse
+  push();
+  translate(width/2, height/3);
+  scale(1 + titlePulseAmount);
+  imageMode(CENTER);
+  image(logoGfx, 0, 0);
+  pop();
+  
+  // Draw "RUNNER" subtitle
+  fill(255);
+  textSize(30);
+  textAlign(CENTER);
+  text("RUNNER", width/2, height/3 + 70);
+  
+  // Draw controls
+  fill(200);
+  textSize(16);
+  textAlign(CENTER);
+  text("CONTROLS", width/2, height/3 + 120);
+  text("SPACE / UP ARROW: Jump", width/2, height/3 + 145);
+  text("DOWN ARROW: Duck", width/2, height/3 + 170);
+  text("Z: Shoot", width/2, height/3 + 195);
+  
+  // Press space to start
+  if (frameCount % 60 < 30) {
+    fill(255);
+  } else {
+    fill(200);
+  }
+  textSize(20);
+  text("PRESS SPACE TO START", width/2, height - 80);
+  
+  pop();
+}
+
+// Draw sky gradient for backgrounds
+function drawSkyGradient() {
+  push();
+  // Create a dark noir sky gradient
+  noStroke();
+  // Deep dark blue-black at top
+  fill(5, 5, 15);
+  rect(0, 0, width, height);
+  
+  // Add subtle gradient
+  for (let y = 0; y < height; y += 5) {
+    let alpha = map(y, 0, height, 0, 60);
+    stroke(20, 20, 40, alpha);
+    line(0, y, width, y);
+  }
+  
+  // Add stars
+  fill(255, 200);
+  noStroke();
+  for (let i = 0; i < 50; i++) {
+    let starX = (i * 43) % width;
+    let starY = (i * 47) % height/2;
+    let starSize = noise(i * 0.1) * 2;
+    ellipse(starX, starY, starSize, starSize);
+    
+    // Add occasional twinkle
+    if (frameCount % 30 === i % 30) {
+      fill(255, 255, 255, 150);
+      ellipse(starX, starY, starSize + 1, starSize + 1);
+      fill(255, 200);
+    }
+  }
+  pop();
+}
+
+// Add vignette effect for title screen
+function drawVignette() {
+  push();
+  noFill();
+  
+  // Create a gradient from transparent in the center to black at the edges
+  for (let i = 0; i < 100; i++) {
+    let alpha = map(i, 0, 100, 0, 150);
+    stroke(0, alpha);
+    strokeWeight(2);
+    ellipse(width/2, height/2, width - i*5, height - i*3);
+  }
+  pop();
+}
+
+// Draw an enhanced score display
+function drawScoreDisplay() {
+  push();
+  
+  // Adjust scale for score pop effect when score changes
+  scoreDisplayScale = lerp(scoreDisplayScale, 1, 0.1);
+  
+  // Draw score container with noir styling
+  fill(0, 0, 0, 180);
+  stroke(200, 200, 200, 100);
+  strokeWeight(1);
+  rect(20, 20, 150, 50, 5);
+  
+  // Draw score text with scale effect
+  textAlign(LEFT, CENTER);
+  push();
+  translate(32, 45);
+  scale(scoreDisplayScale);
+  noStroke();
+  
+  // Shadow effect
+  fill(220, 30, 30, 150);
+  text("SCORE: " + score, 2, 2);
+  
+  // Main text
+  fill(255);
+  text("SCORE: " + score, 0, 0);
+  pop();
+  
+  // Draw enemy count with noir styling
+  fill(0, 0, 0, 180);
+  stroke(200, 200, 200, 100);
+  strokeWeight(1);
+  rect(width - 170, 20, 150, 50, 5);
+  
+  textAlign(RIGHT, CENTER);
+  noStroke();
+  
+  // Shadow effect
+  fill(220, 30, 30, 150);
+  text("KILLS: " + enemiesKilled, width - 32 + 2, 45 + 2);
+  
+  // Main text
+  fill(255);
+  text("KILLS: " + enemiesKilled, width - 32, 45);
+  
+  pop();
+}
+
+// Draw an enhanced game over screen
+function drawGameOverScreen() {
+  push();
+  
+  // Draw darkened background
+  drawSkyGradient();
+  drawMoon(width - 120, 100);
+  
+  // Darken the entire screen
+  fill(0, 0, 0, 200);
+  rect(0, 0, width, height);
+  
+  // Add dramatic lighting effect
+  drawDramaticLighting();
+  
+  // Add vignette
+  drawVignette();
+  
+  // Draw game over text with film noir style
+  textAlign(CENTER);
+  
+  // "Game Over" with dramatic styling
+  push();
+  translate(width/2, height/3 - 20);
+  // Add slight rotation for dramatic effect
+  rotate(sin(frameCount * 0.01) * 0.02);
+  
+  // Shadow/glow effect
+  textSize(80);
+  fill(220, 30, 30, 150);
+  text("GAME OVER", 4, 4);
+  
+  // Main text
+  fill(255);
+  text("GAME OVER", 0, 0);
+  pop();
+  
+  // Score display
+  textSize(30);
+  fill(200);
+  text("FINAL SCORE: " + score, width/2, height/2 - 20);
+  
+  // High score
+  if (score > highScore) {
+    highScore = score;
+    fill(220, 30, 30);
+    text("NEW HIGH SCORE!", width/2, height/2 + 20);
+  } else {
+    fill(150);
+    text("HIGH SCORE: " + highScore, width/2, height/2 + 20);
+  }
+  
+  // Enemies defeated
+  fill(180);
+  textSize(24);
+  text("ENEMIES DEFEATED: " + enemiesKilled, width/2, height/2 + 60);
+  
+  // Comic book promotion (subtle)
+  push();
+  textSize(16);
+  fill(150);
+  text("Watch for HBD - Coming soon", width/2, height - 120);
+  
+  // Draw a subtle logo
+  textSize(14);
+  // Flicker effect
+  if (frameCount % 60 < 40) {
+    fill(220, 30, 30, 150);
+  } else {
+    fill(200, 200, 200, 100);
+  }
+  text("#HBD", width/2, height - 100);
+  pop();
+  
+  // Restart prompt
+  textSize(24);
+  if (frameCount % 60 < 30) {
+    fill(255);
+  } else {
+    fill(220, 30, 30);
+  }
+  text("PRESS SPACE TO CONTINUE", width/2, height - 60);
+  
+  // After the restart prompt, add email subscription option
+  if (!emailSubmitted) {
+    // Show email subscription button or confirmation
+    if (!showEmailPrompt) {
+      // Show a "Get Updates" button
+      push();
+      rectMode(CENTER);
+      if (mouseX > width/2 - 100 && mouseX < width/2 + 100 && 
+          mouseY > height - 40 - 20 && mouseY < height - 40 + 20) {
+        // Hover state
+        fill(220, 30, 30);
+        cursor(HAND);
+      } else {
+        fill(100);
+        cursor(ARROW);
+      }
+      rect(width/2, height - 40, 200, 40, 5);
+      
+      // Button text
+      fill(255);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("GET UPDATES ON HBD", width/2, height - 40);
+      pop();
+    } else {
+      // Show the "Thank you" message
+      push();
+      fill(50);
+      rectMode(CENTER);
+      rect(width/2, height - 40, 300, 40, 5);
+      
+      fill(200);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("THANKS! WATCH FOR HBD UPDATES SOON", width/2, height - 40);
+      pop();
+    }
+  }
+  
+  pop();
+}
+
+// Add mouse click handler for the email button
+function mouseClicked() {
+  if (gameState === "gameOver" && !emailSubmitted) {
+    if (!showEmailPrompt) {
+      // Check if "Get Updates" button was clicked
+      if (mouseX > width/2 - 100 && mouseX < width/2 + 100 && 
+          mouseY > height - 40 - 20 && mouseY < height - 40 + 20) {
+        // In a real implementation, you would collect an email address here
+        // For this demo, we'll just show a "thank you" message
+        showEmailPrompt = true;
+        emailSubmitted = true;
+        
+        // You would typically send this to your server or a service like MailChimp
+        console.log("User signed up for HBD updates");
+      }
+    }
+  }
+}
+
+// ... existing code ...

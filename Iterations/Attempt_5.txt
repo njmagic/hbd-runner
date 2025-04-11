@@ -1,0 +1,1046 @@
+---------------------- index.html ----------------------
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HBD Runner Game</title>
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      overflow: hidden; 
+      background-color: #000;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    canvas {
+      display: block;
+    }
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      color: #fff;
+    }
+    #error {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.9);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      color: #f00;
+      padding: 20px;
+      text-align: center;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+    #error button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #f00;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(0,0,0,0.7);
+      border: 1px solid #555;
+      padding: 10px;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      max-width: 400px;
+      max-height: 80%;
+      overflow-y: auto;
+      z-index: 998;
+      display: none;
+    }
+    #debug p {
+      margin: 2px 0;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <h1>Loading Game...</h1>
+    <p>Please wait...</p>
+  </div>
+  <div id="error"></div>
+  <div id="debug"></div>
+  
+  <script>
+    // Error and debug handling
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error("Game Error:", message, source, lineno, colno);
+      document.getElementById('error').innerHTML = `
+        <h2>Game Error</h2>
+        <p>${message}</p>
+        <p>Location: ${source ? source.split('/').pop() : 'Unknown'} (Line: ${lineno}, Column: ${colno})</p>
+        ${error && error.stack ? `<pre>${error.stack}</pre>` : ''}
+        <button onclick="location.reload()">Refresh Page</button>
+      `;
+      document.getElementById('error').style.display = 'flex';
+      return true; // Prevents the default error handling
+    };
+
+    // Debug info functions
+    window.showDebugInfo = function(text) {
+      const debug = document.getElementById('debug');
+      const p = document.createElement('p');
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+      debug.appendChild(p);
+      debug.scrollTop = debug.scrollHeight;
+    };
+
+    window.clearDebugInfo = function() {
+      document.getElementById('debug').innerHTML = '';
+    };
+
+    // Toggle debug panel with 'D' key
+    document.addEventListener('keydown', function(event) {
+      if (event.key.toLowerCase() === 'd') {
+        const debug = document.getElementById('debug');
+        debug.style.display = debug.style.display === 'none' || debug.style.display === '' ? 'block' : 'none';
+      }
+    });
+
+    // Check if p5.js loaded correctly
+    function checkP5Loaded() {
+      setTimeout(function() {
+        if (typeof p5 === 'undefined') {
+          document.getElementById('error').innerHTML = `
+            <h2>Loading Error</h2>
+            <p>Failed to load p5.js library</p>
+            <button onclick="location.reload()">Try Again</button>
+          `;
+          document.getElementById('error').style.display = 'flex';
+        }
+      }, 3000);
+    }
+    
+    // Hide loading screen once game starts
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        document.getElementById('loading').style.display = 'none';
+      }, 1500); // Small delay to ensure it's visible during loading
+    });
+    
+    checkP5Loaded();
+  </script>
+  
+  <!-- Load p5.js from CDN with crossorigin attribute -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js" crossorigin="anonymous"></script>
+  
+  <!-- Load debug script before main game -->
+  <script src="debug.js"></script>
+  
+  <!-- Load main game -->
+  <script src="sketch.js"></script>
+</body>
+</html>
+
+---------------------- debug.js ----------------------
+
+/**
+ * Debug script for diagnosing HBD Runner game issues
+ */
+
+// Check if p5.js is loaded
+function checkP5Loading() {
+  if (typeof p5 === 'undefined') {
+    console.error('ERROR: p5.js not loaded!');
+    if (window.showDebugInfo) {
+      window.showDebugInfo('ERROR: p5.js not loaded!');
+    }
+  } else {
+    console.log('SUCCESS: p5.js loaded');
+    if (window.showDebugInfo) {
+      window.showDebugInfo('SUCCESS: p5.js loaded');
+    }
+  }
+}
+
+// Check if game assets are loaded
+function checkGameAssets() {
+  setTimeout(() => {
+    try {
+      // Check game state 
+      console.log('Game state:', window.gameState);
+      
+      // Check player
+      console.log('Player:', window.player);
+      
+      // Check background graphics
+      console.log('Background graphics:',
+        window.backgroundGfx ? 'loaded' : 'missing',
+        window.midgroundGfx ? 'loaded' : 'missing',
+        window.groundTile ? 'loaded' : 'missing'
+      );
+      
+      // Check player animations
+      console.log('Player animations:',
+        window.playerRunningFrames && window.playerRunningFrames.length ? 'loaded' : 'missing',
+        window.playerJumpingFrame ? 'loaded' : 'missing',
+        window.playerDuckingFrame ? 'loaded' : 'missing'
+      );
+      
+      if (window.showDebugInfo) {
+        window.showDebugInfo(`Game state: ${window.gameState || 'undefined'}`);
+        window.showDebugInfo(`Player: ${window.player ? 'loaded' : 'missing'}`);
+        window.showDebugInfo(`Graphics: ${window.backgroundGfx ? 'loaded' : 'missing'}`);
+      }
+    } catch (error) {
+      console.error('ERROR checking game assets:', error);
+      if (window.showDebugInfo) {
+        window.showDebugInfo(`ERROR checking game assets: ${error.message}`);
+      }
+    }
+  }, 2000); // Check after 2 seconds to allow game time to load
+}
+
+// Wrap p5.js setup function to catch errors
+window._originalSetup = window.setup;
+window.setup = function() {
+  try {
+    console.log('Setup starting...');
+    if (window.showDebugInfo) {
+      window.showDebugInfo('Setup starting...');
+    }
+    
+    // Call original setup
+    if (window._originalSetup) {
+      window._originalSetup();
+    }
+    
+    console.log('Setup completed');
+    if (window.showDebugInfo) {
+      window.showDebugInfo('Setup completed');
+    }
+  } catch (error) {
+    console.error('ERROR in setup:', error);
+    if (window.showDebugInfo) {
+      window.showDebugInfo(`ERROR in setup: ${error.message}`);
+    }
+    // Show error on screen
+    if (document.getElementById('error')) {
+      document.getElementById('error').innerHTML = `
+        <h2>Setup Error</h2>
+        <p>${error.message}</p>
+        <pre>${error.stack}</pre>
+        <button onclick="location.reload()">Refresh Page</button>
+      `;
+      document.getElementById('error').style.display = 'block';
+    }
+  }
+};
+
+// Listen for DOM content loaded
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM content loaded - debug.js');
+  checkP5Loading();
+});
+
+// Listen for window load
+window.addEventListener('load', function() {
+  console.log('Window loaded - debug.js');
+  checkGameAssets();
+});
+
+// Log initialization
+console.log('Debug script initialized');
+if (window.showDebugInfo) {
+  window.showDebugInfo('Debug script initialized');
+}
+
+---------------------- sketch.js (Part 1) ----------------------
+
+// Global variables
+let gameState = "start";
+let player;
+let enemies = [];
+let obstacles = [];
+let platforms = [];
+let projectiles = [];
+let explosions = [];
+let comicTexts = [];
+let powerups = [];
+let screenShake = 0; // For dramatic impact effects
+let debugMode = true; // Enable debug mode by default
+
+// Graphics
+let gameTitle;
+let backgroundGfx;
+let midgroundGfx;
+let groundTile;
+let platformGfx;
+let playerRunningFrames = [];
+let playerJumpingFrame;
+let playerDuckingFrame;
+let enemyGfx;
+let flyingEnemyGfx;
+let heavyEnemyGfx;
+let ninjaEnemyGfx;
+let robotEnemyGfx;
+let projectileGfx;
+let obstacleGfx;
+let cakeObstacleGfx;
+let flameFrames = [];
+let explosionFrames = [];
+let shieldPowerUpGfx;
+let scoreMultiplierGfx;
+let superJumpGfx;
+let shieldEffectGfx;
+let comicTextGfx = {};
+let rainEffect;
+let vignetteEffect;
+
+// Game settings
+let groundLevel = 384; // Ground level (400 - 16)
+let gravity = 0.5;
+let jumpStrength = -10;
+let score = 0;
+let enemiesKilled = 0;
+let scrollSpeed = 5;
+let groundOffset = 0;
+let backgroundOffset = 0;
+let midgroundOffset = 0;
+let activeEffects = {
+  shield: 0,
+  multiplier: 0,
+  superJump: false
+};
+
+// Setup function with error handling
+function setup() {
+  try {
+    console.log("Starting setup...");
+    createCanvas(800, 400);
+    console.log("Canvas created");
+    frameRate(60);
+    
+    // Position canvas in the center
+    let canvas = document.querySelector('canvas');
+    if (canvas) {
+      canvas.style.position = 'absolute';
+      canvas.style.left = '50%';
+      canvas.style.top = '50%';
+      canvas.style.transform = 'translate(-50%, -50%)';
+      console.log("Canvas positioned");
+    } else {
+      console.error("Canvas element not found!");
+    }
+    
+    // Create all game assets
+    try {
+      console.log("Creating game assets...");
+      createGameAssets();
+      console.log("Game assets created successfully");
+    } catch (assetError) {
+      console.error("Error creating game assets:", assetError, assetError.stack);
+      throw new Error("Failed to create game assets: " + assetError.message);
+    }
+    
+    // Initialize player
+    player = {
+      x: 100,
+      y: groundLevel,
+      vy: 0,
+      state: "running",
+      animFrame: 0,
+      animTimer: 0,
+      onPlatform: false,
+      platformId: null
+    };
+    console.log("Player initialized");
+    
+    // Initialize collections
+    explosions = [];
+    projectiles = [];
+    comicTexts = [];
+    obstacles = [];
+    enemies = [];
+    powerups = [];
+    
+    // Set initial game state
+    gameState = "start";
+    console.log("Game state set to:", gameState);
+    
+    console.log("Setup complete");
+  } catch (error) {
+    console.error("Error in setup:", error, error.stack);
+    // Create a canvas anyway to show error message
+    try {
+      createCanvas(800, 400);
+      background(0);
+      fill(255, 0, 0);
+      textAlign(CENTER);
+      textSize(18);
+      text("Error setting up game: " + error.message, width/2, height/2);
+      text("See console for details (F12)", width/2, height/2 + 30);
+    } catch (e) {
+      console.error("Could not even create error canvas:", e);
+    }
+  }
+}
+
+// Draw function with error handling
+function draw() {
+  try {
+    // Title screen
+    if (gameState === "start") {
+      drawTitleScreen();
+    } 
+    // Gameplay
+    else if (gameState === "playing") {
+      drawGameScreen();
+    } 
+    // Game over
+    else if (gameState === "gameOver") {
+      drawGameOverScreen();
+    } else {
+      console.error("Unknown game state:", gameState);
+      // Draw a fallback if state is unknown
+      background(50);
+      fill(255);
+      textAlign(CENTER);
+      text("Unknown game state: " + gameState, width/2, height/2);
+    }
+    
+    // Draw debug overlay if enabled
+    if (debugMode) {
+      drawDebugOverlay();
+    }
+  } catch (error) {
+    console.error("Error in draw:", error, error.stack);
+    // If there's an error, fall back to a simple screen
+    background(0);
+    fill(255);
+    textAlign(CENTER);
+    text("Error loading game: " + error.message, width/2, height/2);
+    text("See console for details (F12)", width/2, height/2 + 30);
+  }
+}
+
+// Reset game state for new game
+function resetGame() {
+  console.log("Game reset");
+  
+  // Reset game state
+  gameState = "playing";
+  
+  // Reset player
+  player = {
+    x: 100,
+    y: groundLevel,
+    vy: 0,
+    state: "running",
+    animFrame: 0,
+    animTimer: 0,
+    onPlatform: false,
+    platformId: null
+  };
+  
+  // Reset game elements
+  score = 0;
+  enemiesKilled = 0;
+  enemies = [];
+  obstacles = [];
+  projectiles = [];
+  explosions = [];
+  platforms = [];
+  powerups = [];
+  comicTexts = [];
+  
+  // Reset scroll positions
+  groundOffset = 0;
+  backgroundOffset = 0;
+  midgroundOffset = 0;
+  
+  // Reset power-up effects
+  activeEffects = {
+    shield: 0,
+    multiplier: 0,
+    superJump: false
+  };
+  
+  // Make sure the game loop is running
+  loop();
+}
+
+// Create game assets
+function createGameAssets() {
+  console.log("Creating game assets");
+  
+  // Create noir-style game title
+  gameTitle = createGraphics(400, 100);
+  gameTitle.background(0, 0, 0, 0);
+  
+  // Create blood splatter background
+  for (let i = 0; i < 20; i++) {
+    gameTitle.fill(255, 0, 0, random(100, 150));
+    let x = random(400);
+    let y = random(100);
+    let size = random(5, 20);
+    gameTitle.ellipse(x, y, size, size * 0.7);
+    
+    // Add drips
+    if (random() < 0.5) {
+      let dripLength = random(10, 30);
+      gameTitle.rect(x - 1, y, 2, dripLength);
+    }
+  }
+  
+  // Draw scan lines for title background
+  gameTitle.stroke(150, 150, 150, 30);
+  for (let i = 0; i < 100; i += 3) {
+    gameTitle.line(0, i, 400, i);
+  }
+  gameTitle.noStroke();
+  
+  // Draw title text shadow (black outline)
+  gameTitle.fill(0);
+  gameTitle.textAlign(CENTER, CENTER);
+  gameTitle.textSize(50);
+  gameTitle.textStyle(BOLD);
+  gameTitle.text("HBD RUNNER", 203, 43);
+  
+  // Draw title text
+  gameTitle.fill(255);
+  gameTitle.text("HBD RUNNER", 200, 40);
+  
+  // Add blood drips from letters
+  gameTitle.fill(255, 0, 0);
+  let drips = [60, 120, 180, 280, 340];
+  for (let x of drips) {
+    let length = random(20, 40);
+    let width = random(2, 5);
+    gameTitle.rect(x, 60, width, length);
+  }
+  
+  // Draw red lightning bolt between H and B to hint at "Heroes Be Damned"
+  gameTitle.fill(255, 0, 0);
+  gameTitle.noStroke();
+  let boltX = 155;
+  let boltY = 35;
+  gameTitle.beginShape();
+  gameTitle.vertex(boltX, boltY);
+  gameTitle.vertex(boltX + 10, boltY + 5);
+  gameTitle.vertex(boltX + 5, boltY + 15);
+  gameTitle.vertex(boltX + 15, boltY + 25);
+  gameTitle.vertex(boltX + 10, boltY + 30);
+  gameTitle.vertex(boltX, boltY + 20);
+  gameTitle.vertex(boltX - 5, boltY + 10);
+  gameTitle.endShape(CLOSE);
+
+  // Create noir city background (deep shadows and contrast)
+  backgroundGfx = createGraphics(800, 400);
+  backgroundGfx.background(5); // Almost black
+  
+  // Create distant city silhouettes - more angular and dramatic
+  backgroundGfx.fill(15); // Very dark buildings
+  
+  // Draw various building silhouettes
+  for (let i = 0; i < 800; i += 50) {
+    let h = random(80, 250);
+    let w = random(30, 70);
+    
+    // Main building
+    backgroundGfx.rect(i, 400 - h, w, h);
+    
+    // Add architectural details
+    if (random() > 0.5) {
+      // Spire or antenna
+      backgroundGfx.rect(i + w/2 - 2, 400 - h - random(10, 30), 4, 10);
+    }
+    
+    // Add a few lit windows - sparse to show abandonment
+    backgroundGfx.fill(200, 200, 200, 40); // Very dim white light
+    for (let w = 0; w < 3; w++) {
+      if (random() < 0.2) {
+        let wx = i + random(5, w - 5);
+        let wy = 400 - h + random(10, h - 10);
+        backgroundGfx.rect(wx, wy, random(3, 8), random(5, 10));
+      }
+    }
+    backgroundGfx.fill(15); // Back to building color
+  }
+  
+  // Create midground buildings (more detailed, closer)
+  midgroundGfx = createGraphics(800, 400);
+  midgroundGfx.background(0, 0, 0, 0);
+  
+  // Create medium distance buildings - more detailed architecture
+  for (let i = 0; i < 800; i += 80) {
+    let h = random(120, 280);
+    let w = random(40, 70);
+    
+    // Building base - slightly lighter than background
+    midgroundGfx.fill(20);
+    midgroundGfx.rect(i, 400 - h, w, h);
+    
+    // Building details - architectural features
+    midgroundGfx.fill(25);
+    
+    // Create window pattern
+    midgroundGfx.fill(10); // Darker for window areas
+    let windowWidth = 6;
+    let windowHeight = 10;
+    let windowSpacingX = 12;
+    let windowSpacingY = 20;
+    
+    for (let x = i + 10; x < i + w - 10; x += windowSpacingX) {
+      for (let y = 400 - h + 20; y < 390; y += windowSpacingY) {
+        // Only draw some windows as lit (white)
+        if (random() < 0.1) {
+          midgroundGfx.fill(150); // Lit window
+          midgroundGfx.rect(x, y, windowWidth, windowHeight);
+          midgroundGfx.fill(10); // Back to dark
+        } else {
+          midgroundGfx.rect(x, y, windowWidth, windowHeight);
+        }
+      }
+    }
+    
+    // Add occasional blood splash on buildings (rare)
+    if (random() < 0.1) {
+      midgroundGfx.fill(255, 0, 0, 150);
+      let splashX = i + random(10, w - 10);
+      let splashY = 400 - h + random(h * 0.3, h * 0.7);
+      midgroundGfx.ellipse(splashX, splashY, random(10, 20), random(15, 30));
+      
+      // Drips
+      let drips = random(1, 4);
+      for (let d = 0; d < drips; d++) {
+        let dripLength = random(10, 30);
+        midgroundGfx.rect(splashX - 1 + random(-3, 3), splashY, 2, dripLength);
+      }
+    }
+    
+    midgroundGfx.fill(20); // Back to building base color
+  }
+  
+  // Ground tile with noir texture - more gritty and detailed
+  groundTile = createGraphics(64, 32);
+  groundTile.background(0, 0, 0, 0);
+  groundTile.fill(15); // Very dark for noir look
+  groundTile.rect(0, 0, 64, 32);
+  
+  // Add some subtle texture to ground - cracks and damage
+  groundTile.fill(10); // Even darker for cracks
+  
+  // Horizontal cracks
+  for (let i = 0; i < 3; i++) {
+    let y = random(5, 28);
+    let x = 0;
+    while (x < 64) {
+      let segLen = random(5, 15);
+      groundTile.rect(x, y, segLen, 1);
+      x += segLen + random(3, 10);
+    }
+  }
+}
+
+// Draw title screen
+function drawTitleScreen() {
+  background(5); // Almost black
+  
+  // Draw the background with slight parallax
+  image(backgroundGfx, -backgroundOffset, 0);
+  image(midgroundGfx, -midgroundOffset * 1.5, 0);
+  
+  // Update parallax slightly for ambient movement
+  backgroundOffset += 0.2;
+  midgroundOffset += 0.5;
+  
+  // Add dramatic flash occasionally
+  if (frameCount % 180 < 5 && frameCount % 2 === 0) {
+    fill(255, 0, 0, 30);
+    rect(0, 0, width, height);
+  }
+  
+  // Add some blood splatters to screen
+  if (frameCount % 120 === 0) {
+    comicTexts.push({
+      text: "",
+      type: "splat", 
+      x: random(width),
+      y: random(height/2),
+      life: 120,
+      color: [255, 0, 0]
+    });
+  }
+  
+  // Draw comic text effects (blood splatters)
+  for (let text of comicTexts) {
+    // If we have pre-rendered comic text graphics use them
+    if (comicTextGfx && comicTextGfx[text.type]) {
+      // Calculate scale and alpha based on life
+      let alpha = map(text.life, 0, 120, 0, 255);
+      let scaleAmount = map(text.life, 0, 120, 1.5, 1.0);
+      
+      // Draw only the splat bubble without text for ambient effect
+      push();
+      translate(text.x, text.y);
+      scale(scaleAmount);
+      
+      // Set alpha for the image
+      tint(255, alpha);
+      
+      // Center the image
+      imageMode(CENTER);
+      
+      // Draw the comic text graphic
+      image(comicTextGfx[text.type], 0, 0);
+      
+      // Reset image mode and tint
+      imageMode(CORNER);
+      noTint();
+      
+      pop();
+    }
+  }
+  
+  // Draw the title at the center of screen with dramatic pulsing
+  let titlePulse = sin(frameCount * 0.03) * 0.1;
+  push();
+  translate(width/2, height/3);
+  scale(1 + titlePulse);
+  imageMode(CENTER);
+  image(gameTitle, 0, 0);
+  imageMode(CORNER);
+  pop();
+  
+  // Update title screen comic texts
+  for (let i = comicTexts.length - 1; i >= 0; i--) {
+    comicTexts[i].life--;
+    if (comicTexts[i].life <= 0) {
+      comicTexts.splice(i, 1);
+    }
+  }
+  
+  // Animate the "Press Space" text with blood drip effect
+  push();
+  translate(width/2, height/2 + 50);
+  
+  // Flicker effect
+  let textAlpha = 255;
+  if (frameCount % 60 < 10) {
+    textAlpha = map(frameCount % 10, 0, 10, 100, 255);
+  }
+  
+  fill(255, textAlpha);
+  textAlign(CENTER);
+  textSize(20);
+  text("PRESS SPACE TO START", 0, 0);
+  
+  // Occasional blood drip under text
+  if (frameCount % 30 === 0) {
+    let dropX = random(-100, 100);
+    fill(255, 0, 0);
+    rect(dropX, 10, 2, random(10, 20));
+  }
+  pop();
+  
+  // Draw copyright with film noir aesthetic
+  push();
+  translate(width/2, height - 20);
+  
+  // Scratched film effect
+  if (random() < 0.1) {
+    fill(200, 200, 200, 50);
+    rect(-100, -5, 200, 1);
+  }
+  
+  // Copyright text
+  textSize(12);
+  fill(150);
+  textAlign(CENTER);
+  text("© 2023 NOIR COMICS", 0, 0);
+  pop();
+  
+  // Draw noir effects
+  applyNoirEffects();
+  
+  // Add more dramatic vignette
+  fill(0, 0, 0, 100);
+  noStroke();
+  for (let r = 0; r < 400; r += 40) {
+    let alpha = map(r, 0, 400, 80, 0);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, width - r, height - r/2);
+  }
+  
+  // Add debug overlay
+  drawDebugOverlay();
+}
+
+// Draw game screen
+function drawGameScreen() {
+  background(10);
+  
+  // Apply screen shake effect
+  if (screenShake > 0) {
+    let shakeAmount = screenShake / 2;
+    translate(random(-shakeAmount, shakeAmount), random(-shakeAmount, shakeAmount));
+    screenShake--;
+  }
+  
+  // Draw the background with simple parallax
+  image(backgroundGfx, -backgroundOffset, 0);
+  image(midgroundGfx, -midgroundOffset, 0);
+  
+  // Draw the ground
+  for (let x = 0; x < width; x += 64) {
+    image(groundTile, x - groundOffset % 64, height - 32);
+  }
+  
+  // ... [Additional drawing code omitted for brevity] ...
+  
+  // Apply noir visual effects
+  applyNoirEffects();
+  
+  // Update game logic
+  updateGame();
+}
+
+// Draw game over screen
+function drawGameOverScreen() {
+  background(5); // Almost black
+  
+  // Draw the background and midground with slow parallax
+  image(backgroundGfx, -backgroundOffset, 0);
+  image(midgroundGfx, -midgroundOffset, 0);
+  
+  // Update parallax slowly for ambient effect
+  backgroundOffset += 0.1;
+  midgroundOffset += 0.2;
+  
+  // Dramatic red overlay with pulsing effect
+  let pulse = sin(frameCount * 0.05) * 20 + 30;
+  fill(255, 0, 0, pulse);
+  rect(0, 0, width, height);
+  
+  // Create dramatic film noir style game over message
+  push();
+  translate(width/2, height/2 - 50);
+  
+  // Text shadow effect
+  fill(0);
+  textAlign(CENTER);
+  textSize(60);
+  textStyle(BOLD);
+  text("GAME OVER", 4, 4);
+  
+  // Main text in blood red
+  fill(255, 0, 0);
+  text("GAME OVER", 0, 0);
+  
+  // Dripping blood effect
+  for (let i = 0; i < 8; i++) {
+    let x = random(-100, 100);
+    let length = random(10, 40);
+    rect(x, 10, 3, length);
+  }
+  pop();
+  
+  // Draw stats with noir style
+  push();
+  translate(width/2, height/2 + 50);
+  
+  // Panel background
+  fill(0, 0, 0, 180);
+  rect(-150, -30, 300, 120, 5);
+  
+  // Stats text
+  fill(200);
+  textSize(24);
+  textAlign(CENTER);
+  text("Final Score: " + Math.floor(score), 0, 0);
+  
+  // Kill count in blood red
+  fill(255, 0, 0);
+  text("Kills: " + enemiesKilled, 0, 40);
+  pop();
+  
+  // Draw restart instructions with flicker effect
+  let flickerSpeed = frameCount % 40;
+  if (flickerSpeed > 5) {
+    fill(255);
+    textSize(18);
+    textAlign(CENTER);
+    text("Press R to restart", width/2, height/2 + 130);
+  }
+  
+  // Add Film Noir style messages based on score
+  let noirMessage = "";
+  if (score < 500) {
+    noirMessage = "The darkness claimed another victim...";
+  } else if (score < 1000) {
+    noirMessage = "You fought well, but evil prevailed...";
+  } else if (score < 2000) {
+    noirMessage = "A worthy adversary, but fate had other plans...";
+  } else {
+    noirMessage = "Your legend will live on in the shadows...";
+  }
+  
+  fill(150);
+  textSize(16);
+  textAlign(CENTER);
+  text(noirMessage, width/2, height/2 + 170);
+  
+  // Apply noir effects
+  applyNoirEffects();
+  
+  // Add extra heavy vignette for dramatic effect
+  fill(0, 0, 0, 150);
+  noStroke();
+  for (let r = 0; r < 400; r += 20) {
+    let alpha = map(r, 0, 400, 150, 0);
+    fill(0, 0, 0, alpha);
+    ellipse(width/2, height/2, width - r, height - r/2);
+  }
+  
+  // Add debug overlay
+  drawDebugOverlay();
+}
+
+// Draw noir visual effects (rain, scanlines, vignette)
+function applyNoirEffects() {
+  // Apply rain effect
+  image(rainEffect, 0, 0);
+  
+  // Apply scanline effect
+  stroke(0, 0, 0, 30);
+  strokeWeight(1);
+  for (let y = 0; y < height; y += 4) {
+    line(0, y, width, y);
+  }
+  noStroke();
+  
+  // Apply vignette (darkened edges)
+  image(vignetteEffect, 0, 0);
+}
+
+// Debug overlay to show game information
+function drawDebugOverlay() {
+  push();
+  // Semi-transparent background
+  fill(0, 0, 0, 150);
+  noStroke();
+  rect(10, 10, 250, 150);
+  
+  // Debug text
+  fill(0, 255, 0);
+  textAlign(LEFT);
+  textSize(12);
+  text(`FPS: ${Math.round(frameRate())}`, 20, 30);
+  text(`Game State: ${gameState}`, 20, 50);
+  text(`Player: x=${Math.round(player.x)}, y=${Math.round(player.y)}, vy=${Math.round(player.vy * 100) / 100}`, 20, 70);
+  text(`Entities: ${enemies.length} enemies, ${obstacles.length} obstacles`, 20, 90);
+  text(`Projectiles: ${projectiles.length}, Effects: ${explosions.length}`, 20, 110);
+  text(`Score: ${score}, Kills: ${enemiesKilled}`, 20, 130);
+  text(`Press 'D' to toggle debug panel`, 20, 150);
+  pop();
+}
+
+// Update game logic
+function updateGame() {
+  try {
+    // Apply gravity to player
+    player.vy += gravity;
+    player.y += player.vy;
+    
+    // Keep player on the ground
+    if (player.y > groundLevel) {
+      player.y = groundLevel;
+      player.vy = 0;
+      if (player.state === "jumping") {
+        player.state = "running";
+      }
+    }
+    
+    // ... [Game update logic omitted for brevity] ...
+    
+    // Increase score (multiplied if active)
+    let scoreMultiplier = activeEffects.multiplier > 0 ? 2 : 1;
+    score += 0.1 * scoreMultiplier;
+  } catch (error) {
+    console.error("Error in updateGame:", error, "Line:", error.lineNumber, "Stack:", error.stack);
+  }
+}
+
+// Handle keyboard input
+function keyPressed() {
+  // Toggle debug mode
+  if (key === 'D' || key === 'd') {
+    debugMode = !debugMode;
+  }
+
+  // Start game from title screen
+  if (gameState === "start" && (key === 'S' || key === 's')) {
+    gameState = "playing";
+  }
+  
+  // Jump in game
+  if (gameState === "playing" && (key === ' ' || key === 'W' || key === 'w' || keyCode === UP_ARROW)) {
+    if (player.y === groundLevel || player.onPlatform) {
+      player.vy = activeEffects.superJump ? jumpStrength * 1.5 : jumpStrength;
+      player.onPlatform = false;
+      player.platformId = null;
+    }
+  }
+  
+  // Restart game after game over
+  if (gameState === "gameOver" && (key === 'R' || key === 'r')) {
+    resetGame();
+  }
+  
+  return false; // Prevent default browser actions
+}
+
+// Handle key releases
+function keyReleased() {
+  if (gameState === "playing") {
+    // Stop ducking when DOWN ARROW is released
+    if (keyCode === DOWN_ARROW && player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+  return false;
+}
+
+// Make sure canvas stays interactive
+function mousePressed() {
+  if (gameState === "start") {
+    gameState = "playing";
+    resetGame();
+  } else if (gameState === "gameOver") {
+    gameState = "start";
+  }
+  
+  return false; // Prevent default
+}
+
+// FIXED VERSION - END OF FILE 

@@ -1,0 +1,68 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          
+      - name: Install dependencies
+        run: |
+          npm init -y
+          npm install --save-dev terser clean-css-cli
+          
+      - name: Basic validation
+        run: |
+          echo "Checking if index.html exists..."
+          if [ ! -f "index.html" ]; then 
+            echo "Error: index.html not found!"
+            exit 1
+          fi
+          
+          echo "Checking for common issues..."
+          if grep -q "http://" index.html; then
+            echo "Warning: Using non-secure HTTP URLs. Consider using HTTPS instead."
+          fi
+          
+      - name: Optimize assets (optional)
+        run: |
+          # Create dist directory
+          mkdir -p dist
+          
+          # Copy all files to dist
+          cp -r * dist/ 2>/dev/null || :
+          cp -r .* dist/ 2>/dev/null || :
+          
+          # Note: Uncomment these lines if you want asset optimization
+          # Find and minify JS files (excluding libraries)
+          # for file in $(find dist -name "sketch.js"); do
+          #   echo "Optimizing $file"
+          #   ./node_modules/.bin/terser "$file" -o "$file" -c -m
+          # done
+          
+          # Optimize CSS files
+          # for file in $(find dist -name "*.css"); do
+          #   echo "Optimizing $file"
+          #   ./node_modules/.bin/cleancss -o "$file" "$file"
+          # done
+          
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist # Default is the repository root
+          branch: gh-pages
+          clean: true # Automatically remove deleted files 

@@ -1,0 +1,1545 @@
+// Global variables
+let gameState = "start";
+let player = {
+  x: 100,
+  y: 350,
+  vy: 0,
+  state: "running",
+  animFrame: 0,
+  animTimer: 0,
+  onPlatform: false,
+  platformId: null
+};
+let enemies = [];
+let obstacles = [];
+let platforms = [];
+let projectiles = [];
+let explosions = [];
+let backgroundGfx;
+let midgroundGfx;
+let groundTile;
+let platformGfx;
+let playerRunningFrames = [];
+let playerJumpingFrame;
+let playerDuckingFrame;
+let enemyGfx;
+let flyingEnemyGfx;
+let groundObstacleGfx;
+let flyingObstacleGfx;
+let lowFlyingObstacleGfx;
+let projectileGfx;
+let groundOffset = 0;
+let backgroundOffset = 0;
+let midgroundOffset = 0;
+let scrollSpeed = 5;
+let gravity = 0.5;
+let jumpStrength = -10;
+let score = 0;
+let enemiesKilled = 0;
+let groundLevel = 384; // Ground level (400 - 16)
+
+// Game title and settings
+let gameTitle;
+let subtitleText = "PREVIEW OF THE UPCOMING SUPERHERO COMIC SERIES";
+
+// Comic text effects for key moments
+let comicTexts = [];
+
+// Enemy variant graphics
+let heavyEnemyGfx;
+let ninjaEnemyGfx;
+let robotEnemyGfx;
+
+// Variables for cake animations
+let cakeGfx;
+let flameFrames = [];
+let cakeObstacleGfx;
+let powerups = []; // Array to store active powerups
+let shieldGfx;
+let multiplierGfx;
+let superJumpGfx;
+let activeEffects = { // Track active power-up effects
+  shield: 0,
+  multiplier: 0,
+  superJump: false
+};
+
+function setup() {
+  createCanvas(800, 400);
+  frameRate(60);
+
+  console.log("Setting up game");
+  
+  // Position canvas in the center
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    canvas.style.position = 'absolute';
+    canvas.style.left = '50%';
+    canvas.style.top = '50%';
+    canvas.style.transform = 'translate(-50%, -50%)';
+  }
+  
+  // Create all game assets
+  createGameAssets();
+}
+
+function draw() {
+  // Title screen
+  if (gameState === "start") {
+    drawTitleScreen();
+  } 
+  // Gameplay
+  else if (gameState === "playing") {
+    drawGameScreen();
+  } 
+  // Game over
+  else if (gameState === "gameOver") {
+    drawGameOverScreen();
+  }
+}
+
+// Reset game state for new game
+function resetGame() {
+  console.log("Game reset");
+  
+  // Reset game state
+  gameState = "playing";
+  
+  // Reset player
+  player = {
+    x: 100,
+    y: groundLevel,
+    vy: 0,
+    state: "running",
+    animFrame: 0,
+    animTimer: 0,
+    onPlatform: false,
+    platformId: null
+  };
+  
+  // Reset game elements
+  score = 0;
+  enemiesKilled = 0;
+  enemies = [];
+  obstacles = [];
+  projectiles = [];
+  explosions = [];
+  platforms = [];
+  powerups = [];
+  comicTexts = [];
+  
+  // Reset scroll positions
+  groundOffset = 0;
+  backgroundOffset = 0;
+  midgroundOffset = 0;
+  
+  // Reset power-up effects
+  activeEffects = {
+    shield: 0,
+    multiplier: 0,
+    superJump: false
+  };
+  
+  // Make sure the game loop is running
+  loop();
+}
+
+// Handle key presses
+function keyPressed() {
+  // Start screen - spacebar starts game
+  if (gameState === "start" && keyCode === 32) {
+    gameState = "playing";
+    resetGame();
+    return false;
+  }
+  
+  // Game over - R key restarts
+  if (gameState === "gameOver" && keyCode === 82) {
+    gameState = "start";
+    return false;
+  }
+  
+  // Playing state
+  if (gameState === "playing") {
+    // Jump with UP ARROW
+    if (keyCode === UP_ARROW) {
+      if (player.state !== "jumping" && (player.y === groundLevel || player.onPlatform)) {
+        player.vy = activeEffects.superJump ? jumpStrength * 1.5 : jumpStrength;
+        player.state = "jumping";
+        player.onPlatform = false;
+        
+        // Reset super jump after use
+        if (activeEffects.superJump) {
+          activeEffects.superJump = false;
+        }
+      }
+    }
+    
+    // Duck with DOWN ARROW
+    if (keyCode === DOWN_ARROW) {
+      if (player.state !== "jumping") {
+        player.state = "ducking";
+      }
+    }
+  }
+  
+  return false; // Prevent default browser actions
+}
+
+// Separate function for shooting to avoid freezing
+function keyTyped() {
+  if (gameState === "playing") {
+    // Shoot with SPACE
+    if (key === ' ') {
+      let projectileY = player.state === "ducking" ? player.y - 8 : player.y - 20;
+      projectiles.push({ x: player.x + 32, y: projectileY });
+      console.log("Projectile fired");
+    }
+  }
+  // Prevent any default behavior
+  return false;
+}
+
+// Handle key releases
+function keyReleased() {
+  if (gameState === "playing") {
+    // Stop ducking when DOWN ARROW is released
+    if (keyCode === DOWN_ARROW && player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+  return false;
+}
+
+// Make sure canvas stays interactive
+function mousePressed() {
+  if (gameState === "start") {
+    gameState = "playing";
+    resetGame();
+  } else if (gameState === "gameOver") {
+    gameState = "start";
+  }
+  
+  return false; // Prevent default
+}
+
+// Placeholder implementations for our main screens
+function drawTitleScreen() {
+  // Will be implemented in the next step
+  background(10);
+  fill(255);
+  textAlign(CENTER);
+  textSize(48);
+  text("HBD RUNNER", width/2, height/2);
+  textSize(20);
+  text("Press SPACE to start", width/2, height/2 + 50);
+}
+
+function drawGameScreen() {
+  // Will be implemented in the next step
+  background(10);
+  
+  // Draw the ground
+  fill(50);
+  rect(0, groundLevel, width, height - groundLevel);
+  
+  // Draw the player
+  fill(100, 150, 255);
+  rect(player.x, player.y - 30, 30, 30);
+  
+  // Draw score
+  fill(255);
+  textAlign(LEFT);
+  textSize(20);
+  text("Score: " + score, 20, 30);
+}
+
+function drawGameOverScreen() {
+  // Will be implemented in the next step
+  background(10);
+  fill(255);
+  textAlign(CENTER);
+  textSize(48);
+  text("GAME OVER", width/2, height/2);
+  textSize(24);
+  text("Score: " + score, width/2, height/2 + 40);
+  textSize(20);
+  text("Press R to restart", width/2, height/2 + 80);
+}
+
+// Create game assets
+function createGameAssets() {
+  console.log("Creating game assets");
+  
+  // Create game title text
+  gameTitle = createGraphics(700, 150);
+  gameTitle.background(0, 0, 0, 0);
+  
+  // Draw horizontal scan lines for background
+  gameTitle.stroke(150, 150, 150, 30);
+  for (let i = 0; i < 150; i += 4) {
+    gameTitle.line(0, i, 700, i);
+  }
+  gameTitle.noStroke();
+  
+  // Main title "HBD" with ACDC style and big size
+  drawPixelatedText(gameTitle, "HBD", 350, 90, 130, 255);
+  
+  // Draw ACDC-style lightning bolt between H and B
+  gameTitle.fill(255, 0, 0);
+  gameTitle.noStroke();
+  // Adjust lightning position for larger text
+  let boltX = 265;
+  let boltY = 65;
+  
+  // Draw lightning bolt sections
+  gameTitle.beginShape();
+  gameTitle.vertex(boltX, boltY);
+  gameTitle.vertex(boltX + 15, boltY + 10);
+  gameTitle.vertex(boltX + 5, boltY + 25);
+  gameTitle.vertex(boltX + 25, boltY + 40);
+  gameTitle.vertex(boltX + 15, boltY + 45);
+  gameTitle.vertex(boltX, boltY + 30);
+  gameTitle.vertex(boltX - 5, boltY + 15);
+  gameTitle.endShape(CLOSE);
+  
+  // Subtitle "RUNNER" with smaller size
+  drawPixelatedText(gameTitle, "RUNNER", 350, 130, 50, 255);
+  
+  // Create background, midground, and ground
+  backgroundGfx = createGraphics(1600, 400);
+  backgroundGfx.background(20);
+  
+  // Draw distant city skyline silhouettes
+  backgroundGfx.fill(40);
+  for (let i = 0; i < 1600; i += 200) {
+    let buildingHeight = random(50, 120);
+    backgroundGfx.rect(i, 400 - buildingHeight, 100, buildingHeight);
+    
+    buildingHeight = random(70, 150);
+    backgroundGfx.rect(i + 120, 400 - buildingHeight, 60, buildingHeight);
+  }
+  
+  // Midground - middle distance buildings
+  midgroundGfx = createGraphics(1200, 400);
+  midgroundGfx.background(0, 0, 0, 0);
+  
+  // Medium distance buildings
+  midgroundGfx.fill(30);
+  for (let i = 0; i < 1200; i += 150) {
+    let buildingHeight = random(100, 200);
+    midgroundGfx.rect(i, 400 - buildingHeight, 80, buildingHeight);
+    
+    // Windows
+    midgroundGfx.fill(60);
+    for (let y = 400 - buildingHeight + 20; y < 380; y += 30) {
+      for (let x = i + 15; x < i + 70; x += 20) {
+        if (random() < 0.4) {
+          midgroundGfx.rect(x, y, 10, 15);
+        }
+      }
+    }
+    midgroundGfx.fill(30);
+    
+    // Add variety with different widths
+    buildingHeight = random(120, 220);
+    midgroundGfx.rect(i + 95, 400 - buildingHeight, 40, buildingHeight);
+  }
+  
+  // Ground tile
+  groundTile = createGraphics(128, 32);
+  groundTile.background(0, 0, 0, 0);
+  groundTile.fill(50);
+  groundTile.rect(0, 0, 128, 32);
+  
+  // Create simple details on ground
+  groundTile.fill(40);
+  for (let i = 0; i < 128; i += 16) {
+    groundTile.rect(i, 0, 1, 32);
+  }
+  
+  groundTile.fill(45);
+  groundTile.rect(0, 16, 128, 1);
+  
+  // Platform graphic
+  platformGfx = createGraphics(64, 16);
+  platformGfx.background(0, 0, 0, 0);
+  platformGfx.fill(70);
+  platformGfx.rect(0, 0, 64, 16, 0, 0, 5, 5);
+  
+  // Simple black pattern on platform
+  platformGfx.fill(40);
+  for (let i = 8; i < 64; i += 16) {
+    platformGfx.rect(i, 4, 4, 8);
+  }
+  
+  // Create player animations - female superhero
+  playerRunningFrames = [];
+  for (let i = 0; i < 4; i++) {
+    let frame = createGraphics(32, 32);
+    frame.background(0, 0, 0, 0);
+    
+    // Female superhero color
+    frame.fill(80, 130, 255); // Light blue for female superhero
+    
+    // Hero body
+    frame.rect(8, 4, 16, 20, 3); // More curved superhero body
+    
+    // Add cape
+    frame.fill(40, 40, 120); // Darker blue for cape
+    frame.rect(4, 6, 6, 16, 1); // Cape flowing behind
+    
+    // Different leg positions for running frames
+    frame.fill(80, 130, 255); // Back to main color
+    if (i === 0) {
+      frame.rect(8, 24, 6, 8); // Left leg forward
+      frame.rect(18, 26, 6, 6); // Right leg back
+    } else if (i === 1) {
+      frame.rect(10, 24, 6, 8); // Legs middle
+      frame.rect(16, 26, 6, 6);
+    } else if (i === 2) {
+      frame.rect(8, 26, 6, 6); // Left leg back
+      frame.rect(18, 24, 6, 8); // Right leg forward
+    } else {
+      frame.rect(10, 24, 6, 8); // Legs middle
+      frame.rect(16, 26, 6, 6);
+    }
+    
+    // Hero head/helmet with feminine shape
+    frame.rect(9, 0, 14, 8, 3, 3, 1, 1);
+    
+    // Face details
+    frame.fill(255);
+    frame.rect(18, 3, 3, 2); // Eye
+    
+    // Hair details
+    frame.fill(240, 240, 120); // Blonde hair
+    frame.rect(6, 4, 5, 8, 1); // Side hair
+    
+    playerRunningFrames.push(frame);
+  }
+  
+  // Jumping frame - female superhero
+  playerJumpingFrame = createGraphics(32, 32);
+  playerJumpingFrame.background(0, 0, 0, 0);
+  
+  // Female superhero color
+  playerJumpingFrame.fill(80, 130, 255);
+  
+  // Hero body
+  playerJumpingFrame.rect(8, 4, 16, 20, 3); // Curved body for female hero
+  
+  // Cape flowing during jump
+  playerJumpingFrame.fill(40, 40, 120); // Darker blue cape
+  playerJumpingFrame.rect(4, 4, 6, 20, 1); // Longer cape for jump
+  
+  // Hero legs bent for jump
+  playerJumpingFrame.fill(80, 130, 255);
+  playerJumpingFrame.rect(8, 24, 6, 6); // Left leg bent
+  playerJumpingFrame.rect(18, 24, 6, 6); // Right leg bent
+  
+  // Hero head/helmet with feminine shape
+  playerJumpingFrame.rect(9, 0, 14, 8, 3, 3, 1, 1);
+  
+  // Face for jumping
+  playerJumpingFrame.fill(255);
+  playerJumpingFrame.rect(18, 3, 3, 2); // Eye
+  
+  // Hair details
+  playerJumpingFrame.fill(240, 240, 120); // Blonde hair
+  playerJumpingFrame.rect(6, 4, 5, 8, 1); // Side hair
+  
+  // Ducking frame - female superhero
+  playerDuckingFrame = createGraphics(32, 16);
+  playerDuckingFrame.background(0, 0, 0, 0);
+  
+  // Female superhero color
+  playerDuckingFrame.fill(80, 130, 255);
+  
+  // Crouched hero body
+  playerDuckingFrame.rect(8, 0, 16, 12, 3);
+  
+  // Crouched legs 
+  playerDuckingFrame.rect(8, 12, 16, 4); // Flattened legs
+  
+  // Cape tucked while ducking
+  playerDuckingFrame.fill(40, 40, 120); // Cape color
+  playerDuckingFrame.rect(6, 2, 4, 10, 1); // Shorter cape when ducking
+  
+  // Face for ducking
+  playerDuckingFrame.fill(255);
+  playerDuckingFrame.rect(18, 3, 3, 2); // Eye
+  
+  // Hair details - shorter when ducking
+  playerDuckingFrame.fill(240, 240, 120); // Blonde hair
+  playerDuckingFrame.rect(6, 3, 4, 5, 1); // Side hair
+  
+  // Create enemy graphics - basic version
+  enemyGfx = createGraphics(32, 32);
+  enemyGfx.background(0, 0, 0, 0);
+  enemyGfx.fill(220, 50, 50); // Brighter red for enemies
+  
+  // Enemy body
+  enemyGfx.rect(8, 4, 16, 24, 2); 
+  
+  // Enemy legs
+  enemyGfx.rect(8, 28, 6, 4); // Left leg
+  enemyGfx.rect(18, 28, 6, 4); // Right leg
+  
+  // Enemy details - make them look more menacing
+  enemyGfx.fill(10); // Almost black
+  enemyGfx.rect(14, 10, 4, 2); // Left eye
+  enemyGfx.rect(20, 10, 4, 2); // Right eye
+  
+  enemyGfx.fill(0);
+  enemyGfx.rect(14, 16, 10, 2); // Evil grimace
+  
+  // Heavy enemy
+  heavyEnemyGfx = createGraphics(40, 40);
+  heavyEnemyGfx.background(0, 0, 0, 0);
+  heavyEnemyGfx.fill(180, 40, 40); // Darker red for heavy enemy
+  
+  // Larger body
+  heavyEnemyGfx.rect(8, 4, 24, 30, 3);
+  
+  // Stronger legs
+  heavyEnemyGfx.rect(8, 34, 10, 6); // Left leg
+  heavyEnemyGfx.rect(22, 34, 10, 6); // Right leg
+  
+  // Menacing details
+  heavyEnemyGfx.fill(10);
+  heavyEnemyGfx.rect(14, 12, 6, 3); // Left eye
+  heavyEnemyGfx.rect(24, 12, 6, 3); // Right eye
+  
+  // Angry eyebrows
+  heavyEnemyGfx.rect(12, 9, 8, 2);
+  heavyEnemyGfx.rect(22, 9, 8, 2);
+  
+  heavyEnemyGfx.fill(0);
+  heavyEnemyGfx.rect(16, 20, 12, 3); // Grimace
+  
+  // Ninja enemy
+  ninjaEnemyGfx = createGraphics(32, 32);
+  ninjaEnemyGfx.background(0, 0, 0, 0);
+  ninjaEnemyGfx.fill(40); // Very dark gray for ninja
+  
+  // Ninja body
+  ninjaEnemyGfx.rect(8, 4, 16, 20, 2);
+  
+  // Ninja legs in action pose
+  ninjaEnemyGfx.rect(6, 24, 6, 8); // Left leg extended
+  ninjaEnemyGfx.rect(16, 24, 6, 8); // Right leg
+  
+  // Ninja arm extended with weapon
+  ninjaEnemyGfx.rect(24, 10, 8, 4);
+  
+  // Ninja face - just eyes
+  ninjaEnemyGfx.fill(255, 0, 0);
+  ninjaEnemyGfx.rect(14, 8, 3, 2); // Red eyes
+  ninjaEnemyGfx.rect(20, 8, 3, 2);
+  
+  // Throwing star
+  ninjaEnemyGfx.fill(200);
+  ninjaEnemyGfx.push();
+  ninjaEnemyGfx.translate(28, 12);
+  ninjaEnemyGfx.rotate(PI/4);
+  ninjaEnemyGfx.rect(-3, -3, 6, 6);
+  ninjaEnemyGfx.pop();
+  
+  // Robot enemy
+  robotEnemyGfx = createGraphics(32, 36);
+  robotEnemyGfx.background(0, 0, 0, 0);
+  robotEnemyGfx.fill(100); // Metallic gray for robot
+  
+  // Robot body
+  robotEnemyGfx.rect(6, 8, 20, 20, 2);
+  
+  // Robot head
+  robotEnemyGfx.rect(10, 0, 12, 8, 1);
+  
+  // Antenna
+  robotEnemyGfx.rect(15, -4, 2, 4);
+  robotEnemyGfx.ellipse(16, -4, 4, 4);
+  
+  // Robot legs
+  robotEnemyGfx.rect(8, 28, 6, 8); // Left leg
+  robotEnemyGfx.rect(18, 28, 6, 8); // Right leg
+  
+  // Robot eyes
+  robotEnemyGfx.fill(255, 0, 0);
+  robotEnemyGfx.rect(12, 3, 4, 2); // Left eye
+  robotEnemyGfx.rect(18, 3, 4, 2); // Right eye
+  
+  // Robot details
+  robotEnemyGfx.fill(150);
+  robotEnemyGfx.rect(10, 12, 12, 4); // Control panel
+  robotEnemyGfx.fill(50);
+  for(let i = 0; i < 3; i++) {
+    robotEnemyGfx.rect(11 + i*4, 13, 2, 2); // Buttons
+  }
+  
+  // Flying enemy
+  flyingEnemyGfx = createGraphics(40, 20);
+  flyingEnemyGfx.background(0, 0, 0, 0);
+  flyingEnemyGfx.fill(170, 0, 220); // Brighter purple for flying enemies
+  
+  // Body
+  flyingEnemyGfx.ellipse(20, 10, 30, 16);
+  
+  // Wings with more detail
+  flyingEnemyGfx.fill(130, 0, 170); // Darker purple for wings
+  flyingEnemyGfx.triangle(20, 10, 5, 2, 5, 18);
+  flyingEnemyGfx.triangle(20, 10, 35, 2, 35, 18);
+  
+  // Eyes - menacing red
+  flyingEnemyGfx.fill(255, 0, 0);
+  flyingEnemyGfx.ellipse(15, 10, 4, 4);
+  flyingEnemyGfx.ellipse(25, 10, 4, 4);
+  
+  // Create projectile graphics if needed
+  projectileGfx = createGraphics(12, 6);
+  projectileGfx.background(255, 255, 255, 0);
+  
+  // Bullet - bright red
+  projectileGfx.fill(220, 0, 0);
+  projectileGfx.noStroke();
+  projectileGfx.rect(0, 2, 6, 2);
+  
+  // Tracer effect - brighter red core with glow
+  projectileGfx.fill(255, 50, 50, 150);
+  projectileGfx.rect(6, 1, 6, 4);
+  
+  // Cake obstacle
+  cakeObstacleGfx = createGraphics(48, 32);
+  cakeObstacleGfx.background(0, 0, 0, 0);
+  
+  // Cake base
+  cakeObstacleGfx.fill(220);
+  cakeObstacleGfx.rect(4, 16, 40, 16, 2, 2, 0, 0);
+  
+  // Cake top
+  cakeObstacleGfx.fill(240);
+  cakeObstacleGfx.rect(8, 8, 32, 8, 2, 2, 0, 0);
+  
+  // Candles
+  cakeObstacleGfx.fill(200, 200, 100);
+  cakeObstacleGfx.rect(16, 2, 2, 6);
+  cakeObstacleGfx.rect(24, 0, 2, 8);
+  cakeObstacleGfx.rect(32, 3, 2, 5);
+  
+  // Cake details - icing
+  cakeObstacleGfx.fill(255, 100, 150);
+  cakeObstacleGfx.rect(8, 15, 32, 2);
+  
+  // Small decorations
+  for(let i = 0; i < 5; i++) {
+    cakeObstacleGfx.fill(random(150, 255), random(100, 200), random(150, 255));
+    cakeObstacleGfx.ellipse(10 + i*8, 20, 4, 4);
+  }
+  
+  // Flame animations (3 frames)
+  flameFrames = [];
+  for(let f = 0; f < 3; f++) {
+    let flame = createGraphics(8, 10);
+    flame.background(0, 0, 0, 0);
+    
+    // Base color
+    flame.fill(255, 150, 50);
+    
+    // Different flame shapes for animation
+    if(f === 0) {
+      flame.ellipse(4, 3, 6, 8);
+    } else if(f === 1) {
+      flame.ellipse(4, 4, 5, 7);
+      flame.ellipse(3, 2, 4, 5);
+    } else {
+      flame.ellipse(4, 3, 5, 8);
+      flame.ellipse(5, 2, 3, 4);
+    }
+    
+    // Flame core - brighter
+    flame.fill(255, 255, 150);
+    flame.ellipse(4, 5, 3, 4);
+    
+    flameFrames.push(flame);
+  }
+  
+  // General obstacle
+  obstacleGfx = createGraphics(28, 28);
+  obstacleGfx.background(0, 0, 0, 0);
+  obstacleGfx.fill(120);
+  
+  // Create crate-like obstacle
+  obstacleGfx.rect(0, 0, 28, 28, 2);
+  obstacleGfx.fill(90);
+  obstacleGfx.rect(4, 4, 20, 20, 1);
+  
+  // Wooden texture lines
+  obstacleGfx.stroke(70);
+  obstacleGfx.line(0, 7, 28, 7);
+  obstacleGfx.line(0, 14, 28, 14);
+  obstacleGfx.line(0, 21, 28, 21);
+  
+  obstacleGfx.line(7, 0, 7, 28);
+  obstacleGfx.line(14, 0, 14, 28);
+  obstacleGfx.line(21, 0, 21, 28);
+  
+  // Power-up graphics
+  shieldPowerUpGfx = createGraphics(20, 20);
+  shieldPowerUpGfx.background(0, 0, 0, 0);
+  shieldPowerUpGfx.fill(100, 150, 255, 180);
+  shieldPowerUpGfx.ellipse(10, 10, 16, 16);
+  shieldPowerUpGfx.fill(150, 200, 255, 180);
+  shieldPowerUpGfx.ellipse(10, 10, 10, 10);
+  
+  // Score multiplier power-up
+  scoreMultiplierGfx = createGraphics(20, 20);
+  scoreMultiplierGfx.background(0, 0, 0, 0);
+  scoreMultiplierGfx.fill(255, 215, 0, 200); // Gold color
+  scoreMultiplierGfx.ellipse(10, 10, 16, 16);
+  scoreMultiplierGfx.fill(0);
+  scoreMultiplierGfx.textAlign(CENTER, CENTER);
+  scoreMultiplierGfx.textSize(12);
+  scoreMultiplierGfx.text("2x", 10, 10);
+  
+  // Super jump power-up
+  superJumpGfx = createGraphics(20, 20);
+  superJumpGfx.background(0, 0, 0, 0);
+  superJumpGfx.fill(0, 255, 100, 200);
+  superJumpGfx.ellipse(10, 10, 16, 16);
+  
+  // Arrow pointing up
+  superJumpGfx.fill(0);
+  superJumpGfx.triangle(10, 3, 5, 10, 15, 10);
+  superJumpGfx.rect(8, 8, 4, 8);
+  
+  // Explosion effect frames
+  explosionFrames = [];
+  for(let f = 0; f < 5; f++) {
+    let explosion = createGraphics(40, 40);
+    explosion.background(0, 0, 0, 0);
+    
+    // Blood splatter effect (dark red)
+    explosion.fill(200, 0, 0, 200 - f*30);
+    
+    // Different explosion shapes for each frame
+    if(f === 0) {
+      // Initial small burst
+      explosion.ellipse(20, 20, 15, 15);
+    } else if(f === 1) {
+      // Expanding with jagged edges
+      explosion.ellipse(20, 20, 25, 25);
+      explosion.ellipse(24, 16, 10, 12);
+      explosion.ellipse(16, 22, 12, 8);
+    } else if(f === 2) {
+      // Peak explosion
+      explosion.ellipse(20, 20, 30, 30);
+      explosion.ellipse(26, 14, 15, 12);
+      explosion.ellipse(14, 24, 12, 14);
+      explosion.ellipse(22, 26, 13, 10);
+    } else if(f === 3) {
+      // Starting to dissipate
+      explosion.ellipse(20, 20, 28, 28);
+      explosion.ellipse(28, 12, 12, 10);
+      explosion.ellipse(12, 26, 10, 12);
+    } else {
+      // Final dissipation
+      explosion.ellipse(20, 20, 25, 25);
+      explosion.ellipse(30, 10, 8, 6);
+      explosion.ellipse(10, 28, 6, 8);
+    }
+    
+    explosionFrames.push(explosion);
+  }
+
+  // Shield effect
+  shieldEffectGfx = createGraphics(48, 48);
+  shieldEffectGfx.background(0, 0, 0, 0);
+  
+  // Outer shield glow
+  shieldEffectGfx.noFill();
+  shieldEffectGfx.stroke(100, 150, 255, 150);
+  shieldEffectGfx.strokeWeight(3);
+  shieldEffectGfx.ellipse(24, 24, 40, 40);
+  
+  // Inner shield lines
+  shieldEffectGfx.stroke(150, 200, 255, 180);
+  shieldEffectGfx.strokeWeight(2);
+  for(let a = 0; a < TWO_PI; a += PI/8) {
+    let x1 = 24 + cos(a) * 12;
+    let y1 = 24 + sin(a) * 12;
+    let x2 = 24 + cos(a) * 18;
+    let y2 = 24 + sin(a) * 18;
+    shieldEffectGfx.line(x1, y1, x2, y2);
+  }
+  
+  // Comic text effects
+  comicTextGfx = {};
+  
+  // POW! effect
+  comicTextGfx.pow = createGraphics(80, 60);
+  comicTextGfx.pow.background(0, 0, 0, 0);
+  
+  // Speech bubble
+  comicTextGfx.pow.fill(255, 255, 0);
+  comicTextGfx.pow.beginShape();
+  comicTextGfx.pow.vertex(10, 30);
+  comicTextGfx.pow.vertex(15, 45);
+  comicTextGfx.pow.vertex(5, 40);
+  comicTextGfx.pow.vertex(0, 50);
+  comicTextGfx.pow.vertex(5, 35);
+  comicTextGfx.pow.vertex(0, 20);
+  comicTextGfx.pow.vertex(15, 15);
+  comicTextGfx.pow.vertex(25, 0);
+  comicTextGfx.pow.vertex(30, 15);
+  comicTextGfx.pow.vertex(70, 10);
+  comicTextGfx.pow.vertex(80, 30);
+  comicTextGfx.pow.vertex(70, 50);
+  comicTextGfx.pow.vertex(30, 45);
+  comicTextGfx.pow.endShape(CLOSE);
+  
+  // Text
+  comicTextGfx.pow.fill(255, 0, 0);
+  comicTextGfx.pow.textSize(24);
+  comicTextGfx.pow.textStyle(BOLD);
+  comicTextGfx.pow.textAlign(CENTER, CENTER);
+  comicTextGfx.pow.text("POW!", 40, 30);
+  
+  // 2X! effect
+  comicTextGfx.multiply = createGraphics(60, 50);
+  comicTextGfx.multiply.background(0, 0, 0, 0);
+  
+  // Starburst
+  comicTextGfx.multiply.fill(255, 215, 0); // Gold
+  comicTextGfx.multiply.beginShape();
+  for(let i = 0; i < 16; i++) {
+    let radius = i % 2 === 0 ? 25 : 15;
+    let angle = i * TWO_PI / 16;
+    comicTextGfx.multiply.vertex(30 + cos(angle) * radius, 25 + sin(angle) * radius);
+  }
+  comicTextGfx.multiply.endShape(CLOSE);
+  
+  // Text
+  comicTextGfx.multiply.fill(0);
+  comicTextGfx.multiply.textSize(20);
+  comicTextGfx.multiply.textStyle(BOLD);
+  comicTextGfx.multiply.textAlign(CENTER, CENTER);
+  comicTextGfx.multiply.text("2X!", 30, 25);
+  
+  // JUMP! effect
+  comicTextGfx.jump = createGraphics(80, 60);
+  comicTextGfx.jump.background(0, 0, 0, 0);
+  
+  // Speech bubble with jagged edges for emphasis
+  comicTextGfx.jump.fill(0, 255, 100);
+  comicTextGfx.jump.beginShape();
+  for(let i = 0; i < 20; i++) {
+    let radius = i % 2 === 0 ? 35 : 25;
+    let angle = i * TWO_PI / 20;
+    comicTextGfx.jump.vertex(40 + cos(angle) * radius, 30 + sin(angle) * radius);
+  }
+  comicTextGfx.jump.endShape(CLOSE);
+  
+  // Text
+  comicTextGfx.jump.fill(0);
+  comicTextGfx.jump.textSize(20);
+  comicTextGfx.jump.textStyle(BOLD);
+  comicTextGfx.jump.textAlign(CENTER, CENTER);
+  comicTextGfx.jump.text("JUMP!", 40, 30);
+  
+  // Create rain effect
+  rainEffect = createGraphics(width, height);
+  rainEffect.background(0, 0, 0, 0);
+  rainEffect.stroke(255, 255, 255, 100);
+  rainEffect.strokeWeight(1);
+  
+  // Generate random rain drops
+  for(let i = 0; i < 100; i++) {
+    let x = random(width);
+    let y = random(height);
+    let length = random(5, 15);
+    rainEffect.line(x, y, x-2, y+length);
+  }
+  
+  // Create screen vignette effect
+  vignetteEffect = createGraphics(width, height);
+  vignetteEffect.background(0, 0, 0, 0);
+  
+  // Draw radial gradient for vignette
+  let c1 = color(0, 0, 0, 0);      // Center color (transparent)
+  let c2 = color(0, 0, 0, 150);    // Edge color (semi-transparent black)
+  
+  for(let r = 0; r < max(width/2, height/2); r += 2) {
+    let inter = map(r, 0, max(width/2, height/2), 0, 1);
+    let c = lerpColor(c1, c2, inter);
+    vignetteEffect.noFill();
+    vignetteEffect.stroke(c);
+    vignetteEffect.ellipse(width/2, height/2, width - r*2, height - r*2);
+  }
+
+  console.log("Basic game assets created successfully");
+}
+
+// Function to draw pixelated text
+function drawPixelatedText(gfx, txt, x, y, size, brightness) {
+  // We'll manually create a pixelated look
+  let pixelSize = ceil(size / 25); // Size of our "pixels"
+  
+  // First render text to get pixel data
+  let tempGfx = createGraphics(700, 200);
+  tempGfx.background(0, 0, 0, 0);
+  tempGfx.fill(255);
+  tempGfx.textAlign(CENTER);
+  tempGfx.textSize(size);
+  tempGfx.textStyle(BOLD);
+  tempGfx.text(txt, 350, y);
+  
+  // Draw pixelated version by sampling original and drawing squares
+  tempGfx.loadPixels();
+  for (let py = 0; py < 200; py += pixelSize) {
+    for (let px = 0; px < 700; px += pixelSize) {
+      // Sample from center of our "pixel"
+      let idx = 4 * ((py + pixelSize/2) * 700 + (px + pixelSize/2));
+      if (idx < tempGfx.pixels.length && tempGfx.pixels[idx+3] > 0) { // If there's opacity, draw a square
+        gfx.noStroke();
+        // Add slight variation in brightness for retro feel
+        let bVar = brightness - random(-15, 15);
+        gfx.fill(bVar);
+        gfx.rect(px, py, pixelSize, pixelSize);
+      }
+    }
+  }
+}
+
+// Basic collision detection
+function checkCollision(rect1, rect2) {
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+// Update the game state
+function update() {
+  if (gameState === "title") {
+    // Title screen animation
+    titleScreenTime += deltaTime / 1000;
+  } else if (gameState === "playing") {
+    // Move the player
+    if (player.state === "running") {
+      player.x = 150; // Keep player at a fixed x position when running
+    }
+    
+    // Apply gravity to the player
+    player.vy += gravity * deltaTime / 1000;
+    
+    // Apply vertical velocity to the player
+    player.y += player.vy * deltaTime / 1000;
+    
+    // Check if the player is on the ground
+    if (player.y >= groundLevel - player.height / 2) {
+      player.y = groundLevel - player.height / 2;
+        player.vy = 0;
+      if (player.state === "jumping") {
+        player.state = "running";
+      }
+    }
+
+    // Update animation frame (use deltaTime to make it consistent)
+    if (player.state === "running") {
+      player.frameTime += deltaTime / 1000;
+      if (player.frameTime >= 0.1) {
+        player.frame = (player.frame + 1) % player.frames.length;
+        player.frameTime = 0;
+      }
+    }
+    
+    // Update player shield effect
+    if (player.shieldActive) {
+      player.shieldTime -= deltaTime / 1000;
+      if (player.shieldTime <= 0) {
+        player.shieldActive = false;
+      }
+    }
+    
+    // Update player score multiplier
+    if (player.scoreMultiplier > 1) {
+      player.multiplierTime -= deltaTime / 1000;
+      if (player.multiplierTime <= 0) {
+        player.scoreMultiplier = 1;
+      }
+    }
+    
+    // Update player super jump
+    if (player.superJumpActive) {
+      player.superJumpTime -= deltaTime / 1000;
+      if (player.superJumpTime <= 0) {
+        player.superJumpActive = false;
+        player.jumpForce = 300; // Reset to normal jump force
+      }
+    }
+    
+    // Move obstacles, enemies, platforms, and power-ups
+    moveGameObjects();
+    
+    // Check for collisions
+    checkCollisions();
+    
+    // Spawn new objects
+    timeToNextSpawn -= deltaTime / 1000;
+    if (timeToNextSpawn <= 0) {
+      spawnObjects();
+      timeToNextSpawn = random(0.5, 2.0); // Random time until next spawn
+    }
+    
+    // Update projectiles
+    updateProjectiles();
+    
+    // Update explosions
+    updateExplosions();
+    
+    // Update comic text effects
+    updateComicTexts();
+    
+    // Update rain drops
+    updateRain();
+    
+    // Update flame animations for candles
+    updateFlames();
+    
+    // Increase score based on time survived
+    score += (deltaTime / 1000) * 10 * player.scoreMultiplier;
+  } else if (gameState === "gameover") {
+    // Game over screen animation
+    gameOverScreenTime += deltaTime / 1000;
+    
+    // Allow space to restart game after a short delay
+    if (gameOverScreenTime > 1.0 && keyIsPressed && keyCode === 32) {
+      resetGame();
+      gameState = "title";
+    }
+  }
+}
+
+// Move game objects (obstacles, enemies, etc.)
+function moveGameObjects() {
+  // Move game speed based on time (increase difficulty)
+  gameSpeed = initialGameSpeed + Math.min(playTime * 0.1, 200);
+  
+  // Update play time
+  playTime += deltaTime / 1000;
+  
+  // Background parallax scrolling
+  backgroundX = (backgroundX - gameSpeed * 0.2 * deltaTime / 1000) % 1600;
+  midgroundX = (midgroundX - gameSpeed * 0.5 * deltaTime / 1000) % 1200;
+  groundX = (groundX - gameSpeed * deltaTime / 1000) % 128;
+  
+  // Move enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let enemy = enemies[i];
+    enemy.x -= gameSpeed * deltaTime / 1000;
+    
+    // Remove enemies that are off screen
+    if (enemy.x < -50) {
+        enemies.splice(i, 1);
+    }
+    
+    // Special movement for flying enemies
+    if (enemy.type === "flying") {
+      enemy.y += Math.sin(playTime * 3 + enemy.x * 0.1) * 1;
+    }
+    
+    // Special movement for ninja enemies (occasional jump)
+    if (enemy.type === "ninja" && random() < 0.005) {
+      enemy.vy = -150;
+    }
+    
+    // Apply gravity to jumping enemies
+    if (enemy.vy != null) {
+      enemy.vy += gravity * deltaTime / 1000;
+      enemy.y += enemy.vy * deltaTime / 1000;
+      
+      // Keep enemies on the ground
+      if (enemy.y > groundLevel - enemy.height / 2) {
+        enemy.y = groundLevel - enemy.height / 2;
+        enemy.vy = 0;
+      }
+    }
+  }
+  
+  // Move obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+    obstacle.x -= gameSpeed * deltaTime / 1000;
+    
+    // Remove obstacles that are off screen
+    if (obstacle.x < -50) {
+        obstacles.splice(i, 1);
+    }
+    
+    // Animate candle flames for cake obstacles
+    if (obstacle.type === "cake") {
+      obstacle.flameTime += deltaTime / 1000;
+      if (obstacle.flameTime >= 0.2) {
+        obstacle.flameFrame = (obstacle.flameFrame + 1) % 3;
+        obstacle.flameTime = 0;
+      }
+    }
+  }
+  
+  // Move platforms
+  for (let i = platforms.length - 1; i >= 0; i--) {
+    let platform = platforms[i];
+    platform.x -= gameSpeed * deltaTime / 1000;
+    
+    // Remove platforms that are off screen
+    if (platform.x < -100) {
+      platforms.splice(i, 1);
+    }
+  }
+  
+  // Move power-ups
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    let powerUp = powerUps[i];
+    powerUp.x -= gameSpeed * deltaTime / 1000;
+    
+    // Simple floating animation for power-ups
+    powerUp.y += Math.sin(playTime * 4 + powerUp.x * 0.1) * 0.5;
+    
+    // Remove power-ups that are off screen
+    if (powerUp.x < -30) {
+      powerUps.splice(i, 1);
+    }
+  }
+}
+
+// Function to handle shooting
+function shoot() {
+  // Can only shoot if not ducking and if enough time has passed since last shot
+  if (player.state !== "ducking" && playTime - lastShotTime > 0.5) {
+    lastShotTime = playTime;
+    
+    // Create a new projectile
+    let projectile = {
+      x: player.x + player.width / 2,
+      y: player.y + player.height / 4,
+      width: 12,
+      height: 6,
+      speed: 500
+    };
+    
+    projectiles.push(projectile);
+    
+    // Play shoot sound if we had one
+    // playSound("shoot");
+  }
+}
+
+// Update projectiles
+function updateProjectiles() {
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      let projectile = projectiles[i];
+    projectile.x += projectile.speed * deltaTime / 1000;
+    
+    // Remove projectiles that are off screen
+    if (projectile.x > width + 10) {
+        projectiles.splice(i, 1);
+      continue;
+    }
+    
+    // Check for collisions with enemies
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      let enemy = enemies[j];
+      
+      if (checkCollisionBetween(projectile, enemy)) {
+        // Create explosion at enemy position
+        createExplosion(enemy.x, enemy.y);
+        
+        // Increase score
+        score += 50 * player.scoreMultiplier;
+        enemiesDefeated++;
+        
+        // Add comic effect
+        createComicText("pow", enemy.x, enemy.y - 30);
+        
+        // Remove enemy and projectile
+        enemies.splice(j, 1);
+        projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+// Create an explosion effect
+function createExplosion(x, y) {
+  explosions.push({
+    x: x,
+    y: y,
+    frame: 0,
+    frameTime: 0
+  });
+}
+
+// Update explosions
+function updateExplosions() {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    let explosion = explosions[i];
+    explosion.frameTime += deltaTime / 1000;
+    
+    if (explosion.frameTime > 0.1) {
+      explosion.frame++;
+      explosion.frameTime = 0;
+      
+      if (explosion.frame >= explosionFrames.length) {
+        explosions.splice(i, 1);
+      }
+    }
+  }
+}
+
+// Create a comic text effect
+function createComicText(type, x, y) {
+  comicTexts.push({
+    type: type,
+    x: x,
+    y: y,
+    time: 0,
+    duration: 1.0
+  });
+}
+
+// Update comic text effects
+function updateComicTexts() {
+  for (let i = comicTexts.length - 1; i >= 0; i--) {
+    let text = comicTexts[i];
+    text.time += deltaTime / 1000;
+    
+    if (text.time >= text.duration) {
+      comicTexts.splice(i, 1);
+    }
+  }
+}
+
+// Update rain effect
+function updateRain() {
+  // Recreate rain effect periodically to make it dynamic
+  if (random() < 0.05) {
+    rainEffect = createGraphics(width, height);
+    rainEffect.background(0, 0, 0, 0);
+    rainEffect.stroke(255, 255, 255, 100);
+    rainEffect.strokeWeight(1);
+    
+    for (let i = 0; i < 100; i++) {
+      let x = random(width);
+      let y = random(height);
+      let length = random(5, 15);
+      rainEffect.line(x, y, x - 2, y + length);
+    }
+  }
+}
+
+// Update candle flame animations
+function updateFlames() {
+  // Already handled in the moveGameObjects function for each cake obstacle
+}
+
+// Check for collisions between the player and various game objects
+function checkCollisions() {
+  // Only check collisions if the player is not invulnerable
+  if (!player.invulnerable) {
+    // Check collisions with enemies
+    for (let enemy of enemies) {
+      if (checkCollisionBetween(player, enemy)) {
+        if (player.shieldActive) {
+          // Player has a shield, destroy the enemy
+          createExplosion(enemy.x, enemy.y);
+          createComicText("pow", enemy.x, enemy.y - 30);
+          score += 30 * player.scoreMultiplier;
+          enemiesDefeated++;
+          
+          // Remove the enemy
+          let index = enemies.indexOf(enemy);
+          if (index > -1) {
+            enemies.splice(index, 1);
+          }
+      } else {
+          // Game over
+          gameOver();
+          return;
+        }
+      }
+    }
+
+    // Check collisions with obstacles
+    for (let obstacle of obstacles) {
+      if (checkCollisionBetween(player, obstacle)) {
+        if (player.shieldActive) {
+          // Player has a shield, destroy the obstacle
+          let index = obstacles.indexOf(obstacle);
+          if (index > -1) {
+            obstacles.splice(index, 1);
+          }
+        } else {
+          // Game over
+          gameOver();
+          return;
+        }
+      }
+    }
+  }
+  
+  // Check collision with platforms (player can stand on them)
+  for (let platform of platforms) {
+    // Only check if the player is moving downward (falling)
+    if (player.vy > 0) {
+      // Check if player's feet are at platform level and player is within platform x bounds
+      if (player.y + player.height/2 >= platform.y - platform.height/2 && 
+          player.y + player.height/2 <= platform.y - platform.height/2 + 10 &&
+          player.x + player.width/4 <= platform.x + platform.width/2 &&
+          player.x - player.width/4 >= platform.x - platform.width/2) {
+        
+        player.y = platform.y - platform.height/2 - player.height/2;
+        player.vy = 0;
+        
+        if (player.state === "jumping") {
+          player.state = "running";
+        }
+      }
+    }
+  }
+  
+  // Check collision with power-ups
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    let powerUp = powerUps[i];
+    
+    if (checkCollisionBetween(player, powerUp)) {
+      // Apply power-up effect
+      if (powerUp.type === "shield") {
+        player.shieldActive = true;
+        player.shieldTime = 5.0; // Shield lasts for 5 seconds
+        createComicText("pow", player.x + 20, player.y - 30);
+      } else if (powerUp.type === "multiplier") {
+        player.scoreMultiplier = 2;
+        player.multiplierTime = 10.0; // Multiplier lasts for 10 seconds
+        createComicText("multiply", player.x + 20, player.y - 30);
+      } else if (powerUp.type === "superjump") {
+        player.superJumpActive = true;
+        player.jumpForce = 500; // Stronger jump
+        player.superJumpTime = 8.0; // Super jump lasts for 8 seconds
+        createComicText("jump", player.x + 20, player.y - 30);
+      }
+      
+      // Remove the power-up
+      powerUps.splice(i, 1);
+    }
+  }
+}
+
+// Check collision between two objects
+function checkCollisionBetween(obj1, obj2) {
+  return (
+    obj1.x - obj1.width/2 < obj2.x + obj2.width/2 &&
+    obj1.x + obj1.width/2 > obj2.x - obj2.width/2 &&
+    obj1.y - obj1.height/2 < obj2.y + obj2.height/2 &&
+    obj1.y + obj1.height/2 > obj2.y - obj2.height/2
+  );
+}
+
+// Spawn new game objects
+function spawnObjects() {
+  // Increase spawn chance based on play time for difficulty progression
+  let timeMultiplier = min(playTime / 60, 2); // Caps at 2x after 60 seconds
+  
+  // Spawn enemies with a certain probability
+  if (random() < 0.4 * timeMultiplier) {
+    spawnEnemy();
+  }
+  
+  // Spawn obstacles with a certain probability
+  if (random() < 0.3 * timeMultiplier) {
+    spawnObstacle();
+  }
+  
+  // Spawn platforms with a certain probability
+  if (random() < 0.2) {
+    spawnPlatform();
+  }
+  
+  // Spawn power-ups with a small probability
+  if (random() < 0.05) {
+    spawnPowerUp();
+  }
+}
+
+// Spawn a random enemy
+function spawnEnemy() {
+  let enemyTypes = ["ground", "flying", "heavy", "ninja", "robot"];
+  let type = random(enemyTypes);
+  let enemyY;
+  let enemyWidth = 32;
+  let enemyHeight = 32;
+  
+  // Set the appropriate Y coordinate based on enemy type
+  if (type === "flying") {
+    enemyY = random(groundLevel - 150, groundLevel - 50);
+    enemyWidth = 40;
+    enemyHeight = 20;
+  } else if (type === "heavy") {
+    enemyY = groundLevel - 20;
+    enemyWidth = 40;
+    enemyHeight = 40;
+  } else if (type === "ninja") {
+    enemyY = groundLevel - 16;
+    enemyHeight = 32;
+  } else if (type === "robot") {
+    enemyY = groundLevel - 18;
+    enemyHeight = 36;
+  } else { // Ground enemy
+    enemyY = groundLevel - 16;
+  }
+  
+  // Create the enemy object
+  let enemy = {
+    x: width + 50,
+    y: enemyY,
+    width: enemyWidth,
+    height: enemyHeight,
+    type: type
+  };
+  
+  // Add velocity for enemies that can jump
+  if (type === "ninja") {
+    enemy.vy = 0;
+  }
+  
+  enemies.push(enemy);
+}
+
+// Spawn a random obstacle
+function spawnObstacle() {
+  let obstacleTypes = ["normal", "cake"];
+  let type = random(obstacleTypes);
+  let obstacleY = groundLevel - 14;
+  let obstacleWidth = 28;
+  let obstacleHeight = 28;
+  
+  if (type === "cake") {
+    obstacleY = groundLevel - 16; 
+    obstacleWidth = 48;
+    obstacleHeight = 32;
+  }
+  
+  // Create the obstacle object
+  let obstacle = {
+    x: width + 50,
+    y: obstacleY,
+    width: obstacleWidth,
+    height: obstacleHeight,
+    type: type
+  };
+  
+  // Add flame animation for cake obstacles
+  if (type === "cake") {
+    obstacle.flameFrame = floor(random(3));
+    obstacle.flameTime = 0;
+  }
+  
+  obstacles.push(obstacle);
+}
+
+// Spawn a platform
+function spawnPlatform() {
+  // Ensure platforms are at a height the player can reach
+  let platformY = random(groundLevel - 120, groundLevel - 40);
+  
+  let platform = {
+    x: width + 50,
+    y: platformY,
+    width: 64,
+    height: 16
+  };
+  
+  platforms.push(platform);
+}
+
+// Spawn a power-up
+function spawnPowerUp() {
+  let powerUpTypes = ["shield", "multiplier", "superjump"];
+  let type = random(powerUpTypes);
+  
+  // Power-ups float in the air
+  let powerUpY = random(groundLevel - 150, groundLevel - 50);
+  
+  let powerUp = {
+    x: width + 50,
+    y: powerUpY,
+    width: 20,
+    height: 20,
+    type: type
+  };
+  
+  powerUps.push(powerUp);
+}
+
+// Handle player jumping
+function jump() {
+  // Can only jump if on the ground
+  if (player.y >= groundLevel - player.height/2 - 1 || player.onPlatform) {
+    player.vy = -player.jumpForce;
+    player.state = "jumping";
+    
+    // Reset onPlatform flag
+    player.onPlatform = false;
+  }
+}
+
+// Handle player ducking
+function duck() {
+  if (player.state !== "ducking" && player.y >= groundLevel - player.height/2 - 1) {
+    player.state = "ducking";
+    player.height = 16; // Half height when ducking
+  }
+}
+
+// Stop ducking
+function standUp() {
+    if (player.state === "ducking") {
+      player.state = "running";
+    player.height = 32; // Normal height
+  }
+}
+
+// Game over function
+function gameOver() {
+  gameState = "gameover";
+  gameOverScreenTime = 0;
+}
+
+// Draw the game
+function draw() {
+  // Calculate the time since the last frame
+  let currentTime = millis();
+  deltaTime = currentTime - lastFrameTime;
+  lastFrameTime = currentTime;
+  
+  // Cap deltaTime to prevent huge jumps
+  if (deltaTime > 100) {
+    deltaTime = 100;
+  }
+  
+  // Clear the background
+  background(20); // Dark background for noir feel
+  
+  // Update game state
+  update();
+  
+  // Draw the appropriate screen
+  if (gameState === "title") {
+    drawTitleScreen();
+  } else if (gameState === "playing") {
+    drawGameScreen();
+  } else if (gameState === "gameover") {
+    drawGameOverScreen();
+  }
+}

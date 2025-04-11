@@ -7,30 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="sketch.js"></script>
-    <!-- Only include mobile integration on mobile devices -->
-    <script>
-        // Check if we should load the mobile integration
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-            (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) || 
-            ('ontouchstart' in window) || 
-            (navigator.maxTouchPoints > 0)) {
-            
-            // Create and load the mobile integration script
-            const mobileScript = document.createElement('script');
-            mobileScript.src = 'mobile-integration.js';
-            document.head.appendChild(mobileScript);
-            
-            // Create and load the mobile styles
-            const mobileStyles = document.createElement('link');
-            mobileStyles.rel = 'stylesheet';
-            mobileStyles.href = 'mobile-styles.css';
-            document.head.appendChild(mobileStyles);
-            
-            console.log('Mobile device detected, loading mobile integration');
-        } else {
-            console.log('Desktop detected, no mobile integration loaded');
-        }
-    </script>
     <style>
         body {
             margin: 0;

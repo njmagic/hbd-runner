@@ -1,19 +1,45 @@
+index
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HBD Sidescroller</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+    <script src="libraries/p5.min.js"></script>
+    <script src="sketch.js"></script>
+</head>
+<body>
+    <!-- Game will be rendered by p5.js -->
+</body>
+</html> 
+
+
+
+
+sketch
+
 // Global variables
 let gameState = "start";
-
-// Supabase configuration
-const SUPABASE_URL = 'https://jogamsbeutpdihjmikfx.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZ2Ftc2JldXRwZGloam1pa2Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyODcyMTMsImV4cCI6MjA1ODg2MzIxM30.dDrlbqSJWHAoQ_ieecsqRvKvSzFg63nKMOhLhVLSRUY';
-let supabaseClient = null;
-
-// Leaderboard variables
-let leaderboardData = [];
-let leaderboardIsLoading = false;
-let leaderboardError = null;
-let leaderboardScoreSubmitted = false;
-let pendingScore = 0;
-let playerEmail = null;
-
 let player = {
   x: 100,
   y: 0,
@@ -86,52 +112,8 @@ let activePowerUps = {
   rapidFire: 0      // Duration remaining (frames)
 };
 
-// Mobile compatibility variables
-let isMobileDevice = false;
-let isJumping = false;
-let isDucking = false;
-let touchStartTime = 0;
-let longPressThreshold = 200; // ms to detect a hold/long press
-let touchStartY = 0; // Track where touch started for gesture detection
-let controlsVisible = false;
-
 function setup() {
   createCanvas(800, 400);
-  
-  // Detect mobile devices more robustly
-  isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                  (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
-  
-  if (isMobileDevice) {
-    console.log("Mobile device detected, enabling touch controls");
-    document.getElementById('mobileControls').style.display = 'block';
-    controlsVisible = true;
-    
-    // Add HTML event listener for preventing zoom
-    document.addEventListener('touchmove', function(e) {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
-    
-    // Ensure proper canvas sizing on mobile
-    windowResized();
-  }
-  
-  // Initialize Supabase client
-  try {
-    console.log("Initializing Supabase client...");
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("Supabase client initialized successfully");
-    
-    // Load initial leaderboard data
-    fetchLeaderboardData();
-    
-    // Set up leaderboard form event listeners
-    setupLeaderboardFormEvents();
-  } catch (error) {
-    console.error("Error initializing Supabase:", error);
-  }
   
   // Create the logo graphics
   createLogoGraphics();
@@ -1443,55 +1425,7 @@ function draw() {
   if (gameState === "gameOver") {
     // Create a proper game over screen that fully covers the game
     drawGameOverScreen();
-    
-    // Show restart button on mobile devices
-    if (isMobileDevice) {
-      const restartButton = document.getElementById('restartButton');
-      if (restartButton) {
-        restartButton.style.display = 'block';
-        restartButton.style.zIndex = '1100'; // Ensure it's above other elements
-        console.log("Mobile restart button shown on game over");
-      } else {
-        console.error("Restart button element not found in DOM");
-      }
-    }
-    
     return; // Skip all other game logic to prevent updating game elements
-  } else if (gameState === "start" && showTitleScreen) {
-    // Hide restart button when on title screen
-    if (isMobileDevice) {
-      const restartButton = document.getElementById('restartButton');
-      if (restartButton) {
-        restartButton.style.display = 'none';
-      }
-      
-      // Show the start button on title screen
-      const startButton = document.getElementById('startButton');
-      if (startButton) {
-        startButton.style.display = 'block';
-      }
-    }
-  } else {
-    // Hide restart button when not in game over state
-    if (isMobileDevice) {
-      const restartButton = document.getElementById('restartButton');
-      if (restartButton && restartButton.style.display === 'block') {
-        restartButton.style.display = 'none';
-        console.log("Mobile restart button hidden");
-      }
-    }
-  }
-  
-  // If in leaderboard state, only draw the leaderboard screen
-  if (gameState === "leaderboard") {
-    drawLeaderboardScreen();
-    return; // Skip all other game logic
-  }
-  
-  // If entering score, still draw the game over screen in the background
-  if (gameState === "enteringScore") {
-    drawGameOverScreen();
-    return; // Skip all other game logic
   }
   
   // Only run the game logic if we're in playing state
@@ -2161,23 +2095,13 @@ function draw() {
       if (random() < groundObstacleChance) {
         // 30% chance for tall obstacle that requires ducking
         let tallObstacle = random() < 0.3;
-        
-        // New: Add a 15% chance for a birthday cake obstacle
-        let isCakeObstacle = random() < 0.15;
-        
         obstacles.push({ 
           x: width + random(0, 50), 
           y: groundY, 
           type: "ground",
-          tall: tallObstacle, // Flag for tall obstacles that require ducking
-          cake: isCakeObstacle // Flag for cake obstacles
+          tall: tallObstacle // Flag for tall obstacles that require ducking
         });
-        
-        if (isCakeObstacle) {
-          console.log("Spawned birthday cake obstacle at", width);
-        } else {
-          console.log("Spawned regular ground obstacle at", width);
-        }
+        console.log("Spawned ground obstacle at", width);
       }
       if (random() < flyingObstacleChance) {
         // Vary the height more so some require jumping, others require ducking
@@ -2425,25 +2349,6 @@ function draw() {
     player.shieldFlareTime--;
     }
   }
-  
-  // Add mobile control hints if on mobile device - add this at the end of the 'playing' state code
-  if (isMobileDevice && controlsVisible) {
-    // Subtle control hints
-    push();
-    noStroke();
-    textAlign(CENTER, CENTER);
-    
-    // Left control area hint
-    fill(255, 100);
-    textSize(14);
-    text("TAP: JUMP\nHOLD: DUCK", width * 0.2, height - 75);
-    
-    // Right control area hint
-    fill(255, 100);
-    textSize(14);
-    text("SHOOT", width * 0.8, height - 40);
-    pop();
-  }
 }
 
 // Helper function to draw street reflections - white only (reduced)
@@ -2525,19 +2430,7 @@ function getPlayerHitbox() {
 
 function getObstacleHitbox(obstacle) {
   if (obstacle.type === "ground") {
-    // Check if it's a birthday cake obstacle
-    if (obstacle.cake) {
-      // Special hitbox for birthday cake - make it a bit narrower than visual
-      // to be more forgiving and match the cake's visual shape
-      return {
-        x: obstacle.x - 25, // Centered on the cake
-        y: obstacle.y - 35, // Match cake height
-        width: 50,         // Cake width
-        height: 35,        // Cake height
-        type: "ground_obstacle"
-      };
-    }
-    else if (obstacle.tall) {
+    if (obstacle.tall) {
       // Taller hitbox for obstacles that require ducking
       return {
         x: obstacle.x + 10,
@@ -2810,67 +2703,6 @@ function keyPressed() {
       backgroundOffset = 0;
       midgroundOffset = 0;
       foregroundOffset = 0;
-      
-      // Reset leaderboard submission status
-      leaderboardScoreSubmitted = false;
-    } 
-    // Remove L key handling as we're now using a clickable button
-  } else if (gameState === "enteringScore") {
-    // When entering score, only handle Escape to cancel
-    if (key === 'escape' || keyCode === 27) {
-      console.log("Escape key pressed while entering score, returning to game over screen");
-      gameState = "gameOver";
-      hideLeaderboardForm();
-    }
-    // All other keys should work normally for typing in the form
-  } else if (gameState === "leaderboard") {
-    // Allow going back to game over screen from leaderboard
-    if (key === 'escape' || keyCode === 27) {
-      console.log("Escape key pressed, returning to game over screen");
-      gameState = "gameOver";
-      hideLeaderboardForm();
-    } else if (key === 'r' || key === 'R') {
-      // Allow restarting directly from leaderboard
-      console.log("R key pressed in leaderboard state, restarting game");
-      showTitleScreen = true; // Go back to title screen on restart
-      gameState = "start";
-      hideLeaderboardForm(); // Make sure form is hidden
-      
-      // Reset everything
-      score = 0;
-      enemiesKilled = 0;
-      enemies = [];
-      obstacles = [];
-      projectiles = [];
-      shootEffects = [];
-      powerUps = [];
-      
-      // Reset power-ups
-      activePowerUps.shield = 0;
-      activePowerUps.beamShot = 0;
-      activePowerUps.rapidFire = 0;
-      
-      // Reset game state
-      slowMotion = false;
-      slowMotionTimer = 0;
-      scrollSpeed = normalScrollSpeed;
-      screenFlash = 0;
-      
-      // Reset player
-      player.y = groundY;
-      player.vy = 0;
-      player.state = "running";
-      
-      // Reset environment
-      groundOffset = 0;
-      backgroundOffset = 0;
-      midgroundOffset = 0;
-      foregroundOffset = 0;
-      
-      // Reset leaderboard submission status
-      leaderboardScoreSubmitted = false;
-    } else {
-      console.log("Key pressed in leaderboard state but not handled:", key);
     }
   }
 }
@@ -2881,293 +2713,6 @@ function keyReleased() {
       player.state = "running";
     }
   }
-}
-
-// Handle mouse clicks
-function mousePressed() {
-  // Check for button clicks in the game over state
-  if (gameState === "gameOver") {
-    // Define button dimensions (must match the ones in drawGameOverScreen)
-    let buttonWidth = 300;
-    let buttonHeight = 45;
-    
-    // Calculate the same button position as in drawGameOverScreen
-    let buttonY = height/2 + 65 + 35; // Position closer to hashtag text
-    
-    // Check if the button was clicked
-    if (mouseX > width/2 - buttonWidth/2 && 
-        mouseX < width/2 + buttonWidth/2 && 
-        mouseY > buttonY - buttonHeight/2 && 
-        mouseY < buttonY + buttonHeight/2) {
-      
-      // Different behavior based on submission status
-      if (!leaderboardScoreSubmitted) {
-        console.log("Leaderboard button clicked: opening submission form");
-        showLeaderboardForm();
-        gameState = "enteringScore";
-      } else {
-        console.log("Leaderboard button clicked: viewing leaderboard");
-        gameState = "leaderboard";
-      }
-    }
-  }
-}
-
-// Mobile touch controls
-function touchStarted() {
-  // Don't do anything if not on a mobile device
-  if (!isMobileDevice) return;
-  
-  // Prevent default touch behavior to avoid zooming or scrolling
-  if (touches[0]) {
-    touches[0].preventDefault = function() {};
-  }
-  
-  // Debug mobile detection
-  console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
-  
-  // Get touch position relative to the page, not the canvas
-  // Using clientX/Y directly for overlay control elements
-  const touchX = (touches[0] ? touches[0].clientX : mouseX);
-  const touchY = (touches[0] ? touches[0].clientY : mouseY);
-  
-  console.log(`Touch at page coordinates: ${touchX}, ${touchY}`);
-  
-  // Record timing for long press detection
-  touchStartTime = millis();
-  touchStartY = touchY;
-  
-  // Handle start button on title screen
-  if (showTitleScreen) {
-    console.log("Touch detected on title screen");
-    
-    // Get start button dimensions
-    const startBtn = document.getElementById('startButton');
-    if (!startBtn) {
-      console.error("Start button element not found");
-      return false;
-    }
-    
-    startBtn.style.display = 'block'; // Make sure it's visible
-    
-    // Start the game (same logic as pressing space)
-    showTitleScreen = false;
-    gameState = "playing";
-    
-    // Reset game elements (same as in keyPressed function)
-    score = 0;
-    enemiesKilled = 0;
-    enemies = [];
-    obstacles = [];
-    projectiles = [];
-    shootEffects = [];
-    powerUps = [];
-    slowMotion = false;
-    slowMotionTimer = 0;
-    scrollSpeed = normalScrollSpeed;
-    screenFlash = 0;
-    
-    // Reset player position
-    player.y = groundY;
-    player.vy = 0;
-    player.state = "running";
-    
-    // Reset offsets
-    groundOffset = 0;
-    backgroundOffset = 0;
-    midgroundOffset = 0;
-    foregroundOffset = 0;
-    
-    lastEnemySpawnTime = 0;
-    forceEnemySpawnCounter = 0;
-    lastPowerUpTime = 0;
-    
-    // Hide the start button
-    startBtn.style.display = 'none';
-    
-    console.log("Game started");
-    return false; // Prevent default
-  }
-  
-  // Get pause button dimensions
-  const pauseBtn = document.getElementById('pauseButton');
-  if (pauseBtn) {
-    const pauseRect = pauseBtn.getBoundingClientRect();
-    
-    if (touchX >= pauseRect.left && touchX <= pauseRect.right &&
-        touchY >= pauseRect.top && touchY <= pauseRect.bottom) {
-      // Toggle between playing and paused
-      if (gameState === "playing") {
-        gameState = "paused";
-        console.log("Game paused");
-      } else if (gameState === "paused") {
-        gameState = "playing";
-        console.log("Game resumed");
-      }
-      return false; // Prevent default
-    }
-  }
-  
-  // Only process gameplay touches when in the playing state
-  if (gameState === "playing") {
-    // Get control area elements
-    const leftControl = document.getElementById('leftControl');
-    const rightControl = document.getElementById('rightControl');
-    
-    if (!leftControl || !rightControl) {
-      console.error("Control elements not found");
-      return false;
-    }
-    
-    // Debug the control elements
-    console.log("Left control:", leftControl.id, "Right control:", rightControl.id);
-    
-    const leftRect = leftControl.getBoundingClientRect();
-    const rightRect = rightControl.getBoundingClientRect();
-    
-    // Debug the control element positions
-    console.log("Left rect bounds:", 
-                "left=" + leftRect.left, 
-                "right=" + leftRect.right, 
-                "top=" + leftRect.top, 
-                "bottom=" + leftRect.bottom);
-    console.log("Right rect bounds:", 
-                "left=" + rightRect.left, 
-                "right=" + rightRect.right, 
-                "top=" + rightRect.top, 
-                "bottom=" + rightRect.bottom);
-    console.log("Touch position:", touchX, touchY);
-    
-    // Check if touching the shoot button (right control)
-    // Using direct coordinate comparison
-    if (touchX >= rightRect.left && touchX <= rightRect.right &&
-        touchY >= rightRect.top && touchY <= rightRect.bottom) {
-      console.log("✓ SHOOT button touched at", touchX, touchY);
-      
-      // Strong visual feedback
-      rightControl.style.backgroundColor = "rgba(255, 50, 50, 0.7)";
-      rightControl.style.transform = "scale(0.95)";
-      
-      // Call the shoot function
-      mobileShoot();
-      return false; // Prevent default
-    }
-    
-    // Check if touching the left control area (for jump/duck)
-    if (touchX >= leftRect.left && touchX <= leftRect.right &&
-        touchY >= leftRect.top && touchY <= leftRect.bottom) {
-      console.log("✓ JUMP/DUCK control touched at", touchX, touchY);
-      
-      // Visual feedback
-      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.3)";
-      leftControl.style.transform = "scale(0.95)";
-      
-      // Trigger jump immediately on tap
-      mobileJump();
-      isJumping = true;
-      isDucking = false;
-      return false; // Prevent default
-    }
-  }
-  
-  return false; // Prevent default for all touches to avoid zooming/scrolling
-}
-
-function touchEnded() {
-  // Don't do anything if not on a mobile device
-  if (!isMobileDevice) return false;
-  
-  // Only process in playing state if needed
-  console.log("Touch ended - resetting control appearance");
-  
-  // Get control elements for visual feedback
-  const leftControl = document.getElementById('leftControl');
-  const rightControl = document.getElementById('rightControl');
-  
-  if (leftControl) {
-    // Reset control appearance
-    leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
-    leftControl.style.transform = "scale(1)";
-  }
-  
-  if (rightControl) {
-    // Reset shoot button appearance after touch
-    rightControl.style.backgroundColor = "rgba(255, 80, 80, 0.35)";
-    rightControl.style.transform = "scale(1)";
-  }
-  
-  // Handle ducking state only if in playing state
-  if (gameState === "playing") {
-    if (isDucking) {
-      console.log("Ending duck state");
-      isDucking = false;
-      
-      // Only return to running if still in ducking state
-      // (might have changed due to jumping or other actions)
-      if (player.state === "ducking") {
-        console.log("Returning player to running state");
-        player.state = "running";
-      }
-    }
-    
-    // Update jump tracking
-    if (isJumping) {
-      console.log("Ending jump tracking");
-      isJumping = false;
-      // Note: We don't change player.state here since jumping
-      // should continue until player lands naturally
-    }
-  }
-  
-  return false; // Prevent default
-}
-
-// Handle touch movement (for duck detection)
-function touchMoved() {
-  // Don't do anything if not on a mobile device
-  if (!isMobileDevice) return false;
-  
-  // Only process in playing state
-  if (gameState !== "playing") return false;
-  
-  // Get control area dimensions
-  const leftControl = document.getElementById('leftControl');
-  if (!leftControl) {
-    console.error("Left control element not found in touchMoved");
-    return false;
-  }
-  
-  const leftRect = leftControl.getBoundingClientRect();
-  
-  // Get current touch position (using page coordinates)
-  const touchX = (touches[0] ? touches[0].clientX : mouseX);
-  const touchY = (touches[0] ? touches[0].clientY : mouseY);
-  
-  // Check if touch is within left control area
-  if (touchX >= leftRect.left && touchX <= leftRect.right &&
-      touchY >= leftRect.top && touchY <= leftRect.bottom) {
-    
-    // Calculate how long the touch has been held
-    const touchDuration = millis() - touchStartTime;
-    console.log("Touch duration for duck: " + touchDuration + "ms");
-    
-    // Reduce the long press threshold for better responsiveness
-    const longPressThresholdForDucking = 300; // ms (was 500)
-    
-    // If held long enough, trigger duck
-    if (touchDuration > longPressThresholdForDucking && !isDucking) {
-      console.log("✓ DUCK activated - Long press detected");
-      mobileDuck();
-      isDucking = true;
-      isJumping = false;
-      
-      // Highlight the control area to provide visual feedback
-      leftControl.style.backgroundColor = "rgba(255, 255, 255, 0.4)";
-      leftControl.style.border = "2px solid rgba(255, 255, 255, 0.6)";
-    }
-  }
-  
-  return false; // Prevent default behavior
 }
 
 // Visual effect for enemy defeat - enhance the death effects
@@ -3554,12 +3099,6 @@ function drawTitleScreen() {
   text("© Nate Javier", 15, height - 15); // Position in bottom left
   
   pop();
-  
-  // Show mobile start button if on a mobile device
-  if (isMobileDevice) {
-    // Show the start button element
-    document.getElementById('startButton').style.display = 'block';
-  }
 }
 
 // Function to draw a more stable, cake-like birthday cake with 3 candles and cleaner icing
@@ -3949,9 +3488,6 @@ function drawMorseCode(message, x, y) {
 
 // Draw an enhanced game over screen
 function drawGameOverScreen() {
-  // Add debug logging
-  console.log("Drawing game over screen. leaderboardScoreSubmitted:", leaderboardScoreSubmitted);
-  
   push();
   
   // First, draw a completely new background rather than a transparent overlay
@@ -4046,18 +3582,23 @@ function drawGameOverScreen() {
   text("GAME OVER", 0, 0);
   pop();
   
-  // Score display and enemies killed on the same line
-  textSize(32);
+  // Score display - make larger and more prominent since high score is removed
+  textSize(38); // Increased from 30
   fill(220, 220, 220);
-  text("FINAL SCORE: " + Math.floor(score) + "   |   ENEMIES: " + enemiesKilled, width/2, height/2);
+  text("FINAL SCORE: " + Math.floor(score), width/2, height/2);
   
-  // Comic book promotion (moved up to create more space)
+  // Enemies defeated
+  fill(180);
+  textSize(24);
+  text("ENEMIES DEFEATED: " + enemiesKilled, width/2, height/2 + 50); // adjusted position
+  
+  // Comic book promotion (subtle)
   push();
   textSize(16);
   fill(150);
-  text("A NEW ADVENTURE IS COMING SOON", width/2, height/2 + 40);
+  text("A NEW ADVENTURE IS COMING SOON", width/2, height - 120);
   
-  // Draw a subtle logo (moved up as well)
+  // Draw a subtle logo
   textSize(14);
   // Flicker effect
   if (frameCount % 60 < 40) {
@@ -4065,60 +3606,19 @@ function drawGameOverScreen() {
   } else {
     fill(200, 200, 200, 100);
   }
-  text("#HBD #247COMICS", width/2, height/2 + 65);
+  text("#HBD #247COMICS", width/2, height - 100);
   pop();
   
-  // Draw leaderboard prompt as a button (more room now)
-  // Show the button regardless of submission status, but change text if already submitted
-      push();
-  // Draw button background with subtle noir styling
-  let buttonWidth = 300;
-  let buttonHeight = 45;
-  
-  // Calculate position to be closer to the hashtag text
-  // The hashtags are at height/2 + 65, leave a comfortable gap of 35px
-  let buttonY = height/2 + 65 + 35;
-  
-  // Button shadow for depth
-  fill(10, 10, 15, 200);
-  noStroke();
-  rect(width/2 - buttonWidth/2 + 3, buttonY - buttonHeight/2 + 3, buttonWidth, buttonHeight, 8);
-  
-  // Button body with elegant dark red gradient (noir style)
-  let buttonColor = color(40, 10, 15, 220); // Darker red shade that fits noir aesthetic
-  fill(buttonColor);
-  stroke(180, 120, 120, 150); // Reddish border
-  strokeWeight(1.5);
-  rect(width/2 - buttonWidth/2, buttonY - buttonHeight/2, buttonWidth, buttonHeight, 8);
-  
-  // Button text - elegant and properly sized
-  noStroke();
-  textSize(16); // Further reduced from 18 to fit comfortably
-  
-  if (!leaderboardScoreSubmitted) {
-    fill(220, 200, 200); // Lighter color on dark red background
-    text("SUBMIT SCORE TO LEADERBOARD", width/2, buttonY + 6);
-      } else {
-    // If already submitted, show different text
-    fill(180, 160, 160); // Slightly dimmer text for the "already done" state
-    text("VIEW LEADERBOARD", width/2, buttonY + 6);
-  }
-  
-  // Remove the following detection section since we're handling clicks in mousePressed()
-  // We're not using mouseIsPressed here anymore
-      pop();
-  
-  // Restart prompt with subtle styling instead of flashing
+  // Restart prompt
   textSize(24);
-  fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
-  text("PRESS 'R' TO RESTART", width/2, height - 40);
+  if (frameCount % 60 < 30) {
+    fill(255);
+  } else {
+    fill(220, 30, 30);
+  }
+  text("PRESS 'R' TO RESTART", width/2, height - 60);
   
-  // Add newsletter opt-in notice at the bottom
-  textSize(12); // Reduced from 14 to make it more subtle
-  fill(120, 120, 140, 180); // Slightly more transparent
-  text("Joining the leaderboard opts you in for our amazing newsletter", width/2, height - 15);
-  
-  pop();
+      pop();
 }
 
 
@@ -4179,13 +3679,8 @@ function drawObstacle(obstacle) {
              obstacle.type === "flying" ? 40 * (1 - abs(obstacle.y - (groundY-100))/100) : 30);
   
   if (obstacle.type === "ground") {
-    // Check if it's a birthday cake obstacle
-    if (obstacle.cake) {
-      // Draw birthday cake obstacle
-      drawBirthdayCake(0, -12); // Position it slightly above ground level
-    }
-    // If it's not a cake, draw regular obstacles
-    else if (obstacle.tall) {
+    // Ground obstacle
+    if (obstacle.tall) {
       // Tall obstacle that requires ducking
       push();
       fill(40);
@@ -4588,883 +4083,3 @@ function createShieldFlareEffect() {
     player.shieldFlareTime = 20; // Reset timer if already flaring
   }
 }
-
-// Draw the leaderboard screen
-function drawLeaderboardScreen() {
-  push();
-  
-  // Background similar to game over
-  background(0);
-  drawSkyGradient();
-  drawMoon(width - 120, 100);
-  
-  // Draw static buildings silhouette
-  image(backgroundGfx, -backgroundOffset, 0);
-  if (backgroundOffset > backgroundGfx.width - width) {
-    image(backgroundGfx, -backgroundOffset + backgroundGfx.width, 0);
-  }
-  
-  // Add dark overlay with red tint
-  fill(40, 5, 10, 230); // Changed from black (0,0,0,230) to dark red
-  rect(0, 0, width, height);
-  
-  // Draw dramatic lighting effect
-  push();
-  noStroke();
-  
-  // Light beams
-  for (let i = 0; i < 2; i++) {
-    let x = width/2 + (i - 0.5) * 150;
-    let angle = PI/2 + sin(frameCount * 0.005) * 0.05;
-    let length = height * 1.5;
-    let beamWidth = 100 + sin(frameCount * 0.01 + i) * 20;
-    
-    fill(255, 15);
-    beginShape();
-    vertex(x, 0);
-    vertex(x + beamWidth/2, 0);
-    vertex(x + beamWidth/2 + cos(angle) * length, height);
-    vertex(x - beamWidth/2 + cos(angle) * length, height);
-    vertex(x - beamWidth/2, 0);
-    endShape(CLOSE);
-  }
-  
-  // Central spotlight
-  fill(255, 20);
-  ellipse(width/2, height/2, 300 + sin(frameCount * 0.05) * 20, 300 + sin(frameCount * 0.05) * 20);
-  pop();
-  
-  // Add vignette
-  push();
-  noFill();
-  for (let i = 0; i < 3; i++) {
-    let alpha = map(i, 0, 2, 60, 20);
-    stroke(0, alpha);
-    strokeWeight(40);
-    rect(0, 0, width, height, 100);
-  }
-  pop();
-  
-  // Draw leaderboard title
-  textAlign(CENTER);
-  
-  push();
-  translate(width/2, 60); // Moved up from 80
-  rotate(sin(frameCount * 0.01) * 0.01);
-  
-  // Shadow/glow effect
-  textSize(50); // Reduced from 60
-  fill(220, 30, 30, 150);
-  text("LEADERBOARD", 3, 3);
-  
-  // Main text
-  fill(255);
-  text("LEADERBOARD", 0, 0);
-  pop();
-  
-  // Show player's current score - smaller and higher
-  textSize(22); // Reduced from 28
-  fill(220, 220, 220);
-  text("YOUR SCORE: " + Math.floor(score), width/2, 110); // Moved up from 140
-  
-  // Show leaderboard data or loading message
-  if (leaderboardIsLoading) {
-    textSize(24);
-    fill(180);
-    text("LOADING SCORES...", width/2, height/2);
-  } else if (leaderboardError) {
-    textSize(24);
-    fill(220, 30, 30);
-    text("ERROR LOADING SCORES", width/2, height/2 - 20);
-    textSize(16);
-    fill(180);
-    text("PLEASE TRY AGAIN LATER", width/2, height/2 + 20);
-  } else {
-    // Display leaderboard entries - moved up closer to the score
-    textAlign(LEFT);
-    textSize(16); // Reduced from 18
-    fill(255);
-    text("RANK", width/2 - 200, 140); // Moved up from 170
-    text("NAME", width/2 - 100, 140);
-    text("SCORE", width/2 + 150, 140);
-    
-    fill(200);
-    stroke(80);
-    strokeWeight(1);
-    line(width/2 - 220, 150, width/2 + 220, 150); // Moved up from 180
-    noStroke();
-    
-    if (leaderboardData && leaderboardData.length > 0) {
-      // Display top scores with more compact layout
-      for (let i = 0; i < Math.min(10, leaderboardData.length); i++) {
-        const entry = leaderboardData[i];
-        const y = 170 + i * 22; // More compact - reduced from 210 start and 25px spacing to 170 start and 22px spacing
-        
-        // Highlight the current player's score - removed yellow highlight
-        // Instead, use a subtle red tint that matches the noir theme
-        if (entry.email === playerEmail) {
-          fill(80, 20, 20, 100); // Subtle dark red instead of yellow
-          rect(width/2 - 220, y - 16, 440, 22); // Adjusted rectangle height
-        }
-        
-        // Rank with medal for top 3
-        fill(255);
-        if (i === 0) fill(255, 215, 0); // Gold
-        else if (i === 1) fill(192, 192, 192); // Silver
-        else if (i === 2) fill(205, 127, 50); // Bronze
-        
-        textAlign(CENTER);
-        text((i + 1), width/2 - 200, y);
-        
-        // Name and score
-        textAlign(LEFT);
-        fill(255);
-        text(entry.player_name || "Anonymous", width/2 - 100, y);
-        
-        textAlign(RIGHT);
-        text(Math.floor(entry.score), width/2 + 200, y);
-      }
-    } else {
-      fill(180);
-      textAlign(CENTER);
-      text("NO SCORES YET - BE THE FIRST!", width/2, height/2);
-    }
-  }
-  
-  // Instructions with subtle noir styling instead of flashing
-  textSize(16); // Smaller size to fit on sides
-  
-  // Return instruction on the left side
-  fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
-  textAlign(LEFT);
-  text("PRESS ESC\nTO RETURN", 50, height/2);
-  
-  // Restart instruction on the right side
-  fill(200, 200, 220, 180 + sin(frameCount * 0.04) * 30);
-  textAlign(RIGHT);
-  text("PRESS 'R'\nTO RESTART", width - 50, height/2);
-  
-  pop();
-}
-
-// ================ LEADERBOARD FUNCTIONS ================
-
-// Set up event listeners for the leaderboard form
-function setupLeaderboardFormEvents() {
-  console.log("Setting up leaderboard form events");
-  
-  // Get DOM elements
-  const leaderboardForm = document.getElementById('leaderboardForm');
-  const playerNameInput = document.getElementById('playerName');
-  const playerEmailInput = document.getElementById('playerEmail');
-  const submitButton = document.getElementById('submitScore');
-  const cancelButton = document.getElementById('cancelSubmit');
-  const emailError = document.getElementById('emailError');
-  
-  // Submit button event listener
-  submitButton.addEventListener('click', () => {
-    console.log("Submit button clicked");
-    
-    // Validate email
-    const email = playerEmailInput.value.trim();
-    const name = playerNameInput.value.trim() || 'Anonymous Player';
-    
-    if (!isValidEmail(email)) {
-      emailError.style.display = 'block';
-      return;
-    }
-    
-    emailError.style.display = 'none';
-    submitScoreToLeaderboard(name, email, pendingScore);
-  });
-  
-  // Cancel button event listener
-  cancelButton.addEventListener('click', () => {
-    console.log("Cancel button clicked");
-    hideLeaderboardForm();
-    gameState = "gameOver"; // Return to game over screen
-  });
-}
-
-// Show the leaderboard form
-function showLeaderboardForm() {
-  console.log("showLeaderboardForm called - attempting to display form");
-  
-  const form = document.getElementById('leaderboardForm');
-  if (!form) {
-    console.error("Leaderboard form element not found in the DOM!");
-    return;
-  }
-  
-  console.log("Form element found, setting display to block");
-  form.style.display = 'block';
-  
-  // Hide restart button when leaderboard form is shown (for mobile)
-  if (isMobileDevice) {
-    const restartButton = document.getElementById('restartButton');
-    if (restartButton) {
-      restartButton.style.display = 'none';
-      console.log("Mobile restart button hidden when showing leaderboard form");
-    }
-  }
-  
-  // Make sure form fields are reset
-  const playerNameInput = document.getElementById('playerName');
-  const playerEmailInput = document.getElementById('playerEmail');
-  const emailError = document.getElementById('emailError');
-  
-  if (playerNameInput) playerNameInput.value = '';
-  if (playerEmailInput) playerEmailInput.value = '';
-  if (emailError) emailError.style.display = 'none';
-  
-  pendingScore = score; // Store the current score for submission
-  console.log("Form displayed, pendingScore set to:", pendingScore);
-}
-
-// Hide the leaderboard form
-function hideLeaderboardForm() {
-  console.log("hideLeaderboardForm called - attempting to hide form");
-  
-  const form = document.getElementById('leaderboardForm');
-  if (!form) {
-    console.error("Leaderboard form element not found in the DOM!");
-    return;
-  }
-  
-  console.log("Form element found, setting display to none");
-  form.style.display = 'none';
-  console.log("Form hidden");
-}
-
-// Validate email format
-function isValidEmail(email) {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
-}
-
-// Fetch leaderboard data from Supabase
-async function fetchLeaderboardData() {
-  if (!supabaseClient) return;
-  
-  leaderboardIsLoading = true;
-  leaderboardError = null;
-  
-  try {
-    const { data, error } = await supabaseClient
-      .from('leaderboard')
-      .select('*')
-      .order('score', { ascending: false })
-      .limit(10);
-    
-    if (error) throw error;
-    
-    leaderboardData = data;
-    console.log("Leaderboard data loaded:", data);
-  } catch (error) {
-    console.error("Error fetching leaderboard data:", error);
-    leaderboardError = error.message;
-  } finally {
-    leaderboardIsLoading = false;
-  }
-}
-
-// Submit score to the leaderboard with RLS handling
-async function submitScoreToLeaderboard(name, email, score) {
-  if (!supabaseClient) {
-    console.error("Supabase client not initialized");
-    return;
-  }
-  
-  try {
-    // Show loading state
-    const submitButton = document.getElementById('submitScore');
-    submitButton.innerHTML = "SUBMITTING...";
-    submitButton.disabled = true;
-    
-    // Using player_name instead of name to match the database schema
-    const { data, error } = await supabaseClient
-      .from('leaderboard')
-      .insert([
-        { player_name: name, email, score }
-      ]);
-    
-    if (error) {
-      // Check for specific RLS errors
-      if (error.code === '23505') {
-        throw new Error("You've already submitted a score with this email recently.");
-      } else if (error.code === 'PGRST116') {
-        throw new Error("You've reached the submission limit. Please try again later.");
-      } else {
-        throw error;
-      }
-    }
-    
-    console.log("Score submitted successfully");
-    playerEmail = email;
-    leaderboardScoreSubmitted = true;
-    hideLeaderboardForm();
-    
-    // Fetch updated leaderboard data
-    fetchLeaderboardData();
-    
-    // Switch to leaderboard view
-    gameState = "leaderboard";
-  } catch (error) {
-    console.error("Error submitting score:", error);
-    
-    // Display error to the user
-    const emailError = document.getElementById('emailError');
-    emailError.textContent = error.message || "Error submitting score. Please try again.";
-    emailError.style.display = 'block';
-    
-    // Stay in the enteringScore state
-    gameState = "enteringScore";
-  } finally {
-    // Reset button state
-    const submitButton = document.getElementById('submitScore');
-    submitButton.innerHTML = "SUBMIT";
-    submitButton.disabled = false;
-  }
-}
-
-// Handle window resizing for responsive canvas
-function windowResized() {
-  // Get the parent container dimensions (window or containing div)
-  let parentWidth = windowWidth;
-  let parentHeight = windowHeight;
-  
-  // Calculate the aspect ratio of our game (800x400 = 2:1)
-  let gameAspectRatio = 800 / 400;
-  
-  // Determine the best fit size while maintaining aspect ratio
-  let newWidth, newHeight;
-  
-  if (parentWidth / parentHeight > gameAspectRatio) {
-    // Window is wider than our game ratio, so height is the constraint
-    newHeight = parentHeight;
-    newWidth = newHeight * gameAspectRatio;
-  } else {
-    // Window is taller than our game ratio, so width is the constraint
-    newWidth = parentWidth;
-    newHeight = newWidth / gameAspectRatio;
-  }
-  
-  // Apply a safety margin to prevent edge bleeding
-  newWidth *= 0.95;
-  newHeight *= 0.95;
-  
-  // Resize the canvas
-  resizeCanvas(800, 400); // Keep the internal resolution the same
-  
-  // Scale the canvas element itself via CSS
-  let canvas = document.querySelector('canvas');
-  if (canvas) {
-    // Log for debugging
-    console.log(`Resizing canvas to: ${newWidth}px x ${newHeight}px`);
-    canvas.style.width = `${newWidth}px`;
-    canvas.style.height = `${newHeight}px`;
-  }
-  
-  // Don't actually change the drawing surface, just its displayed size
-  return false; // Prevent default p5.js windowResized behavior
-}
-
-// Add a new dedicated mobile shooting function
-function mobileShoot() {
-  console.log("Mobile shoot function called - DIRECT IMPLEMENTATION");
-  
-  // Make sure player exists
-  if (!player) {
-    console.error("Player object not found!");
-    return;
-  }
-  
-  // Force the game state to playing if needed for shooting
-  const currentState = gameState;
-  if (gameState !== "playing") {
-    console.log("Temporarily setting game state to playing for shooting");
-  }
-  
-  // Debug info
-  console.log("Player position:", player.x, player.y);
-  
-  // Create a simple projectile regardless of power-ups
-  let projectile = {
-    x: player.x + 32,
-    y: player.y - 16,
-    vx: 12,
-    vy: 0,
-    isRed: true
-  };
-  
-  // Add to projectiles array
-  projectiles.push(projectile);
-  console.log("Mobile projectile created:", projectile);
-  console.log("Current projectiles array length:", projectiles.length);
-  
-  // Create visual effects
-  for (let i = 0; i < 5; i++) {
-    let angle = random(-PI/4, PI/4);
-    let speed = random(1, 4);
-    let effect = {
-      x: player.x + 32,
-      y: player.y - 16,
-      vx: cos(angle) * speed,
-      vy: sin(angle) * speed,
-      size: random(2, 5),
-      alpha: 255,
-      life: 8,
-      isRed: true
-    };
-    shootEffects.push(effect);
-  }
-  
-  // Log the result after shooting
-  console.log("After shooting - projectiles:", projectiles.length);
-  return true;
-}
-
-// Dedicated mobile ducking function
-function mobileDuck() {
-  console.log("Mobile duck function called - DIRECT IMPLEMENTATION");
-  
-  // Make sure player exists
-  if (!player) {
-    console.error("Player object not found!");
-    return false;
-  }
-  
-  console.log("Current player state:", player.state);
-  
-  // Force duck state regardless of current state
-  player.state = "ducking";
-  console.log("Player state changed to ducking");
-  
-  return true;
-}
-
-// Dedicated mobile jump function
-function mobileJump() {
-  console.log("Mobile jump function called - DIRECT IMPLEMENTATION");
-  
-  // Make sure player exists
-  if (!player) {
-    console.error("Player object not found!");
-    return false;
-  }
-  
-  console.log("Current player state:", player.state);
-  console.log("Player y position:", player.y, "Ground y:", groundY);
-  
-  // Only jump if on ground or running
-  if (player.y >= groundY - 1) {
-    player.vy = jumpStrength;
-    player.state = "jumping";
-    console.log("Player state changed to jumping, vy =", player.vy);
-    return true;
-  } else {
-    console.log("Player not on ground, cannot jump");
-    return false;
-  }
-}
-
-// Function to hide control instructions text on mobile
-function hideControlInstructionsOnMobile() {
-  console.log("Checking for control instructions to hide on mobile...");
-  
-  // Function to check if text contains control-related keywords
-  function containsControlKeywords(text) {
-    if (!text) return false;
-    
-    const controlKeywords = [
-      'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
-      'keys', 'z key', 'x key', 'up', 'down', 'left', 'right', 
-      'wasd', 'jump', 'duck', 'shoot'
-    ];
-    
-    const lowerText = text.toLowerCase();
-    return controlKeywords.some(keyword => lowerText.includes(keyword));
-  }
-  
-  // Wait for canvas to be created
-  setTimeout(() => {
-    // Get the canvas elements
-    const canvas = document.querySelector('canvas');
-    if (!canvas) return;
-    
-    // Look for paragraphs or divs after the canvas that might contain control instructions
-    let element = canvas.nextElementSibling;
-    while (element) {
-      // If the element contains text with control keywords, hide it
-      if (element.textContent && containsControlKeywords(element.textContent)) {
-        console.log("Found control instructions element:", element.textContent.substring(0, 50) + "...");
-        element.style.display = 'none';
-      }
-      element = element.nextElementSibling;
-    }
-    
-    // Also check for controls drawn onto the canvas using p5.js text function
-    // We'll inject a style to hide these elements via our mobile CSS
-    const style = document.createElement('style');
-    style.textContent = `
-      /* Hide any text drawn on canvas that contains control instructions */
-      .p5Canvas text:not(.game-score):not(.game-title) {
-        opacity: 0 !important;
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    console.log("Control instruction hiding complete");
-  }, 1500);
-}
-
-// Custom mobile detection and control setup
-function setupMobileControls() {
-  console.log("Setting up mobile controls...");
-  
-  // Detect mobile more aggressively
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                  (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) ||
-                  ('ontouchstart' in window) ||
-                  (navigator.maxTouchPoints > 0);
-  
-  if (isMobile) {
-    console.log("Mobile device CONFIRMED - enabling controls");
-    isMobileDevice = true;
-    
-    // Ensure mobile controls are visible
-    const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls) {
-      mobileControls.style.display = 'block';
-      controlsVisible = true;
-      
-      // Add click listeners directly to the controls
-      const leftControl = document.getElementById('leftControl');
-      const rightControl = document.getElementById('rightControl');
-      
-      if (leftControl) {
-        leftControl.addEventListener('click', function() {
-          console.log("Left control clicked via event listener");
-          if (typeof window.mobileJump === 'function') {
-            window.mobileJump();
-          }
-        });
-      }
-      
-      if (rightControl) {
-        rightControl.addEventListener('click', function() {
-          console.log("Right control clicked via event listener");
-          if (typeof window.mobileShoot === 'function') {
-            window.mobileShoot();
-          }
-        });
-      }
-    }
-    
-    // Expose game variables to window for direct access from HTML
-    exposeGameFunctions();
-    
-    // Hide control instructions since we have mobile controls
-    hideControlInstructionsOnMobile();
-    
-    console.log("Mobile controls enabled and game variables exposed to window");
-  } else {
-    console.log("Not a mobile device - controls will remain hidden");
-  }
-}
-
-// Call mobile setup after a short delay to ensure the DOM is ready
-setTimeout(setupMobileControls, 1000);
-
-// Expose key functions to window object for direct access from HTML
-function exposeGameFunctions() {
-  console.log("Exposing game functions to global scope");
-  
-  // Directly expose the critical functions
-  window.mobileShoot = function() {
-    console.log("GLOBAL mobileShoot called");
-    // Create a simple projectile regardless of power-ups
-    if (player && projectiles) {
-      let projectile = {
-        x: player.x + 32,
-        y: player.y - 16,
-        vx: 12,
-        vy: 0,
-        isRed: true
-      };
-      
-      projectiles.push(projectile);
-      console.log("Projectile added:", projectiles.length);
-      
-      // Create visual effects
-      for (let i = 0; i < 5; i++) {
-        let angle = random(-PI/4, PI/4);
-        let speed = random(1, 4);
-        let effect = {
-          x: player.x + 32,
-          y: player.y - 16,
-          vx: cos(angle) * speed,
-          vy: sin(angle) * speed,
-          size: random(2, 5),
-          alpha: 255,
-          life: 8,
-          isRed: true
-        };
-        shootEffects.push(effect);
-      }
-    }
-  };
-  
-  window.mobileJump = function() {
-    console.log("GLOBAL mobileJump called");
-    if (player && player.y >= groundY - 1) {
-      player.vy = jumpStrength;
-      player.state = "jumping";
-      console.log("Jump triggered, vy =", player.vy);
-    }
-  };
-  
-  window.mobileDuck = function() {
-    console.log("GLOBAL mobileDuck called");
-    if (player) {
-      player.state = "ducking";
-    }
-  };
-  
-  window.gameState = gameState;
-  window.player = player;
-  window.groundY = groundY;
-  window.jumpStrength = jumpStrength;
-}
-// Call function to expose game functions
-setTimeout(exposeGameFunctions, 500);
-
-// Override p5.js text function to hide control instructions on mobile
-function overrideTextFunctionForMobile() {
-  console.log("Setting up p5.js text function override for mobile...");
-  
-  // Wait for p5.js to be fully initialized
-  setTimeout(() => {
-    // Store the original text function
-    if (window.p5 && window.p5.prototype) {
-      const originalTextFunction = window.p5.prototype.text;
-      
-      // Control instruction keywords
-      const controlKeywords = [
-        'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
-        'z key', 'x key', 'up', 'down', 'left', 'right', 
-        'wasd', 'jump', 'duck', 'shoot', 'controls'
-      ];
-      
-      // Override text function
-      window.p5.prototype.text = function(str, x, y, x2, y2) {
-        // If it's a mobile device and text contains control instructions, don't draw it
-        if (isMobileDevice && typeof str === 'string') {
-          const lowerStr = str.toLowerCase();
-          
-          // Check if this text contains any control keywords
-          const hasControlKeywords = controlKeywords.some(keyword => 
-            lowerStr.includes(keyword)
-          );
-          
-          // Skip drawing if it has control keywords
-          // Exception: don't hide score, title, game over text etc.
-          const isGameplayText = lowerStr.includes('score') || 
-                                lowerStr.includes('game over') || 
-                                lowerStr.includes('title') ||
-                                lowerStr.includes('enemies') ||
-                                /^\d+$/.test(str); // Just numbers (like score)
-          
-          if (hasControlKeywords && !isGameplayText) {
-            console.log("Hiding control text:", str.substring(0, 30) + (str.length > 30 ? "..." : ""));
-            return; // Skip drawing this text
-          }
-        }
-        
-        // Otherwise, use the original text function
-        return originalTextFunction.apply(this, arguments);
-      };
-      
-      console.log("Text function override complete");
-    } else {
-      console.log("p5.js not found, couldn't override text function");
-    }
-  }, 2000);
-}
-
-// Function to hide control instructions text on mobile
-function hideControlInstructionsOnMobile() {
-  console.log("Checking for control instructions to hide on mobile...");
-  
-  // Function to check if text contains control-related keywords
-  function containsControlKeywords(text) {
-    if (!text) return false;
-    
-    const controlKeywords = [
-      'arrow', 'keyboard', 'press', 'key', 'control', 'space', 'spacebar', 
-      'keys', 'z key', 'x key', 'up', 'down', 'left', 'right', 
-      'wasd', 'jump', 'duck', 'shoot'
-    ];
-    
-    const lowerText = text.toLowerCase();
-    return controlKeywords.some(keyword => lowerText.includes(keyword));
-  }
-  
-  // Wait for canvas to be created
-  setTimeout(() => {
-    // Get the canvas elements
-    const canvas = document.querySelector('canvas');
-    if (!canvas) return;
-    
-    // Look for paragraphs or divs after the canvas that might contain control instructions
-    let element = canvas.nextElementSibling;
-    while (element) {
-      // If the element contains text with control keywords, hide it
-      if (element.textContent && containsControlKeywords(element.textContent)) {
-        console.log("Found control instructions element:", element.textContent.substring(0, 50) + "...");
-        element.style.display = 'none';
-      }
-      element = element.nextElementSibling;
-    }
-    
-    // Also check for controls drawn onto the canvas using p5.js text function
-    // We'll inject a style to hide these elements via our mobile CSS
-    const style = document.createElement('style');
-    style.textContent = `
-      /* Hide any text drawn on canvas that contains control instructions */
-      .p5Canvas text:not(.game-score):not(.game-title) {
-        opacity: 0 !important;
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    console.log("Control instruction hiding complete");
-  }, 1500);
-  
-  // Set up text function override
-  overrideTextFunctionForMobile();
-}
-
-// Custom mobile detection and control setup
-function setupMobileControls() {
-  console.log("Setting up mobile controls...");
-  
-  // Detect mobile more aggressively
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                  (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) ||
-                  ('ontouchstart' in window) ||
-                  (navigator.maxTouchPoints > 0);
-  
-  if (isMobile) {
-    console.log("Mobile device CONFIRMED - enabling controls");
-    isMobileDevice = true;
-    
-    // Ensure mobile controls are visible
-    const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls) {
-      mobileControls.style.display = 'block';
-      controlsVisible = true;
-      
-      // Add click listeners directly to the controls
-      const leftControl = document.getElementById('leftControl');
-      const rightControl = document.getElementById('rightControl');
-      
-      if (leftControl) {
-        leftControl.addEventListener('click', function() {
-          console.log("Left control clicked via event listener");
-          if (typeof window.mobileJump === 'function') {
-            window.mobileJump();
-          }
-        });
-      }
-      
-      if (rightControl) {
-        rightControl.addEventListener('click', function() {
-          console.log("Right control clicked via event listener");
-          if (typeof window.mobileShoot === 'function') {
-            window.mobileShoot();
-          }
-        });
-      }
-    }
-    
-    // Expose game variables to window for direct access from HTML
-    exposeGameFunctions();
-    
-    // Hide control instructions since we have mobile controls
-    hideControlInstructionsOnMobile();
-    
-    console.log("Mobile controls enabled and game variables exposed to window");
-  } else {
-    console.log("Not a mobile device - controls will remain hidden");
-  }
-}
-
-// Call mobile setup after a short delay to ensure the DOM is ready
-setTimeout(setupMobileControls, 1000);
-
-// Expose key functions to window object for direct access from HTML
-function exposeGameFunctions() {
-  console.log("Exposing game functions to global scope");
-  
-  // Directly expose the critical functions
-  window.mobileShoot = function() {
-    console.log("GLOBAL mobileShoot called");
-    // Create a simple projectile regardless of power-ups
-    if (player && projectiles) {
-      let projectile = {
-        x: player.x + 32,
-        y: player.y - 16,
-        vx: 12,
-        vy: 0,
-        isRed: true
-      };
-      
-      projectiles.push(projectile);
-      console.log("Projectile added:", projectiles.length);
-      
-      // Create visual effects
-      for (let i = 0; i < 5; i++) {
-        let angle = random(-PI/4, PI/4);
-        let speed = random(1, 4);
-        let effect = {
-          x: player.x + 32,
-          y: player.y - 16,
-          vx: cos(angle) * speed,
-          vy: sin(angle) * speed,
-          size: random(2, 5),
-          alpha: 255,
-          life: 8,
-          isRed: true
-        };
-        shootEffects.push(effect);
-      }
-    }
-  };
-  
-  window.mobileJump = function() {
-    console.log("GLOBAL mobileJump called");
-    if (player && player.y >= groundY - 1) {
-      player.vy = jumpStrength;
-      player.state = "jumping";
-      console.log("Jump triggered, vy =", player.vy);
-    }
-  };
-  
-  window.mobileDuck = function() {
-    console.log("GLOBAL mobileDuck called");
-    if (player) {
-      player.state = "ducking";
-    }
-  };
-  
-  window.gameState = gameState;
-  window.player = player;
-  window.groundY = groundY;
-  window.jumpStrength = jumpStrength;
-}// Call function to expose game functions
-setTimeout(exposeGameFunctions, 500);
-
-

@@ -1,0 +1,354 @@
+index:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5JS Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+    <script src="sketch.js"></script>
+</head>
+<body>
+</body>
+</html>
+
+
+
+
+sketch
+
+// Global variables
+let gameState = "start";
+let player = {
+  x: 100,
+  y: 350,
+  vy: 0,
+  state: "running",
+  animFrame: 0,
+  animTimer: 0
+};
+let enemies = [];
+let obstacles = [];
+let projectiles = [];
+let backgroundGfx;
+let groundTile;
+let playerRunningFrames = [];
+let playerJumpingFrame;
+let playerDuckingFrame;
+let enemyGfx;
+let groundObstacleGfx;
+let flyingObstacleGfx;
+let projectileGfx;
+let groundOffset = 0;
+let scrollSpeed = 5;
+let gravity = 0.5;
+let jumpStrength = -10;
+let score = 0;
+
+function setup() {
+  createCanvas(800, 400);
+  frameRate(60);
+
+  // Create static background with buildings
+  backgroundGfx = createGraphics(800, 400);
+  backgroundGfx.background(255); // White background
+  backgroundGfx.fill(0); // Black fill
+  for (let i = 0; i < 10; i++) {
+    let x = random(0, 800);
+    let w = random(20, 100);
+    let h = random(50, 200);
+    backgroundGfx.rect(x, 400 - h, w, h); // Buildings
+  }
+
+  // Create scrolling ground tile
+  groundTile = createGraphics(64, 16);
+  groundTile.background(255);
+  groundTile.fill(0);
+  for (let i = 0; i < 64; i += 4) {
+    groundTile.rect(i, 12, 2, 4); // Ground texture
+  }
+
+  // Create player running animation frames (4 frames, 32x32 each)
+  for (let f = 0; f < 4; f++) {
+    let gfx = createGraphics(32, 32);
+    gfx.background(255);
+    gfx.fill(0);
+    gfx.ellipse(16, 8, 10, 10); // Head
+    gfx.rect(14, 12, 4, 10); // Body
+    if (f == 0 || f == 2) { // Legs together, arms at sides
+      gfx.rect(10, 14, 4, 2); // Left arm
+      gfx.rect(18, 14, 4, 2); // Right arm
+      gfx.rect(12, 22, 2, 8); // Left leg
+      gfx.rect(18, 22, 2, 8); // Right leg
+    } else if (f == 1) { // Left leg forward, right arm forward
+      gfx.rect(10, 14, 4, 2); // Left arm back
+      gfx.rect(18, 14, 4, 2); // Right arm forward
+      gfx.rect(12, 22, 2, 8); // Left leg forward
+      gfx.rect(18, 22, 2, 8); // Right leg back
+    } else if (f == 3) { // Right leg forward, left arm forward
+      gfx.rect(10, 14, 4, 2); // Left arm forward
+      gfx.rect(18, 14, 4, 2); // Right arm back
+      gfx.rect(12, 22, 2, 8); // Left leg back
+      gfx.rect(18, 22, 2, 8); // Right leg forward
+    }
+    gfx.triangle(14, 12, 10, 18, 14, 18); // Cape
+    playerRunningFrames.push(gfx);
+  }
+
+  // Create player jumping frame (32x32)
+  playerJumpingFrame = createGraphics(32, 32);
+  playerJumpingFrame.background(255);
+  playerJumpingFrame.fill(0);
+  playerJumpingFrame.ellipse(16, 8, 10, 10); // Head
+  playerJumpingFrame.rect(14, 12, 4, 10); // Body
+  playerJumpingFrame.rect(10, 14, 4, 2); // Left arm
+  playerJumpingFrame.rect(18, 14, 4, 2); // Right arm
+  playerJumpingFrame.rect(12, 20, 2, 4); // Left leg bent
+  playerJumpingFrame.rect(18, 20, 2, 4); // Right leg bent
+  playerJumpingFrame.triangle(14, 12, 10, 18, 14, 18); // Cape
+
+  // Create player ducking frame (32x16)
+  playerDuckingFrame = createGraphics(32, 16);
+  playerDuckingFrame.background(255);
+  playerDuckingFrame.fill(0);
+  playerDuckingFrame.ellipse(16, 4, 10, 10); // Head
+  playerDuckingFrame.rect(14, 8, 4, 6); // Body
+  playerDuckingFrame.rect(10, 10, 4, 2); // Left arm
+  playerDuckingFrame.rect(18, 10, 4, 2); // Right arm
+  playerDuckingFrame.rect(12, 14, 2, 2); // Left leg
+  playerDuckingFrame.rect(18, 14, 2, 2); // Right leg
+  playerDuckingFrame.triangle(14, 8, 10, 12, 14, 12); // Cape
+
+  // Create enemy graphics (32x32 robot)
+  enemyGfx = createGraphics(32, 32);
+  enemyGfx.background(255);
+  enemyGfx.fill(0);
+  enemyGfx.rect(10, 10, 12, 12); // Body
+  enemyGfx.rect(8, 22, 4, 10); // Left leg
+  enemyGfx.rect(20, 22, 4, 10); // Right leg
+  enemyGfx.rect(6, 12, 2, 4); // Left arm
+  enemyGfx.rect(24, 12, 2, 4); // Right arm
+
+  // Create ground obstacle graphics (32x32 box)
+  groundObstacleGfx = createGraphics(32, 32);
+  groundObstacleGfx.background(255);
+  groundObstacleGfx.fill(0);
+  groundObstacleGfx.rect(0, 0, 32, 32);
+
+  // Create flying obstacle graphics (32x20 bird-like)
+  flyingObstacleGfx = createGraphics(32, 20);
+  flyingObstacleGfx.background(255);
+  flyingObstacleGfx.fill(0);
+  flyingObstacleGfx.ellipse(16, 10, 30, 10); // Body
+  flyingObstacleGfx.triangle(10, 5, 16, 0, 22, 5); // Beak or wing detail
+
+  // Create projectile graphics (8x8 circle)
+  projectileGfx = createGraphics(8, 8);
+  projectileGfx.background(255);
+  projectileGfx.fill(0);
+  projectileGfx.ellipse(4, 4, 8, 8);
+}
+
+function draw() {
+  if (gameState === "start") {
+    // Start screen
+    background(255);
+    textAlign(CENTER);
+    textSize(32);
+    fill(0);
+    text("Press any key to start", width / 2, height / 2);
+    if (keyIsPressed) {
+      gameState = "playing";
+      score = 0;
+      enemies = [];
+      obstacles = [];
+      projectiles = [];
+      player.y = 350;
+      player.vy = 0;
+      player.state = "running";
+      groundOffset = 0;
+    }
+  } else if (gameState === "playing") {
+    // Update scrolling ground
+    groundOffset += scrollSpeed;
+    if (groundOffset > groundTile.width) {
+      groundOffset -= groundTile.width;
+    }
+
+    // Draw background and ground
+    image(backgroundGfx, 0, 0);
+    let xOffset = -(groundOffset % groundTile.width);
+    for (let x = xOffset; x < width; x += groundTile.width) {
+      image(groundTile, x, height - groundTile.height);
+    }
+
+    // Update player position (jumping)
+    if (player.state === "jumping") {
+      player.y += player.vy;
+      player.vy += gravity;
+      if (player.y >= 350) {
+        player.y = 350;
+        player.vy = 0;
+        player.state = "running";
+      }
+    }
+
+    // Update player animation
+    if (player.state === "running") {
+      player.animTimer++;
+      if (player.animTimer >= 5) {
+        player.animTimer = 0;
+        player.animFrame = (player.animFrame + 1) % 4;
+      }
+    }
+
+    // Draw player based on state
+    if (player.state === "running") {
+      image(playerRunningFrames[player.animFrame], player.x, player.y - 32);
+    } else if (player.state === "jumping") {
+      image(playerJumpingFrame, player.x, player.y - 32);
+    } else if (player.state === "ducking") {
+      image(playerDuckingFrame, player.x, player.y - 16);
+    }
+
+    // Update and draw enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let enemy = enemies[i];
+      enemy.x -= scrollSpeed;
+      if (enemy.x < -32) {
+        enemies.splice(i, 1);
+      } else {
+        image(enemyGfx, enemy.x, enemy.y - 32);
+      }
+    }
+
+    // Update and draw obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+      obstacle.x -= scrollSpeed;
+      if (obstacle.x < -32) {
+        obstacles.splice(i, 1);
+      } else {
+        if (obstacle.type === "ground") {
+          image(groundObstacleGfx, obstacle.x, obstacle.y - 32);
+        } else if (obstacle.type === "flying") {
+          image(flyingObstacleGfx, obstacle.x, obstacle.y - 20);
+        }
+      }
+    }
+
+    // Update and draw projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      let projectile = projectiles[i];
+      projectile.x += 10; // Projectile speed
+      if (projectile.x > width) {
+        projectiles.splice(i, 1);
+      } else {
+        image(projectileGfx, projectile.x, projectile.y - 4);
+      }
+    }
+
+    // Collision detection
+    let playerHitbox = getPlayerHitbox();
+    for (let obstacle of obstacles) {
+      let obstacleHitbox = getObstacleHitbox(obstacle);
+      if (checkCollision(playerHitbox, obstacleHitbox)) {
+        gameState = "gameOver";
+      }
+    }
+    for (let enemy of enemies) {
+      let enemyHitbox = getEnemyHitbox(enemy);
+      if (checkCollision(playerHitbox, enemyHitbox)) {
+        gameState = "gameOver";
+      }
+      for (let j = projectiles.length - 1; j >= 0; j--) {
+        let projectile = projectiles[j];
+        let projectileHitbox = { x: projectile.x, y: projectile.y - 4, width: 8, height: 8 };
+        if (checkCollision(projectileHitbox, enemyHitbox)) {
+          enemies.splice(enemies.indexOf(enemy), 1);
+          projectiles.splice(j, 1);
+          break;
+        }
+      }
+    }
+
+    // Spawn new enemies and obstacles
+    if (random() < 0.01) {
+      obstacles.push({ x: width + random(0, 100), y: 350, type: "ground" });
+    }
+    if (random() < 0.01) {
+      obstacles.push({ x: width + random(0, 100), y: 320, type: "flying" });
+    }
+    if (random() < 0.005) {
+      enemies.push({ x: width + random(0, 100), y: 350 });
+    }
+
+    // Update and display score
+    score += 1;
+    fill(0);
+    textSize(16);
+    textAlign(LEFT);
+    text("Score: " + score, 10, 20);
+  } else if (gameState === "gameOver") {
+    // Game over screen
+    background(255);
+    textAlign(CENTER);
+    textSize(32);
+    fill(0);
+    text("Game Over", width / 2, height / 2 - 20);
+    text("Score: " + score, width / 2, height / 2 + 20);
+    text("Press any key to restart", width / 2, height / 2 + 60);
+    if (keyIsPressed) {
+      gameState = "start";
+    }
+  }
+}
+
+// Helper functions for collision detection
+function getPlayerHitbox() {
+  let height = player.state === "ducking" ? 16 : 32;
+  return { x: player.x, y: player.y - height, width: 32, height: height };
+}
+
+function getObstacleHitbox(obstacle) {
+  let height = obstacle.type === "ground" ? 32 : 20;
+  return { x: obstacle.x, y: obstacle.y - height, width: 32, height: height };
+}
+
+function getEnemyHitbox(enemy) {
+  return { x: enemy.x, y: enemy.y - 32, width: 32, height: 32 };
+}
+
+function checkCollision(rect1, rect2) {
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+// Handle user input
+function keyPressed() {
+  if (gameState === "playing") {
+    if (key === ' ' || keyCode === UP_ARROW) {
+      if (player.state === "running") {
+        player.vy = jumpStrength;
+        player.state = "jumping";
+      }
+    } else if (keyCode === DOWN_ARROW) {
+      if (player.state === "running") {
+        player.state = "ducking";
+      }
+    } else if (key === 'z' || key === 'Z') {
+      projectiles.push({ x: player.x + 32, y: player.y - 16 });
+    }
+  }
+}
+
+function keyReleased() {
+  if (keyCode === DOWN_ARROW) {
+    if (player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+}

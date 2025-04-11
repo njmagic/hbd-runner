@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+    <script src="libraries/p5.min.js"></script>
+    <script>
+        // Global variables
+        let gameState = "playing";
+        let player = {
+            x: 100,
+            y: 350,
+            width: 30,
+            height: 30
+        };
+        let obstacles = [];
+        let groundY = 380;
+        
+        function setup() {
+            createCanvas(800, 400);
+            console.log("Game setup completed");
+        }
+        
+        function draw() {
+            background(30);
+            
+            // Draw ground
+            fill(50);
+            rect(0, groundY, width, height - groundY);
+            
+            // Draw player
+            fill(255);
+            rect(player.x, player.y - player.height, player.width, player.height);
+            
+            // Spawn obstacles randomly
+            if (random() < 0.01) {
+                obstacles.push({ 
+                    x: width, 
+                    y: groundY,
+                    width: 30,
+                    height: 30,
+                    type: "ground"
+                });
+                console.log("Obstacle spawned");
+            }
+            
+            // Update and draw obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obstacle = obstacles[i];
+                obstacle.x -= 5; // Move left
+                
+                // Draw obstacle
+                fill(200);
+                rect(obstacle.x - obstacle.width/2, obstacle.y - obstacle.height, obstacle.width, obstacle.height);
+                
+                // Remove if off screen
+                if (obstacle.x < -50) {
+                    obstacles.splice(i, 1);
+                }
+            }
+            
+            // Show debug info
+            fill(255);
+            textSize(16);
+            text("FPS: " + Math.round(frameRate()), 20, 20);
+            text("Obstacles: " + obstacles.length, 20, 40);
+        }
+    </script>
+</head>
+<body>
+    <!-- Game canvas will appear here -->
+</body>
+</html> 

@@ -1,0 +1,1685 @@
+// Global variables
+let gameState = "start";
+let player = {
+  x: 100,
+  y: 350,
+  vy: 0,
+  state: "running",
+  animFrame: 0,
+  animTimer: 0,
+  onPlatform: false,
+  platformId: null
+};
+let enemies = [];
+let obstacles = [];
+let platforms = [];
+let projectiles = [];
+let explosions = [];
+let backgroundGfx;
+let midgroundGfx;
+let groundTile;
+let platformGfx;
+let playerRunningFrames = [];
+let playerJumpingFrame;
+let playerDuckingFrame;
+let enemyGfx;
+let flyingEnemyGfx;
+let groundObstacleGfx;
+let flyingObstacleGfx;
+let lowFlyingObstacleGfx;
+let projectileGfx;
+let groundOffset = 0;
+let backgroundOffset = 0;
+let midgroundOffset = 0;
+let scrollSpeed = 5;
+let gravity = 0.5;
+let jumpStrength = -10;
+let score = 0;
+let enemiesKilled = 0;
+let groundLevel = 384; // Define ground level (400 - 16)
+
+// Game title and settings
+let gameTitle;
+let subtitleText = "PREVIEW OF THE UPCOMING SUPERHERO COMIC SERIES";
+
+// Comic text effects for key moments
+let comicTexts = [];
+
+let heavyEnemyGfx;
+let ninjaEnemyGfx;
+let robotEnemyGfx;
+
+// Variables for cake animations
+let cakeGfx;
+let flameFrames = [];
+let cakeObstacleGfx;
+let powerups = []; // Array to store active powerups
+let shieldGfx;
+let multiplierGfx;
+let superJumpGfx;
+let activeEffects = { // Track active power-up effects
+  shield: 0,
+  multiplier: 0,
+  superJump: false
+};
+
+// Keep track of when game ended to handle transitions
+let gameOverFrame = 0;
+
+function setup() {
+  createCanvas(800, 400);
+  frameRate(60);
+  
+  console.log("Setting up game");
+  
+  // Position canvas in the center
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    canvas.style.position = 'absolute';
+    canvas.style.left = '50%';
+    canvas.style.top = '50%';
+    canvas.style.transform = 'translate(-50%, -50%)';
+  }
+  
+  // Create all game assets in setup
+  createGameAssets();
+}
+
+function draw() {
+  // Make sure projectile graphics are created
+  if (!projectileGfx) {
+    setupProjectileGraphics();
+  }
+  
+  if (gameState === "start") {
+    // Title screen with comic book style
+    background(10);
+    
+    // Draw rain effect in grayscale
+    stroke(200, 200, 200, 100);
+    strokeWeight(1);
+    for (let i = 0; i < 100; i++) {
+      let x = (frameCount * 2 + i * 8) % width;
+      let y = (frameCount * 10 + i * 20) % height;
+      line(x, y, x - 5, y + 15);
+    }
+    noStroke();
+    
+    // Title positioned higher on screen
+    let titleY = 30 + sin(frameCount * 0.05) * 5; // Fixed higher position with subtle movement
+    image(gameTitle, width/2 - 350, titleY);
+    
+    // Compact background panel for controls
+    fill(10, 10, 10, 200);
+    rect(width/2 - 90, height - 140, 180, 75, 8); // Height reduced from 90 to 75
+    
+    // Add decorative border to control panel
+    noFill();
+    stroke(100);
+    strokeWeight(2);
+    rect(width/2 - 85, height - 135, 170, 65, 6); // Height reduced from 80 to 65
+    noStroke();
+    
+    // Add spotlight effect for controls area
+    drawSpotlight(width/2, height - 102, 160, 70); // Adjusted position and height
+    
+    // Control instructions - inside panel
+    textAlign(CENTER);
+    textSize(12);
+    fill(255);
+    text("CONTROLS:", width/2, height - 125);
+    
+    textSize(10);
+    fill(240);
+    text("↑ ARROW = JUMP", width/2, height - 110);
+    text("↓ ARROW = DUCK", width/2, height - 95);
+    text("SPACE = SHOOT", width/2, height - 80);
+    
+    // Start instruction with pulsing effect
+    textSize(14);
+    let pulseValue = sin(frameCount * 0.1) * 50;
+    fill(255, 255, 255, 100 + pulseValue);
+    text("PRESS SPACE TO START", width/2, height - 30);
+    
+    // Add scan lines - lighter for title screen
+    drawScanLines(true);
+    
+    // Draw vignette - much lighter for title screen
+    drawVignetteLight();
+    
+    // Draw cakes in bottom corners
+    drawAnimatedCake(80, height - 60);  // Left bottom corner
+    drawAnimatedCake(width - 80, height - 60);  // Right bottom corner
+    
+    // Only start game when SPACE is pressed
+    if (keyIsDown(32)) {
+      gameState = "playing";
+      resetGame();
+    }
+  } else if (gameState === "playing") {
+    // Draw noir cityscape background
+    background(10);
+    
+    // Draw rain effect in the background for noir ambiance
+    drawRain();
+    
+    // Add atmospheric lighting flashes occasionally
+    if (random() < 0.003) {
+      // Lightning flash effect
+      fill(255, 255, 255, 30);
+      rect(0, 0, width, height);
+    }
+    
+    // Update scrolling ground and background with parallax effect
+    groundOffset += scrollSpeed;
+    midgroundOffset += scrollSpeed * 0.6; // Midground moves at 60% speed
+    backgroundOffset += scrollSpeed * 0.3; // Background moves slower (parallax)
+    
+    if (groundOffset > groundTile.width) {
+      groundOffset -= groundTile.width;
+    }
+    if (midgroundOffset > midgroundGfx.width) {
+      midgroundOffset -= midgroundGfx.width;
+    }
+    if (backgroundOffset > backgroundGfx.width) {
+      backgroundOffset -= backgroundGfx.width;
+    }
+
+    // Draw background with parallax scrolling
+    let bgPos = -backgroundOffset % backgroundGfx.width;
+    image(backgroundGfx, bgPos, 0);
+    if (bgPos + backgroundGfx.width < width) {
+      image(backgroundGfx, bgPos + backgroundGfx.width, 0);
+    }
+    
+    // Draw midground with medium parallax scrolling using dedicated offset
+    let midPos = -midgroundOffset % midgroundGfx.width;
+    image(midgroundGfx, midPos, 0);
+    if (midPos + midgroundGfx.width < width) {
+      image(midgroundGfx, midPos + midgroundGfx.width, 0);
+    }
+
+    // Draw ground with foreground scrolling
+    let xOffset = -(groundOffset % groundTile.width);
+    for (let x = xOffset; x < width; x += groundTile.width) {
+      image(groundTile, x, height - groundTile.height);
+    }
+
+    // Update player position (jumping and platform physics)
+    if (player.state === "jumping" || player.vy !== 0) {
+      // Move player based on velocity
+      player.y += player.vy;
+      player.vy += gravity;
+      
+      // Check for landing on ground
+      if (player.y >= groundLevel && player.vy > 0) {
+        player.y = groundLevel;
+        player.vy = 0;
+        player.state = "running";
+        player.onPlatform = false;
+      }
+    }
+    
+    // Update platforms
+    for (let i = platforms.length - 1; i >= 0; i--) {
+      let platform = platforms[i];
+      platform.x -= scrollSpeed;
+      
+      // If player is on this platform, move with it
+      if (player.onPlatform && player.platformId === i) {
+        // If platform is going off screen, player should fall
+        if (platform.x < -32) {
+          player.onPlatform = false;
+          player.vy = 0; // Start falling
+        }
+      }
+      
+      if (platform.x < -64) {
+        platforms.splice(i, 1);
+        // If player was on this platform, adjust platformId
+        if (player.platformId === i) {
+          player.onPlatform = false;
+        } else if (player.platformId > i) {
+          player.platformId--;
+        }
+      } else {
+        image(platformGfx, platform.x, platform.y - 16);
+      }
+    }
+
+    // Update player animation
+    if (player.state === "running") {
+      player.animTimer++;
+      if (player.animTimer >= 5) {
+        player.animTimer = 0;
+        player.animFrame = (player.animFrame + 1) % 4;
+      }
+    }
+
+    // Draw player based on state
+    if (player.state === "running") {
+      image(playerRunningFrames[player.animFrame], player.x, player.y - 32);
+    } else if (player.state === "jumping") {
+      image(playerJumpingFrame, player.x, player.y - 32);
+    } else if (player.state === "ducking") {
+      image(playerDuckingFrame, player.x, player.y - 16);
+    }
+
+    // Update and draw enemies
+    for (let i = 0; i < enemies.length; i++) {
+      let enemy = enemies[i];
+      
+      // Move enemies
+      enemy.x -= (scrollSpeed + (enemy.speed || 0));
+      
+      // Flying enemies move in a wave pattern
+      if (enemy.type === "flying") {
+        enemy.y = enemy.baseY + sin(frameCount * 0.1 + enemy.x * 0.05) * 30;
+      }
+      
+      if (enemy.x < -40) {
+        enemies.splice(i, 1);
+      } else {
+        // Draw appropriate enemy type
+        if (enemy.type === "ground") {
+          if (enemy.variant === "thug") {
+            image(enemyGfx, enemy.x, enemy.y - 32);
+          } else if (enemy.variant === "heavy") {
+            image(heavyEnemyGfx, enemy.x - 4, enemy.y - 40);
+          } else if (enemy.variant === "ninja") {
+            image(ninjaEnemyGfx, enemy.x, enemy.y - 32);
+          } else if (enemy.variant === "robot") {
+            image(robotEnemyGfx, enemy.x, enemy.y - 36);
+          }
+        } else if (enemy.type === "flying") {
+          image(flyingEnemyGfx, enemy.x, enemy.y - 16);
+        }
+      }
+    }
+
+    // Update and draw obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obstacle = obstacles[i];
+      obstacle.x -= scrollSpeed;
+      if (obstacle.x < -48) {
+        obstacles.splice(i, 1);
+      } else {
+        if (obstacle.type === "ground") {
+          image(groundObstacleGfx, obstacle.x, obstacle.y - 32);
+        } else if (obstacle.type === "flying") {
+          image(flyingObstacleGfx, obstacle.x, obstacle.y - 40);
+        } else if (obstacle.type === "low_flying") {
+          image(lowFlyingObstacleGfx, obstacle.x, obstacle.y - 16);
+        } else if (obstacle.type === "cake") {
+          // Draw cake with animated candles
+          image(cakeObstacleGfx, obstacle.x, obstacle.y - 32);
+          
+          // Animate candle flames
+          let leftFlameFrame = flameFrames[int((frameCount * 0.2) % 5)]; 
+          let rightFlameFrame = flameFrames[int((frameCount * 0.2 + 2) % 5)];
+          
+          // Position flames on candles
+          image(leftFlameFrame, obstacle.x + 11, obstacle.y - 32 + sin(frameCount * 0.1) * 0.5);
+          image(rightFlameFrame, obstacle.x + 19, obstacle.y - 32 + sin(frameCount * 0.1 + PI) * 0.5);
+        }
+      }
+    }
+
+    // Update and draw projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      let projectile = projectiles[i];
+      projectile.x += 10; // Projectile speed
+      if (projectile.x > width) {
+        projectiles.splice(i, 1);
+      } else {
+        image(projectileGfx, projectile.x, projectile.y - 4);
+      }
+    }
+    
+    // Update and draw blood/explosion effects
+    for (let i = explosions.length - 1; i >= 0; i--) {
+      let explosion = explosions[i];
+      explosion.frame++;
+      
+      if (explosion.frame > 12) { // Slightly longer animation
+        explosions.splice(i, 1);
+      } else {
+        // Draw bullet impact
+        noStroke();
+        let alpha = map(explosion.frame, 0, 12, 255, 0);
+        
+        // Blood splatter - bright red
+        fill(220, 0, 0, alpha);
+        
+        // Draw impact particles
+        for (let j = 0; j < 10; j++) {
+          let angle = TWO_PI * j / 10 + explosion.randomOffset;
+          let distance = map(explosion.frame, 0, 12, 3, 20);
+          let size = map(explosion.frame, 0, 12, 7, 1) * (explosion.size || 1);
+          
+          ellipse(
+            explosion.x + cos(angle) * distance,
+            explosion.y + sin(angle) * distance,
+            size, size
+          );
+        }
+        
+        // Add white flash impact
+        if (explosion.frame < 3) {
+          fill(255, 255, 255, map(explosion.frame, 0, 3, 200, 0));
+          ellipse(explosion.x, explosion.y, 10, 10);
+        }
+      }
+    }
+
+    // Update and draw power-ups
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      let powerup = powerups[i];
+      powerup.x -= scrollSpeed;
+      powerup.y = powerup.baseY + sin(frameCount * 0.1) * 5; // Floating effect
+      
+      if (powerup.x < -24) {
+        powerups.splice(i, 1);
+      } else {
+        // Add subtle pulsing size effect based on frameCount
+        let pulse = 1 + sin(frameCount * 0.1) * 0.1; // Size varies between 0.9x and 1.1x
+        
+        push(); // Save the current transformation matrix
+        translate(powerup.x + 12, powerup.y); // Move to center of power-up
+        scale(pulse); // Apply pulsing scale
+        
+        if (powerup.type === "shield") {
+          image(shieldGfx, -12, -12);
+        } else if (powerup.type === "multiplier") {
+          image(multiplierGfx, -12, -12);
+        } else if (powerup.type === "superJump") {
+          image(superJumpGfx, -12, -12);
+        }
+        
+        pop(); // Restore the transformation matrix
+        
+        // Draw a bright flashing halo ring occasionally
+        if (frameCount % 30 < 5) {
+          noFill();
+          stroke(255, 255, 255, 120 - frameCount % 30 * 20);
+          strokeWeight(1);
+          ellipse(powerup.x + 12, powerup.y, 26, 26);
+          noStroke();
+        }
+      }
+    }
+
+    // Collision detection
+    checkCollisions();
+    
+    // Spawn new entities
+    spawnEntities();
+
+    // Add comic-style border around gameplay
+    drawComicBorder();
+    
+    // Update and display score with noir style
+    incrementScore();
+    drawNoirScorePanel();
+    
+    // Add scan lines for retro TV effect
+    drawScanLines();
+    
+    // Draw vignette for noir cinema effect
+    drawVignette();
+    
+    // Check for restart with R key
+    if (keyIsDown(82)) { // R key
+      gameState = "start";
+    }
+
+    // Update power-up effects
+    updatePowerupEffects();
+    
+    // Draw shield effect if active
+    if (activeEffects.shield > 0) {
+      noFill();
+      stroke(255, 255, 255, map(activeEffects.shield % 30, 0, 30, 50, 150));
+      strokeWeight(2);
+      
+      if (player.state === "ducking") {
+        // Smaller shield when ducking
+        ellipse(player.x + 16, player.y - 8, 40, 24);
+      } else {
+        // Regular shield
+        ellipse(player.x + 16, player.y - 16, 40, 48);
+      }
+      noStroke();
+    }
+    
+    // Score multiplier effect display
+    if (activeEffects.multiplier > 0) {
+      textAlign(LEFT);
+      textSize(16);
+      fill(220, 220, 220, map(activeEffects.multiplier % 30, 0, 30, 150, 255));
+      text("2X", 130, 25);
+      textAlign(LEFT);
+    }
+    
+    // Super jump indicator
+    if (activeEffects.superJump) {
+      textAlign(LEFT);
+      textSize(16);
+      fill(220, 220, 220, 200);
+      text("↑↑", 20, 75);
+      textAlign(LEFT);
+    }
+  } else if (gameState === "gameOver") {
+    // Call the game over screen function
+    drawGameOver();
+    
+    // Check for restart with R key
+    if (keyIsDown(82)) { // R key
+      gameState = "start";
+    }
+  }
+}
+
+function resetGame() {
+  console.log("Game reset");
+  
+  // Reset game state
+  gameState = "playing";
+  
+  // Reset game over tracking
+  gameOverFrame = 0;
+  
+  // Reset player
+  player = {
+    x: 100,
+    y: groundLevel,
+    vy: 0,
+    state: "running",
+    animFrame: 0,
+    animTimer: 0,
+    onPlatform: false,
+    platformId: null
+  };
+  
+  // Reset game elements
+  score = 0;
+  enemiesKilled = 0;
+  enemies = [];
+  obstacles = [];
+  projectiles = [];
+  explosions = [];
+  platforms = [];
+  powerups = [];
+  comicTexts = [];
+  
+  // Reset scroll positions
+  groundOffset = 0;
+  backgroundOffset = 0;
+  midgroundOffset = 0;
+  
+  // Reset power-up effects
+  activeEffects = {
+    shield: 0,
+    multiplier: 0,
+    superJump: false
+  };
+  
+  // Make sure the game loop is running
+  loop();
+}
+
+function addExplosion(x, y) {
+  // Add multiple particles for a more dramatic effect
+  for (let i = 0; i < 2; i++) {
+    explosions.push({
+      x: x + random(-5, 5),
+      y: y + random(-5, 5),
+      frame: 0,
+      randomOffset: random(TWO_PI),
+      size: random(0.8, 1.2) // Varied size for more organic look
+    });
+  }
+}
+
+function checkCollisions() {
+  // Player hitbox
+  let playerHitbox;
+  
+  if (player.state === "ducking") {
+    playerHitbox = { x: player.x + 6, y: player.y - 8, width: 20, height: 8 };
+  } else {
+    playerHitbox = { x: player.x + 6, y: player.y - 24, width: 20, height: 24 };
+  }
+  
+  // Check platform collisions
+  player.onPlatform = false;
+  for (let i = 0; i < platforms.length; i++) {
+    let platform = platforms[i];
+    
+    // Only check for landing on platforms if player is falling
+    if (player.vy > 0) {
+      // Check if player's feet are just above platform and within platform width
+      if (player.y + 4 <= platform.y && 
+          player.y + player.vy >= platform.y - 4 &&
+          player.x + 16 >= platform.x && 
+          player.x + 16 <= platform.x + 64) {
+        
+        player.y = platform.y;
+        player.vy = 0;
+        player.state = "running";
+        player.onPlatform = true;
+        player.platformId = i;
+      }
+    }
+  }
+  
+  // Check obstacle collisions
+  for (let i = 0; i < obstacles.length; i++) {
+    let obstacle = obstacles[i];
+    let obstacleHitbox;
+    
+    if (obstacle.type === "ground") {
+      obstacleHitbox = { x: obstacle.x + 8, y: obstacle.y - 24, width: 16, height: 24 };
+    } else if (obstacle.type === "flying") {
+      obstacleHitbox = { x: obstacle.x + 8, y: obstacle.y - 24, width: 24, height: 24 };
+    } else if (obstacle.type === "low_flying") {
+      obstacleHitbox = { x: obstacle.x + 4, y: obstacle.y - 12, width: 40, height: 12 };
+    } else if (obstacle.type === "cake") {
+      obstacleHitbox = { x: obstacle.x + 6, y: obstacle.y - 26, width: 20, height: 26 };
+    }
+    
+      if (checkCollision(playerHitbox, obstacleHitbox)) {
+      // If shield is active, don't die from obstacles
+      if (activeEffects.shield > 0) {
+        // Create shield deflection effect
+        addExplosion(
+          obstacleHitbox.x + obstacleHitbox.width/2, 
+          obstacleHitbox.y + obstacleHitbox.height/2
+        );
+        // Remove the obstacle
+        obstacles.splice(i, 1);
+        i--;
+      } else {
+        gameState = "gameOver";
+        addExplosion(player.x + 16, player.y - 16);
+      }
+    }
+  }
+  
+  // Check enemy collisions
+  for (let i = 0; i < enemies.length; i++) {
+    let enemy = enemies[i];
+    let enemyHitbox;
+    
+    if (enemy.type === "ground") {
+      enemyHitbox = { x: enemy.x + 8, y: enemy.y - 24, width: 16, height: 24 };
+    } else if (enemy.type === "flying") {
+      enemyHitbox = { x: enemy.x + 10, y: enemy.y - 16, width: 20, height: 12 };
+    }
+    
+      if (checkCollision(playerHitbox, enemyHitbox)) {
+        gameState = "gameOver";
+      addExplosion(player.x + 16, player.y - 16);
+      }
+    
+    // Check projectile hits
+      for (let j = projectiles.length - 1; j >= 0; j--) {
+        let projectile = projectiles[j];
+      let projectileHitbox = { x: projectile.x, y: projectile.y, width: 8, height: 8 };
+      
+        if (checkCollision(projectileHitbox, enemyHitbox)) {
+        // Add hit effect
+        addExplosion(enemy.x + 16, enemy.y - 16);
+        
+        // Reduce enemy health
+        enemy.health = (enemy.health || 1) - 1;
+        
+        // Remove projectile
+          projectiles.splice(j, 1);
+        
+        // If enemy health is depleted, remove enemy
+        if (enemy.health <= 0) {
+          // Award points based on enemy type
+          let pointValue = 50; // Base value
+          
+          if (enemy.variant === "heavy") pointValue = 150;
+          else if (enemy.variant === "ninja") pointValue = 100;
+          else if (enemy.variant === "robot") pointValue = 120;
+          else if (enemy.type === "flying") pointValue = 100;
+          
+          score += pointValue;
+          enemiesKilled++;
+          enemies.splice(i, 1);
+          i--; // Adjust for removed enemy
+        }
+        
+          break;
+        }
+      }
+    }
+
+  // Check power-up collisions
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    let powerup = powerups[i];
+    let powerupHitbox = { x: powerup.x, y: powerup.y - 12, width: 24, height: 24 };
+    
+    if (checkCollision(playerHitbox, powerupHitbox)) {
+      // Apply power-up effect
+      if (powerup.type === "shield") {
+        activeEffects.shield = 300; // 5 seconds of shield
+        addComicText(); // Add a comic effect for visual impact
+      } else if (powerup.type === "multiplier") {
+        activeEffects.multiplier = 300; // 5 seconds of 2x score
+        addComicText(); // Add a comic effect for visual impact
+      } else if (powerup.type === "superJump") {
+        activeEffects.superJump = true; // Next jump will be super
+        addComicText(); // Add a comic effect for visual impact
+      }
+      
+      // Show collection effect
+      addPowerupEffect(powerup.x + 12, powerup.y);
+      
+      // Remove collected power-up
+      powerups.splice(i, 1);
+    }
+  }
+}
+
+function checkCollision(rect1, rect2) {
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+function spawnEntities() {
+  // Spawn obstacles with random chance
+    if (random() < 0.01) {
+    obstacles.push({ x: width + random(0, 100), y: groundLevel, type: "ground" });
+  }
+  if (random() < 0.007) { 
+    obstacles.push({ x: width + random(0, 100), y: groundLevel - 30, type: "flying" });
+  }
+  if (random() < 0.008) {
+    obstacles.push({ x: width + random(0, 100), y: groundLevel - 16, type: "low_flying" });
+  }
+  
+  // Spawn rare birthday cake obstacles - less frequent (1/750 per frame instead of 1/500)
+  if (random() < 0.00135) {
+    obstacles.push({ x: width + random(0, 100), y: groundLevel, type: "cake" });
+  }
+  
+  // Spawn platforms
+    if (random() < 0.005) {
+    let platformHeight = random([200, 240, 280, 320]);
+    platforms.push({ x: width + random(0, 100), y: platformHeight });
+  }
+  
+  // Spawn enemies with variety
+  if (random() < 0.002) { // Regular thug
+    enemies.push({ 
+      x: width + random(0, 100), 
+      y: groundLevel, 
+      type: "ground",
+      variant: "thug",
+      health: 1, 
+      speed: 0
+    });
+  }
+  
+  if (random() < 0.0015) { // Heavy bruiser
+    enemies.push({ 
+      x: width + random(0, 100), 
+      y: groundLevel, 
+      type: "ground",
+      variant: "heavy",
+      health: 3, // Takes more hits
+      speed: 0
+    });
+  }
+  
+  if (random() < 0.002) { // Ninja enemy - moves faster
+    enemies.push({ 
+      x: width + random(0, 100), 
+      y: groundLevel, 
+      type: "ground",
+      variant: "ninja",
+      health: 1,
+      speed: 2 // Moves faster than scroll speed
+    });
+  }
+  
+  if (random() < 0.0015) { // Robot enemy
+    enemies.push({ 
+      x: width + random(0, 100), 
+      y: groundLevel, 
+      type: "ground",
+      variant: "robot",
+      health: 2,
+      speed: 0
+    });
+  }
+  
+  if (random() < 0.003) { // Flying enemy
+    let randomHeight = random(60, 200);
+    enemies.push({ 
+      x: width + random(0, 100), 
+      y: groundLevel - randomHeight, 
+      baseY: groundLevel - randomHeight, 
+      type: "flying",
+      variant: "standard",
+      health: 1,
+      speed: 0
+    });
+  }
+  
+  // Spawn power-ups (slightly less common than cakes)
+  if (random() < 0.001) {
+    let type = random(["shield", "multiplier", "superJump"]);
+    
+    powerups.push({
+      x: width + random(0, 100),
+      y: groundLevel - 50 - random(0, 50), // Float above ground at different heights
+      baseY: groundLevel - 50 - random(0, 50),
+      type: type
+    });
+  }
+}
+
+// New noir visual effects
+function drawRain() {
+  stroke(200, 200, 200, 100);
+  strokeWeight(1);
+  for (let i = 0; i < 100; i++) {
+    let x = (frameCount * 2 + i * 8) % width;
+    let y = (frameCount * 10 + i * 20) % height;
+    line(x, y, x - 5, y + 15);
+  }
+  noStroke();
+}
+
+function drawSpotlight(x, y, w, h) {
+  // Create gradient spotlight effect in grayscale
+  for (let r = 0; r < 5; r++) {
+    let alpha = map(r, 0, 5, 20, 0);
+    fill(200, 200, 200, alpha);
+    ellipse(x, y, w - r*15, h - r*10);
+  }
+}
+
+// Enhanced vignette effect for noir feel - even more subtle for gameplay
+function drawVignette() {
+  // Create a very subtle dark border vignette for gameplay - reduced darkness
+  noStroke();
+  for (let i = 0; i < 15; i++) { // Reduced from 25 to 15 iterations
+    // Extremely reduced alpha for gameplay
+    let alpha = map(i, 0, 15, 15, 0); // Reduced from 20 to 15 max alpha
+    fill(0, 0, 0, alpha);
+    
+    // Draw rectangles that get smaller
+    let margin = i * 4;
+    rect(0, 0, width, margin); // top
+    rect(0, height - margin, width, margin); // bottom
+    rect(0, margin, margin, height - 2 * margin); // left
+    rect(width - margin, margin, margin, height - 2 * margin); // right
+  }
+}
+
+// Even lighter vignette for title screen only
+function drawVignetteLight() {
+  // Create a very subtle dark border - reduced darkness
+  noStroke();
+  for (let i = 0; i < 15; i++) { // Reduced from 20 to 15 iterations
+    // Extremely reduced alpha for just a hint of darkening at edges
+    let alpha = map(i, 0, 15, 15, 0); // Reduced from 20 to 15 max alpha
+    fill(0, 0, 0, alpha);
+    
+    // Draw rectangles that get smaller, but not cutting off sides too much
+    let margin = i * 3;
+    rect(0, 0, width, margin); // top
+    rect(0, height - margin, width, margin); // bottom
+    rect(0, margin, margin, height - 2 * margin); // left
+    rect(width - margin, margin, margin, height - 2 * margin); // right
+  }
+}
+
+// More pronounced scan lines, with option for lighter version - make them lighter
+function drawScanLines(lighter = false) {
+  stroke(0, 0, 0, lighter ? 15 : 25); // Reduced from 20/40 to 15/25
+  strokeWeight(1);
+  for (let i = 0; i < height; i += lighter ? 12 : 6) { // Increased spacing from 4 to 6
+    line(0, i, width, i);
+  }
+  noStroke();
+}
+
+// Handle key presses
+function keyPressed() {
+  // Start screen - spacebar starts game
+  if (gameState === "start" && keyCode === 32) {
+    gameState = "playing";
+    resetGame();
+    return false;
+  }
+  
+  // Game over - R key restarts
+  if (gameState === "gameOver" && keyCode === 82) {
+    gameState = "start";
+    return false;
+  }
+  
+  // Playing state
+  if (gameState === "playing") {
+    // Jump with UP ARROW
+    if (keyCode === UP_ARROW) {
+      if (player.state !== "jumping" && (player.y === groundLevel || player.onPlatform)) {
+        player.vy = activeEffects.superJump ? jumpStrength * 1.5 : jumpStrength;
+        player.state = "jumping";
+        player.onPlatform = false;
+        
+        // Reset super jump after use
+        if (activeEffects.superJump) {
+          activeEffects.superJump = false;
+        }
+      }
+    }
+    
+    // Duck with DOWN ARROW
+    if (keyCode === DOWN_ARROW) {
+      if (player.state !== "jumping") {
+        player.state = "ducking";
+      }
+    }
+  }
+  
+  return false; // Prevent default browser actions
+}
+
+// Separate function for shooting to avoid freezing
+function keyTyped() {
+  if (gameState === "playing") {
+    // Shoot with SPACE
+    if (key === ' ') {
+      let projectileY = player.state === "ducking" ? player.y - 8 : player.y - 20;
+      projectiles.push({ x: player.x + 32, y: projectileY });
+    }
+  }
+  // Prevent any default behavior
+  return false;
+}
+
+function addComicText() {
+  let phrases = [
+    "POW!",
+    "BLAM!",
+    "HERO POWER!",
+    "SUPER JUSTICE!",
+    "UNSTOPPABLE!",
+    "HEROIC!"
+  ];
+  
+  comicTexts.push({
+    text: random(phrases),
+    x: random(100, width - 100),
+    y: random(100, height - 100),
+    size: random(40, 60),
+    rotation: random(-0.3, 0.3),
+    frame: 0,
+    color: [random(0, 100), random(0, 100), random(150, 255)] // Blue-focused colors for superhero theme
+  });
+}
+
+function drawComicTexts() {
+  for (let i = comicTexts.length - 1; i >= 0; i--) {
+    let txt = comicTexts[i];
+    txt.frame++;
+    
+    if (txt.frame > 60) {
+      comicTexts.splice(i, 1);
+    } else {
+      push();
+      translate(txt.x, txt.y);
+      rotate(txt.rotation);
+      
+      let alpha = txt.frame < 50 ? 255 : map(txt.frame, 50, 60, 255, 0);
+      let size = map(txt.frame, 0, 10, 0.5, 1) * txt.size;
+      
+      // Text shadow for comic effect
+      textSize(size);
+      textAlign(CENTER, CENTER);
+      fill(0, 0, 0, alpha);
+      text(txt.text, 2, 2);
+      
+      // Main text
+      fill(txt.color[0], txt.color[1], txt.color[2], alpha);
+      text(txt.text, 0, 0);
+      
+      // Highlight
+      fill(255, 255, 255, alpha * 0.6);
+      textSize(size * 0.3);
+      text(txt.text, -size/5, -size/5);
+      pop();
+    }
+  }
+}
+
+function drawComicBorder() {
+  // Comic page border
+  stroke(30);
+  strokeWeight(10);
+  noFill();
+  rect(5, 5, width - 10, height - 10);
+  strokeWeight(1);
+  noStroke();
+}
+
+function drawNoirScorePanel() {
+  // Score panel in black and white
+  fill(0, 0, 0, 180);
+  rect(5, 5, 150, 60, 5);
+  
+  // Panel border
+  stroke(120);
+  strokeWeight(1);
+  noFill();
+  rect(6, 6, 148, 58, 5);
+  noStroke();
+  
+  // Score text
+  fill(240);
+  textSize(16);
+  textAlign(LEFT);
+  text("SCORE: " + score, 15, 25);
+  
+  // Kill count with blood red color for defeated enemies
+  fill(200, 0, 0);
+  text("KILLS: " + enemiesKilled, 15, 50);
+}
+
+// Create projectile graphics if not already created
+function setupProjectileGraphics() {
+  // Create projectile graphics if needed
+  if (!projectileGfx) {
+    projectileGfx = createGraphics(12, 6);
+    projectileGfx.background(255, 255, 255, 0);
+    
+    // Bullet - bright red
+    projectileGfx.fill(200, 0, 0);
+    projectileGfx.noStroke();
+    projectileGfx.rect(0, 2, 6, 2);
+    
+    // Tracer effect - lighter red
+    projectileGfx.fill(255, 50, 50, 150);
+    projectileGfx.rect(6, 1, 6, 4);
+  }
+}
+
+// Handle key releases
+function keyReleased() {
+  if (gameState === "playing") {
+    // Stop ducking when DOWN ARROW is released
+    if (keyCode === DOWN_ARROW && player.state === "ducking") {
+      player.state = "running";
+    }
+  }
+  return false;
+}
+
+// Function to draw pixelated text
+function drawPixelatedText(gfx, txt, x, y, size, brightness) {
+  // We'll manually create a pixelated look
+  let pixelSize = ceil(size / 25); // Size of our "pixels"
+  
+  // First render text to get pixel data
+  let tempGfx = createGraphics(700, 200);
+  tempGfx.background(0, 0, 0, 0);
+  tempGfx.fill(255);
+  tempGfx.textAlign(CENTER);
+  tempGfx.textSize(size);
+  tempGfx.textStyle(BOLD);
+  tempGfx.text(txt, 350, y);
+  
+  // Draw pixelated version by sampling original and drawing squares
+  tempGfx.loadPixels();
+  for (let py = 0; py < 200; py += pixelSize) {
+    for (let px = 0; px < 700; px += pixelSize) {
+      // Sample from center of our "pixel"
+      let idx = 4 * ((py + pixelSize/2) * 700 + (px + pixelSize/2));
+      if (tempGfx.pixels[idx+3] > 0) { // If there's opacity, draw a square
+        gfx.noStroke();
+        // Add slight variation in brightness for retro feel
+        let bVar = brightness - random(-15, 15);
+        gfx.fill(bVar);
+        gfx.rect(px, py, pixelSize, pixelSize);
+      }
+    }
+  }
+}
+
+// Create cake graphics function
+function createCakeGraphics() {
+  cakeGfx = createGraphics(64, 48);
+  cakeGfx.background(255, 255, 255, 0);
+  
+  // Cake plate
+  cakeGfx.fill(220);
+  cakeGfx.ellipse(32, 42, 60, 12);
+  
+  // Cake base (two-layer cake)
+  cakeGfx.fill(200);
+  cakeGfx.rect(12, 28, 40, 14, 2, 2, 0, 0);
+  
+  // Cake top layer
+  cakeGfx.fill(220);
+  cakeGfx.rect(16, 18, 32, 10, 3, 3, 0, 0);
+  
+  // Frosting details
+  cakeGfx.fill(240);
+  
+  // Top edge frosting
+  for (let i = 16; i < 48; i += 4) {
+    cakeGfx.rect(i, 16, 3, 3, 1);
+  }
+  
+  // Middle frosting
+  for (let i = 12; i < 52; i += 4) {
+    cakeGfx.rect(i, 27, 3, 3, 1);
+  }
+  
+  // Decorative elements - lines on cake
+  cakeGfx.stroke(150);
+  cakeGfx.strokeWeight(1);
+  
+  // Horizontal lines on layers
+  cakeGfx.line(12, 35, 52, 35);
+  cakeGfx.line(16, 23, 48, 23);
+  
+  // Candle positions
+  cakeGfx.noStroke();
+  cakeGfx.fill(120);
+  cakeGfx.rect(22, 10, 3, 8); // Left candle
+  cakeGfx.rect(38, 10, 3, 8); // Right candle
+  
+  // Cake texture details
+  cakeGfx.noFill();
+  cakeGfx.stroke(180);
+  cakeGfx.strokeWeight(0.5);
+  for (let i = 0; i < 5; i++) {
+    let x = 20 + i * 5;
+    cakeGfx.line(x, 20, x + 2, 26);
+  }
+}
+
+// Draw animated cake with flickering candles
+function drawAnimatedCake(x, y) {
+  // Draw the cake base
+  image(cakeGfx, x - 32, y - 24);
+  
+  // Get current flame frame - use different offsets for left and right candles
+  let leftFlameFrame = flameFrames[int((frameCount * 0.2) % 5)]; 
+  let rightFlameFrame = flameFrames[int((frameCount * 0.2 + 2) % 5)]; // offset by 2 frames
+  
+  // Draw flames on candles with slightly different positions for variety
+  image(leftFlameFrame, x - 10, y - 32 + sin(frameCount * 0.1) * 0.5);  // Left candle with subtle vertical movement
+  image(rightFlameFrame, x + 6, y - 32 + sin(frameCount * 0.1 + PI) * 0.5);   // Right candle with opposite movement
+}
+
+// Create power-up graphics
+function createPowerupGraphics() {
+  // Shield power-up
+  shieldGfx = createGraphics(24, 24);
+  shieldGfx.background(255, 255, 255, 0);
+  
+  // Add subtle glow behind shield
+  for (let r = 0; r < 3; r++) {
+    let alpha = map(r, 0, 3, 40, 0);
+    shieldGfx.fill(255, 255, 255, alpha);
+    shieldGfx.ellipse(12, 12, 20 + r*3, 20 + r*3);
+  }
+  
+  // Shield circle - brighter
+  shieldGfx.noFill();
+  shieldGfx.stroke(255);
+  shieldGfx.strokeWeight(2);
+  shieldGfx.ellipse(12, 12, 20, 20);
+  
+  // Inner shield details - brighter
+  shieldGfx.stroke(255);
+  shieldGfx.strokeWeight(1);
+  for (let i = 0; i < 8; i++) {
+    let angle = i * PI/4;
+    shieldGfx.line(
+      12 + cos(angle) * 6,
+      12 + sin(angle) * 6,
+      12 + cos(angle) * 10,
+      12 + sin(angle) * 10
+    );
+  }
+  
+  // Shield icon - brighter
+  shieldGfx.fill(255);
+  shieldGfx.noStroke();
+  shieldGfx.beginShape();
+  shieldGfx.vertex(12, 4);
+  shieldGfx.vertex(16, 6);
+  shieldGfx.vertex(18, 10);
+  shieldGfx.vertex(12, 18);
+  shieldGfx.vertex(6, 10);
+  shieldGfx.vertex(8, 6);
+  shieldGfx.endShape(CLOSE);
+  
+  // Score multiplier power-up
+  multiplierGfx = createGraphics(24, 24);
+  multiplierGfx.background(255, 255, 255, 0);
+  
+  // Add subtle glow
+  for (let r = 0; r < 3; r++) {
+    let alpha = map(r, 0, 3, 40, 0);
+    multiplierGfx.fill(255, 255, 255, alpha);
+    multiplierGfx.ellipse(12, 12, 20 + r*3, 20 + r*3);
+  }
+  
+  // Background starburst - brighter
+  multiplierGfx.fill(80);
+  multiplierGfx.ellipse(12, 12, 20, 20);
+  
+  // "2X" text - brighter
+  multiplierGfx.textAlign(CENTER, CENTER);
+  multiplierGfx.textSize(14);
+  multiplierGfx.fill(255);
+  multiplierGfx.text("2X", 12, 11);
+  
+  // Add highlight
+  multiplierGfx.fill(255, 255, 255, 120);
+  multiplierGfx.ellipse(8, 8, 5, 5);
+  
+  // Super jump power-up
+  superJumpGfx = createGraphics(24, 24);
+  superJumpGfx.background(255, 255, 255, 0);
+  
+  // Add subtle glow
+  for (let r = 0; r < 3; r++) {
+    let alpha = map(r, 0, 3, 40, 0);
+    superJumpGfx.fill(255, 255, 255, alpha);
+    superJumpGfx.ellipse(12, 12, 20 + r*3, 20 + r*3);
+  }
+  
+  // Arrow background - brighter
+  superJumpGfx.fill(80);
+  superJumpGfx.ellipse(12, 12, 20, 20);
+  
+  // Up arrow - brighter
+  superJumpGfx.fill(255);
+  superJumpGfx.noStroke();
+  superJumpGfx.triangle(12, 4, 6, 14, 18, 14);
+  
+  // Arrow stem - brighter
+  superJumpGfx.rect(10, 12, 4, 8);
+  
+  // Add highlight
+  superJumpGfx.fill(255, 255, 255, 120);
+  superJumpGfx.ellipse(8, 8, 5, 5);
+}
+
+function updatePowerupEffects() {
+  // Update shield timer
+  if (activeEffects.shield > 0) {
+    activeEffects.shield--;
+    
+    // Flash when shield is about to expire
+    if (activeEffects.shield < 60 && activeEffects.shield % 10 < 5) {
+      // Faster flashing near end
+    }
+  }
+  
+  // Update score multiplier
+  if (activeEffects.multiplier > 0) {
+    activeEffects.multiplier--;
+  }
+}
+
+// Visual effect when picking up a power-up
+function addPowerupEffect(x, y) {
+  for (let i = 0; i < 3; i++) {
+    explosions.push({
+      x: x + random(-10, 10),
+      y: y + random(-10, 10),
+      frame: 0,
+      randomOffset: random(TWO_PI),
+      size: random(0.5, 1.0),
+      color: [200, 200, 200] // White explosion for power-ups
+    });
+  }
+}
+
+// Score calculation - account for multiplier
+function incrementScore() {
+  if (activeEffects.multiplier > 0) {
+    score += 2; // Double points when multiplier is active
+  } else {
+    score += 1;
+  }
+} 
+
+function drawGameOver() {
+  // Add dark overlay
+  fill(0, 0, 0, 180);
+  rect(0, 0, width, height);
+  
+  // Add scan lines for retro effect
+  stroke(200, 200, 200, 10);
+  strokeWeight(1);
+  for (let i = 0; i < height; i += 4) {
+    line(0, i, width, i);
+  }
+  noStroke();
+  
+  // Game over - dramatic text
+  textAlign(CENTER);
+  textSize(70);
+  
+  // Shadow effect
+  fill(50);
+  text("GAME OVER", width/2 + 4, height/2 - 56);
+  
+  // Game over text
+  fill(220);
+  text("GAME OVER", width/2, height/2 - 60);
+  
+  // Quote
+  textSize(24);
+  fill(180);
+  text("\"HEROES NEVER TRULY FALL...\"", width/2, height/2 - 15);
+  
+  // Show score with dramatic presentation
+  textSize(32);
+  fill(255);
+  text("FINAL SCORE: " + score, width/2, height/2 + 25);
+  
+  // Show enemies killed stats - keep this red for blood theme
+  textSize(28);
+  fill(220, 0, 0);
+  text("VILLAINS DEFEATED: " + enemiesKilled, width/2, height/2 + 65);
+  
+  // Dramatic score tag based on performance
+  textSize(24);
+  fill(200);
+  
+  let rankText = "";
+  if (score < 500) {
+    rankText = "ROOKIE HERO";
+  } else if (score < 1000) {
+    rankText = "CITY DEFENDER";
+  } else if (score < 2000) {
+    rankText = "SUPER PROTECTOR";
+  } else if (score < 3000) {
+    rankText = "ULTIMATE CHAMPION";
+  } else {
+    rankText = "LEGENDARY SUPERHERO";
+  }
+  
+  text("RANK: " + rankText, width/2, height/2 + 105);
+  
+  // Restart instruction with pulsing effect
+  textSize(20);
+  let pulseValue = sin(frameCount * 0.1) * 50;
+  fill(255, 255, 255, 100 + pulseValue);
+  text("PRESS R TO RESTART", width/2, height/2 + 145);
+}
+
+// Make sure canvas stays interactive
+function mousePressed() {
+  if (gameState === "start") {
+    gameState = "playing";
+    resetGame();
+  } else if (gameState === "gameOver") {
+    gameState = "start";
+  }
+  
+  return false; // Prevent default
+}
+
+// Helper function to check if mouse is over a DOM element
+function isMouseOverElement(element) {
+  if (!element || !element.elt) return false;
+  
+  const rect = element.elt.getBoundingClientRect();
+  return (
+    mouseX >= rect.left && 
+    mouseX <= rect.right && 
+    mouseY >= rect.top && 
+    mouseY <= rect.bottom
+  );
+}
+
+// Create game assets - extract this from the missing preload function
+function createGameAssets() {
+  console.log("Creating game assets");
+  
+  // Create game title text
+  gameTitle = createGraphics(700, 150);
+  gameTitle.background(0, 0, 0, 0);
+  
+  // Draw horizontal scan lines for background
+  gameTitle.stroke(150, 150, 150, 30);
+  for (let i = 0; i < 150; i += 4) {
+    gameTitle.line(0, i, 700, i);
+  }
+  gameTitle.noStroke();
+  
+  // Main title "HBD" with ACDC style and big size
+  drawPixelatedText(gameTitle, "HBD", 350, 90, 130, 255);
+  
+  // Draw ACDC-style lightning bolt between H and B
+  gameTitle.fill(255, 0, 0);
+  gameTitle.noStroke();
+  // Adjust lightning position for larger text
+  let boltX = 265;
+  let boltY = 65;
+  
+  // Draw lightning bolt sections
+  gameTitle.beginShape();
+  gameTitle.vertex(boltX, boltY);
+  gameTitle.vertex(boltX + 15, boltY + 10);
+  gameTitle.vertex(boltX + 5, boltY + 25);
+  gameTitle.vertex(boltX + 25, boltY + 40);
+  gameTitle.vertex(boltX + 15, boltY + 45);
+  gameTitle.vertex(boltX, boltY + 30);
+  gameTitle.vertex(boltX - 5, boltY + 15);
+  gameTitle.endShape(CLOSE);
+  
+  // Subtitle "RUNNER" with smaller size
+  drawPixelatedText(gameTitle, "RUNNER", 350, 130, 50, 255);
+  
+  // Create background, midground, and ground
+  backgroundGfx = createGraphics(1600, 400);
+  backgroundGfx.background(20);
+  
+  // Draw distant city skyline silhouettes
+  backgroundGfx.fill(40);
+  for (let i = 0; i < 1600; i += 200) {
+    let buildingHeight = random(50, 120);
+    backgroundGfx.rect(i, 400 - buildingHeight, 100, buildingHeight);
+    
+    buildingHeight = random(70, 150);
+    backgroundGfx.rect(i + 120, 400 - buildingHeight, 60, buildingHeight);
+  }
+  
+  // Midground - middle distance buildings
+  midgroundGfx = createGraphics(1200, 400);
+  midgroundGfx.background(0, 0, 0, 0);
+  
+  // Medium distance buildings
+  midgroundGfx.fill(30);
+  for (let i = 0; i < 1200; i += 150) {
+    let buildingHeight = random(100, 200);
+    midgroundGfx.rect(i, 400 - buildingHeight, 80, buildingHeight);
+    
+    // Windows
+    midgroundGfx.fill(60);
+    for (let y = 400 - buildingHeight + 20; y < 380; y += 30) {
+      for (let x = i + 15; x < i + 70; x += 20) {
+        if (random() < 0.4) {
+          midgroundGfx.rect(x, y, 10, 15);
+        }
+      }
+    }
+    midgroundGfx.fill(30);
+    
+    // Add variety with different widths
+    buildingHeight = random(120, 220);
+    midgroundGfx.rect(i + 95, 400 - buildingHeight, 40, buildingHeight);
+  }
+  
+  // Ground tile
+  groundTile = createGraphics(128, 32);
+  groundTile.background(0, 0, 0, 0);
+  groundTile.fill(50);
+  groundTile.rect(0, 0, 128, 32);
+  
+  // Create simple details on ground
+  groundTile.fill(40);
+  for (let i = 0; i < 128; i += 16) {
+    groundTile.rect(i, 0, 1, 32);
+  }
+  
+  groundTile.fill(45);
+  groundTile.rect(0, 16, 128, 1);
+  
+  // Platform graphic
+  platformGfx = createGraphics(64, 16);
+  platformGfx.background(0, 0, 0, 0);
+  platformGfx.fill(70);
+  platformGfx.rect(0, 0, 64, 16, 0, 0, 5, 5);
+  
+  // Simple black pattern on platform
+  platformGfx.fill(40);
+  for (let i = 8; i < 64; i += 16) {
+    platformGfx.rect(i, 4, 4, 8);
+  }
+  
+  // Create player animations
+  playerRunningFrames = [];
+  for (let i = 0; i < 4; i++) {
+    let frame = createGraphics(32, 32);
+    frame.background(0, 0, 0, 0);
+    frame.fill(100, 150, 250); // Blue for player
+    
+    // Basic player body
+    frame.rect(8, 4, 16, 24, 2);
+    
+    // Different leg positions for running frames
+    if (i === 0) {
+      frame.rect(8, 28, 6, 4); // Left leg forward
+      frame.rect(18, 28, 6, 4); // Right leg back
+    } else if (i === 1) {
+      frame.rect(10, 28, 6, 4); // Legs middle
+      frame.rect(16, 28, 6, 4);
+    } else if (i === 2) {
+      frame.rect(8, 28, 6, 4); // Left leg back
+      frame.rect(18, 28, 6, 4); // Right leg forward
+    } else {
+      frame.rect(10, 28, 6, 4); // Legs middle
+      frame.rect(16, 28, 6, 4);
+    }
+    
+    // Face
+    frame.fill(255);
+    frame.rect(20, 8, 4, 4); // Eye
+    
+    playerRunningFrames.push(frame);
+  }
+  
+  // Jumping frame
+  playerJumpingFrame = createGraphics(32, 32);
+  playerJumpingFrame.background(0, 0, 0, 0);
+  playerJumpingFrame.fill(100, 150, 250);
+  playerJumpingFrame.rect(8, 4, 16, 20, 2);
+  playerJumpingFrame.rect(8, 24, 6, 6); // Left leg bent
+  playerJumpingFrame.rect(18, 24, 6, 6); // Right leg bent
+  
+  // Face for jumping
+  playerJumpingFrame.fill(255);
+  playerJumpingFrame.rect(20, 8, 4, 4); // Eye
+  
+  // Ducking frame
+  playerDuckingFrame = createGraphics(32, 16);
+  playerDuckingFrame.background(0, 0, 0, 0);
+  playerDuckingFrame.fill(100, 150, 250);
+  playerDuckingFrame.rect(8, 0, 16, 12, 2);
+  playerDuckingFrame.rect(8, 12, 16, 4); // Flattened legs
+  
+  // Face for ducking
+  playerDuckingFrame.fill(255);
+  playerDuckingFrame.rect(20, 4, 4, 4); // Eye
+  
+  // Create enemy graphics - basic version
+  enemyGfx = createGraphics(32, 32);
+  enemyGfx.background(0, 0, 0, 0);
+  enemyGfx.fill(200, 50, 50); // Red for enemies
+  enemyGfx.rect(8, 4, 16, 24, 2);
+  enemyGfx.rect(8, 28, 6, 4); // Left leg
+  enemyGfx.rect(18, 28, 6, 4); // Right leg
+  
+  // Enemy face
+  enemyGfx.fill(0);
+  enemyGfx.rect(16, 10, 8, 4); // Evil eyes
+  
+  // Flying enemy
+  flyingEnemyGfx = createGraphics(40, 20);
+  flyingEnemyGfx.background(0, 0, 0, 0);
+  flyingEnemyGfx.fill(140, 0, 200); // Purple for flying enemies
+  
+  // Body
+  flyingEnemyGfx.ellipse(20, 10, 30, 16);
+  
+  // Wings
+  flyingEnemyGfx.triangle(20, 10, 5, 2, 5, 18);
+  flyingEnemyGfx.triangle(20, 10, 35, 2, 35, 18);
+  
+  // Heavy enemy
+  heavyEnemyGfx = createGraphics(40, 40);
+  heavyEnemyGfx.background(0, 0, 0, 0);
+  heavyEnemyGfx.fill(180, 40, 40); // Darker red for bruiser
+  
+  // Bulkier body
+  heavyEnemyGfx.rect(5, 5, 30, 30, 4);
+  
+  // Details
+  heavyEnemyGfx.fill(50);
+  heavyEnemyGfx.rect(10, 15, 20, 5); // Angry brow
+  
+  // Ninja enemy
+  ninjaEnemyGfx = createGraphics(32, 32);
+  ninjaEnemyGfx.background(0, 0, 0, 0);
+  ninjaEnemyGfx.fill(30, 30, 30); // Dark for ninja
+  
+  // Ninja body
+  ninjaEnemyGfx.rect(8, 4, 16, 24, 2);
+  ninjaEnemyGfx.rect(8, 28, 6, 4); // Left leg
+  ninjaEnemyGfx.rect(18, 28, 6, 4); // Right leg
+  
+  // Ninja details - red band
+  ninjaEnemyGfx.fill(200, 0, 0);
+  ninjaEnemyGfx.rect(8, 10, 16, 4); // Red eyes/headband
+  
+  // Robot enemy
+  robotEnemyGfx = createGraphics(32, 36);
+  robotEnemyGfx.background(0, 0, 0, 0);
+  robotEnemyGfx.fill(100, 100, 100); // Metal gray
+  
+  // Robot body
+  robotEnemyGfx.rect(6, 6, 20, 20, 2);
+  robotEnemyGfx.rect(10, 26, 4, 10); // Left leg
+  robotEnemyGfx.rect(18, 26, 4, 10); // Right leg
+  
+  // Robot details
+  robotEnemyGfx.fill(255, 0, 0);
+  robotEnemyGfx.rect(10, 12, 4, 4); // Left eye
+  robotEnemyGfx.rect(18, 12, 4, 4); // Right eye
+  
+  // Create obstacle graphics
+  groundObstacleGfx = createGraphics(32, 32);
+  groundObstacleGfx.background(0, 0, 0, 0);
+  groundObstacleGfx.fill(150);
+  groundObstacleGfx.rect(8, 8, 16, 24, 2);
+  
+  // Obstacle details
+  groundObstacleGfx.stroke(100);
+  groundObstacleGfx.line(12, 12, 20, 28);
+  groundObstacleGfx.line(20, 12, 12, 28);
+  groundObstacleGfx.noStroke();
+  
+  // Flying obstacle
+  flyingObstacleGfx = createGraphics(40, 40);
+  flyingObstacleGfx.background(0, 0, 0, 0);
+  flyingObstacleGfx.fill(150);
+  
+  // Saw blade shape
+  flyingObstacleGfx.ellipse(20, 20, 30, 30);
+  
+  // Saw teeth
+  flyingObstacleGfx.fill(100);
+  for (let i = 0; i < 8; i++) {
+    let angle = i * PI/4;
+    flyingObstacleGfx.triangle(
+      20, 20,
+      20 + cos(angle) * 15, 20 + sin(angle) * 15,
+      20 + cos(angle + PI/8) * 15, 20 + sin(angle + PI/8) * 15
+    );
+  }
+  
+  // Center hole
+  flyingObstacleGfx.fill(50);
+  flyingObstacleGfx.ellipse(20, 20, 8, 8);
+  
+  // Low flying obstacle
+  lowFlyingObstacleGfx = createGraphics(48, 16);
+  lowFlyingObstacleGfx.background(0, 0, 0, 0);
+  lowFlyingObstacleGfx.fill(150);
+  
+  // Spikes
+  for (let i = 0; i < 8; i++) {
+    lowFlyingObstacleGfx.triangle(i*6, 16, i*6 + 3, 0, i*6 + 6, 16);
+  }
+  
+  // Create cake obstacle graphics
+  createCakeGraphics();
+  
+  // Create flame animation frames for candles
+  flameFrames = [];
+  for (let i = 0; i < 5; i++) {
+    let frame = createGraphics(8, 12);
+    frame.background(255, 255, 255, 0);
+    
+    // Yellow/orange flame that varies by frame
+    frame.fill(255, 200 - i*20, 0);
+    
+    // Different flame shapes for each frame
+    if (i === 0) {
+      frame.ellipse(4, 4, 6, 10);
+    } else if (i === 1) {
+      frame.ellipse(4, 5, 5, 8);
+    } else if (i === 2) {
+      frame.ellipse(4, 4, 7, 9);
+    } else if (i === 3) {
+      frame.ellipse(3, 5, 5, 7);
+    } else {
+      frame.ellipse(5, 4, 6, 9);
+    }
+    
+    // Bright center
+    frame.fill(255, 255, 200);
+    frame.ellipse(4, 3, 3, 4);
+    
+    flameFrames.push(frame);
+  }
+
+  // Create cake obstacle for gameplay
+  cakeObstacleGfx = createGraphics(32, 32);
+  cakeObstacleGfx.background(255, 255, 255, 0);
+  
+  // Smaller cake for gameplay obstacle
+  cakeObstacleGfx.fill(220);
+  cakeObstacleGfx.ellipse(16, 28, 30, 6);
+  
+  // Cake base
+  cakeObstacleGfx.fill(200);
+  cakeObstacleGfx.rect(6, 14, 20, 14, 2, 2, 0, 0);
+  
+  // Decorations
+  cakeObstacleGfx.fill(240);
+  for (let i = 6; i < 26; i += 4) {
+    cakeObstacleGfx.rect(i, 13, 2, 2, 1);
+  }
+  
+  // Candles - just the bases, flames are animated separately
+  cakeObstacleGfx.fill(120);
+  cakeObstacleGfx.rect(11, 5, 2, 8); // Left candle
+  cakeObstacleGfx.rect(19, 5, 2, 8); // Right candle
+  
+  // Create powerup graphics
+  createPowerupGraphics();
+  
+  console.log("Game assets created successfully");
+}

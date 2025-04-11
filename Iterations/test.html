@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P5.js Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+    <script src="libraries/p5.min.js"></script>
+    <script>
+        // Simple p5.js sketch to test if the library is working
+        function setup() {
+            createCanvas(400, 400);
+        }
+        
+        function draw() {
+            background(100);
+            fill(255);
+            ellipse(width/2, height/2, 100, 100);
+            textSize(18);
+            textAlign(CENTER);
+            fill(0);
+            text("P5.js is working!", width/2, height/2);
+        }
+    </script>
+</head>
+<body>
+    <!-- Test canvas will appear here -->
+</body>
+</html> 
