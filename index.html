@@ -172,11 +172,20 @@
         // Force the mobile buttons to be visible
         function forceShowMobileButtons() {
             console.log("Forcing mobile buttons to be visible");
+            // Show only the top canvas button
             const startButton = document.getElementById('mobile-canvas-start-button');
             if (startButton) {
                 startButton.style.display = 'block';
                 startButton.style.visibility = 'visible';
-                startButton.setAttribute('style', 'display: block !important; visibility: visible !important;');
+                startButton.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent; user-select: none;');
+            }
+            
+            // Always keep the middle button hidden
+            const middleButton = document.getElementById('mobile-start-button');
+            if (middleButton) {
+                middleButton.style.display = 'none';
+                middleButton.style.visibility = 'hidden';
+                middleButton.setAttribute('style', 'display: none !important; visibility: hidden !important;');
             }
         }
         
@@ -201,10 +210,10 @@
             // If on mobile, show the start button (controls will be shown during gameplay)
             if (isMobile) {
                 setTimeout(function() {
-                    // Show centered start button
+                    // We're not showing the centered start button anymore, only the above-canvas one
                     const startBtn = document.getElementById('mobile-start-button');
-                    if (startBtn && (window.showTitleScreen === true || window.gameState === "titleScreen")) {
-                        startBtn.style.display = 'block';
+                    if (startBtn) {
+                        startBtn.style.display = 'none'; // Always hide this button
                     }
                     
                     // Show above-canvas start button
@@ -420,7 +429,7 @@
                 window.showTitleScreen = false;
                 window.gameState = "playing";
                 
-                // Hide start buttons again just to be sure
+                // Always hide the middle button
                 const mobileStartButton = document.getElementById('mobile-start-button');
                 if (mobileStartButton) {
                     mobileStartButton.style.display = 'none';
@@ -624,11 +633,13 @@
                 
                 // Title screen - show start buttons, hide controls
                 if ((window.showTitleScreen === true || window.gameState === "titleScreen" || window.gameState === "start") && window.gameState !== "playing") {
+                    // Always hide the middle button
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
-                        startBtn.style.display = 'block';
+                        startBtn.style.display = 'none';
                     }
                     
+                    // Only show the above-canvas button
                     const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
                     if (canvasStartBtn) {
                         canvasStartBtn.style.display = 'block';
@@ -787,9 +798,9 @@
         START GAME
     </div>
     
-    <!-- Simple mobile start button, completely separate from the game's original controls -->
+    <!-- Simple mobile start button - HIDDEN -->
     <div id="mobile-start-button" 
-         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff; user-select: none;"
+         style="display: none !important; visibility: hidden !important; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff; user-select: none;"
          onclick="startGameMobile(); return false;" 
          ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;"
          ontouchmove="event.preventDefault(); event.stopPropagation();"
