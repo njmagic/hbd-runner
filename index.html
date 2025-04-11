@@ -127,27 +127,33 @@
         
         /* Mobile START GAME button above canvas */
         #mobile-canvas-start-button {
-            display: none;
+            display: block !important; /* Force display */
             position: fixed;
-            top: 10%;
+            top: 25%;
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
-            height: 60px;
-            line-height: 60px;
-            background-color: #ff3333;
+            width: 280px;
+            height: 80px;
+            line-height: 80px;
+            background-color: #ff0000;
             color: white;
-            font-size: 20px;
+            font-size: 28px;
             font-family: 'Arial', sans-serif;
             font-weight: bold;
             text-align: center;
             border-radius: 10px;
-            border: 3px solid white;
-            z-index: 99999;
+            border: 5px solid white;
+            z-index: 999999;
             text-transform: uppercase;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.7);
             pointer-events: auto;
             -webkit-tap-highlight-color: transparent;
+            animation: pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); }
+            100% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 40px rgba(255, 0, 0, 0.9); }
         }
     </style>
     
@@ -155,11 +161,33 @@
         // Make supabase client available globally for the mobile integration
         window.supabaseClient = null;
         
+        // Immediately force mobile buttons to be visible
+        (function() {
+            setTimeout(forceShowMobileButtons, 100);
+            setTimeout(forceShowMobileButtons, 500);
+            setTimeout(forceShowMobileButtons, 1000);
+            setTimeout(forceShowMobileButtons, 2000);
+        })();
+        
+        // Force the mobile buttons to be visible
+        function forceShowMobileButtons() {
+            console.log("Forcing mobile buttons to be visible");
+            const startButton = document.getElementById('mobile-canvas-start-button');
+            if (startButton) {
+                startButton.style.display = 'block';
+                startButton.style.visibility = 'visible';
+                startButton.setAttribute('style', 'display: block !important; visibility: visible !important;');
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Supabase client and store it on window
             const supabaseUrl = 'https://pvpwmikhzzvtcafhtidh.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHdtaWtoenp2dGNhZmh0aWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1NDA5MDAsImV4cCI6MjAyOTExNjkwMH0.o71bhbTBK_2FHlJYFrELCngtaLWYtFjuXjiN7SuSHW4';
             window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+            
+            // Force the mobile buttons to be visible right away
+            forceShowMobileButtons();
             
             // Center the canvas for mobile devices
             centerCanvasOnMobile();
@@ -621,6 +649,7 @@
 <body>
     <!-- Mobile START GAME button above canvas -->
     <div id="mobile-canvas-start-button" 
+         style="display: block !important; visibility: visible !important;"
          onclick="startGameMobile(); return false;" 
          ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
         START GAME
