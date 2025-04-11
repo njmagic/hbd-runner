@@ -41,15 +41,57 @@
         }
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
-            display: none; /* Hidden by default, shown via JS on mobile */
+            display: none;
             position: fixed;
-            top: 0;
+            bottom: 0;
             left: 0;
             width: 100%;
-            height: 100%;
-            z-index: 1000; /* Ensure it's above everything */
-            pointer-events: none; /* Allow clicks to pass through to canvas by default */
-            touch-action: none;
+            height: 180px;
+            z-index: 9997;
+            touch-action: manipulation;
+        }
+        #mobileJump {
+            position: absolute;
+            left: 10px;
+            width: 160px;
+            height: 160px;
+            border-radius: 80px;
+            background-color: rgba(0, 255, 0, 0.3);
+            border: 3px solid rgba(0, 255, 0, 0.6);
+            bottom: 10px;
+            z-index: 9998;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        #mobileShoot {
+            position: absolute;
+            right: 10px;
+            width: 160px;
+            height: 160px;
+            border-radius: 80px;
+            background-color: rgba(255, 0, 0, 0.3);
+            border: 3px solid rgba(255, 0, 0, 0.6);
+            bottom: 10px;
+            z-index: 9998;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        #mobileDuck {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 80px;
+            border-radius: 40px;
+            background-color: rgba(0, 0, 255, 0.3);
+            border: 3px solid rgba(0, 0, 255, 0.6);
+            bottom: 10px;
+            z-index: 9998;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
         }
         /* Mobile leaderboard submit button - only shows on game over */
         #submitLeaderboardBtn {
@@ -759,6 +801,17 @@
                         // Call original draw function
                         originalDraw.apply(this, arguments);
                         
+                        // ALWAYS ensure start button is hidden during gameplay
+                        if (window.gameState === "playing" || 
+                            window.gameState === "gameOver" || 
+                            (window.gameState !== "titleScreen" && !window.showTitleScreen)) {
+                            const startButton = document.getElementById('mobile-start-button');
+                            if (startButton && startButton.style.display !== 'none') {
+                                startButton.style.display = 'none';
+                                console.log("Start button hidden by draw loop");
+                            }
+                        }
+                        
                         // Check game state after drawing
                         if (window.gameState === "gameOver") {
                             // After a brief delay, show the buttons
@@ -771,14 +824,6 @@
                                 setTimeout(function() {
                                     window._gameOverActioned = false;
                                 }, 3000);
-                            }
-                        } else {
-                            // Not in game over, ensure start button is hidden during gameplay
-                            if (window.gameState === "playing") {
-                                const startButton = document.getElementById('mobile-start-button');
-                                if (startButton && startButton.style.display !== 'none') {
-                                    startButton.style.display = 'none';
-                                }
                             }
                         }
                     };
@@ -1716,31 +1761,176 @@
                 }, 2000);
             }, 1000); // Wait for game to initialize
         });
+        
+        // Add global event listeners that will hide the start button
+        document.addEventListener('keydown', function() {
+            hideStartButton();
+        }, true);
+        
+        document.addEventListener('mousedown', function() {
+            hideStartButton();
+        }, true);
+        
+        document.addEventListener('touchstart', function(e) {
+            // Hide start button on any touch
+            hideStartButton();
+            
+            // For mobile controls, check if we touched specific elements
+            const mobileJump = document.getElementById('mobileJump');
+            const mobileShoot = document.getElementById('mobileShoot');
+            const mobileDuck = document.getElementById('mobileDuck');
+            
+            if (e.target === mobileJump || e.target === mobileShoot || e.target === mobileDuck) {
+                console.log("Mobile control touched - hiding start button");
+                hideStartButton();
+                
+                // If we're on the title screen, also start the game
+                if (window.gameState === "titleScreen" || window.showTitleScreen === true) {
+                    console.log("Starting game via mobile control");
+                    startGame();
+                }
+            }
+        }, true);
+        
+        // Helper function to hide the start button
+        function hideStartButton() {
+            const startButton = document.getElementById('mobile-start-button');
+            if (startButton) {
+                startButton.style.display = 'none';
+                console.log("Start button hidden by global handler");
+            }
+        }
+        
+        // Set up an aggressive monitor to ensure start button is never visible during gameplay
+        function setupStartButtonMonitor() {
+            console.log("Setting up aggressive start button monitor");
+            
+            // Force hide immediately if not on title screen
+            if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
+                hideStartButton();
+            }
+            
+            // Set up frequent monitoring
+            const startButtonChecker = setInterval(function() {
+                try {
+                    // Only show button on title screen, hide in all other states
+                    if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
+                        hideStartButton();
+                    } else {
+                        // On title screen, we can show the button
+                        const startButton = document.getElementById('mobile-start-button');
+                        if (startButton) {
+                            startButton.style.display = 'block';
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error in start button monitor:", e);
+                }
+            }, 100); // Check very frequently
+            
+            // Even more aggressive check for the first few seconds
+            for (let i = 1; i <= 20; i++) {
+                setTimeout(function() {
+                    if (window.gameState !== "titleScreen" && !window.showTitleScreen) {
+                        hideStartButton();
+                    }
+                }, i * 200); // Check every 200ms for first 4 seconds
+            }
+        }
+        
+        // Call this setup on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setupStartButtonMonitor();
+        });
+        
+        // Set up a MutationObserver to watch for canvas clicks
+        function setupCanvasClickWatcher() {
+            try {
+                // Wait for the canvas to be created
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeName === 'CANVAS') {
+                                    console.log("Canvas detected - setting up click watchers");
+                                    
+                                    // Add direct event listeners to the canvas
+                                    node.addEventListener('click', function() {
+                                        hideStartButton();
+                                    }, true);
+                                    
+                                    node.addEventListener('touchstart', function() {
+                                        hideStartButton();
+                                    }, true);
+                                    
+                                    // Also update game state monitoring to be super aggressive
+                                    const gameStateWatcher = setInterval(function() {
+                                        if (window.gameState === "playing") {
+                                            hideStartButton();
+                                        }
+                                    }, 50); // Check every 50ms
+                                    
+                                    observer.disconnect();
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, { childList: true, subtree: true });
+                
+                // Also try immediately in case canvas is already there
+                const existingCanvas = document.querySelector('canvas');
+                if (existingCanvas) {
+                    console.log("Canvas already exists - setting up click watchers");
+                    
+                    existingCanvas.addEventListener('click', function() {
+                        hideStartButton();
+                    }, true);
+                    
+                    existingCanvas.addEventListener('touchstart', function() {
+                        hideStartButton();
+                    }, true);
+                }
+            } catch (e) {
+                console.error("Error setting up canvas click watcher:", e);
+            }
+        }
+        
+        // Call this setup on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setupCanvasClickWatcher();
+        });
     </script>
 </head>
 <body>
     <!-- Simple mobile start button, completely separate from the game's original controls -->
-    <div id="mobile-start-button" onclick="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();" ontouchstart="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();">TAP TO START</div>
+    <div id="mobile-start-button" 
+         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000; z-index: 999999;"
+         onclick="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();" 
+         ontouchstart="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();">
+         TAP TO START
+    </div>
     
     <!-- Game will be rendered by p5.js -->
     
     <!-- Mobile touch controls overlay -->
     <div id="mobileControls">
-        <div id="leftControl" class="control-area" onclick="mobileJump()" onmousedown="mobileJump()" ontouchstart="mobileJump()"></div>
-        <div id="rightControl" class="control-area" onclick="mobileShoot()" onmousedown="mobileShoot()" ontouchstart="mobileShoot()"></div>
-        <div id="startButton" class="control-area" 
-             style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);">TAP TO START</div>
-        <!-- Leaderboard submission button for mobile - enhanced version -->
-        <div id="submitLeaderboardBtn"
-             onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-             onmousedown="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-             onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
-             style="font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: none; position: fixed !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 999999 !important; width: 300px !important; height: 100px !important; line-height: 100px !important; background-color: rgba(220, 40, 40, 0.95) !important; border: 5px solid rgba(255, 255, 255, 0.95) !important; font-size: 26px !important;">
-             SUBMIT SCORE
-        </div>
+        <div id="mobileJump" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
+        <div id="mobileShoot" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
+        <div id="mobileDuck" ontouchstart="hideStartButton(); if(window.gameState === 'titleScreen' || window.showTitleScreen === true) { startGame(); }"></div>
+    </div>
+    
+    <!-- Leaderboard submission button for mobile - enhanced version -->
+    <div id="submitLeaderboardBtn"
+         onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+         onmousedown="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+         onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
+         ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+         ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
+         ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
+         style="font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: none; position: fixed !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 999999 !important; width: 300px !important; height: 100px !important; line-height: 100px !important; background-color: rgba(220, 40, 40, 0.95) !important; border: 5px solid rgba(255, 255, 255, 0.95) !important; font-size: 26px !important;">
+         SUBMIT SCORE
     </div>
     
     <!-- Leaderboard form -->
