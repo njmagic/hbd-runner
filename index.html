@@ -223,27 +223,85 @@
             // Center the canvas for mobile devices
             centerCanvasOnMobile();
             
-            // Initialize mobile checks
+            // Initialize mobile checks - enhanced detection
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                 (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
                 ('ontouchstart' in window) ||
                 (navigator.maxTouchPoints > 0);
+            
+            // Store the mobile status globally so other functions can use it
+            window.isMobileDevice = isMobile;
                 
-            // If on mobile, show the start button (controls will be shown during gameplay)
+            // If on mobile, set up the mobile environment
             if (isMobile) {
+                console.log("Mobile device detected, setting up environment");
+                
+                // Add global event listeners to pass through to the game
+                document.addEventListener('touchstart', function(e) {
+                    // Special handling for canvas touch to help start the game
+                    if (e.target.nodeName === 'CANVAS') {
+                        console.log("Touch on canvas detected");
+                        
+                        // Auto-start the game if we're on title screen
+                        if (window.showTitleScreen === true || 
+                            window.gameState === "titleScreen" || 
+                            window.gameState === "start") {
+                            console.log("Canvas touched while on title screen, starting game");
+                            startGameMobile();
+                        }
+                    }
+                });
+                
+                // Watch for canvas creation and set up touch interactions
+                const canvasObserver = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeName === 'CANVAS') {
+                                    console.log("Canvas added to DOM, setting up touch handlers");
+                                    
+                                    // Add click handler directly to canvas
+                                    node.addEventListener('click', function(e) {
+                                        console.log("Canvas clicked");
+                                        if (window.showTitleScreen === true || 
+                                            window.gameState === "titleScreen" || 
+                                            window.gameState === "start") {
+                                            startGameMobile();
+                                        }
+                                    });
+                                    
+                                    // Make canvas interactive for touch
+                                    node.style.touchAction = 'auto';
+                                    node.style.pointerEvents = 'auto';
+                                    node.style.cursor = 'pointer';
+                                }
+                            });
+                        }
+                    });
+                });
+                canvasObserver.observe(document.body, { childList: true, subtree: true });
+                
+                // Show the START GAME button right away
                 setTimeout(function() {
-                    // We're not showing the centered start button anymore, only the above-canvas one
+                    // Make sure the middle button stays hidden
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
-                        startBtn.style.display = 'none'; // Always hide this button
+                        startBtn.style.display = 'none';
+                        startBtn.style.visibility = 'hidden';
+                        startBtn.setAttribute('style', 'display: none !important; visibility: hidden !important;');
                     }
                     
-                    // Show above-canvas start button
+                    // Show above-canvas start button with proper styling
                     const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
-                    if (canvasStartBtn && (window.showTitleScreen === true || window.gameState === "titleScreen")) {
+                    if (canvasStartBtn && (window.showTitleScreen === true || window.gameState === "titleScreen" || window.gameState === "start")) {
                         canvasStartBtn.style.display = 'block';
+                        canvasStartBtn.style.visibility = 'visible';
+                        canvasStartBtn.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-transform: translateZ(0); transform: translateZ(0);');
                     }
-                }, 500);
+                    
+                    // Start monitoring game state right away
+                    setTimeout(checkAndUpdateGameState, 1000);
+                }, 300);
             }
         });
         
@@ -345,27 +403,22 @@
         function startGameMobile() {
             console.log("Mobile start game clicked");
             
-            // Force the game to start immediately to prevent freezing
-            window.showTitleScreen = false;
-            if (typeof window.gameState !== 'undefined') {
-                window.gameState = "playing";
-            }
-            
-            // Hide the start button
+            // Hide the start buttons immediately
             const canvasStartButton = document.getElementById('mobile-canvas-start-button');
             if (canvasStartButton) {
                 canvasStartButton.style.display = 'none';
                 canvasStartButton.style.visibility = 'hidden';
+                canvasStartButton.setAttribute('style', 'display: none !important; visibility: hidden !important;');
             }
             
-            // Ensure the mobile start button is always hidden
             const mobileStartButton = document.getElementById('mobile-start-button');
             if (mobileStartButton) {
                 mobileStartButton.style.display = 'none';
                 mobileStartButton.style.visibility = 'hidden';
+                mobileStartButton.setAttribute('style', 'display: none !important; visibility: hidden !important;');
             }
             
-            // Show and force mobile controls to be visible immediately
+            // Force show controls
             const mobileControls = document.getElementById('mobileControls');
             if (mobileControls) {
                 mobileControls.style.display = 'block';
@@ -373,15 +426,72 @@
                 mobileControls.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent;');
             }
             
-            // Dispatch multiple spacebar events to make sure the game starts
+            // Critical: Create a native browser event that will trigger the game's event listeners
             try {
-                console.log("Forcefully starting game on mobile");
+                // First focus on the canvas to ensure keyboard events are captured
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                    // Give the canvas focus
+                    canvas.focus();
+                    
+                    // First directly set the game state
+                    window.showTitleScreen = false;
+                    if (typeof window.gameState !== 'undefined') {
+                        window.gameState = "playing";
+                    }
+                    
+                    // Create and dispatch the events using all possible methods
+                    console.log("Creating native DOM events to trigger game start");
+                    
+                    // Method 1: Use DOM native keyboard event that browsers will respect
+                    const nativeEvent = new KeyboardEvent('keydown', {
+                        bubbles: true,
+                        cancelable: true,
+                        keyCode: 32,
+                        code: 'Space',
+                        key: ' ',
+                        which: 32,
+                        view: window,
+                        composed: true
+                    });
+                    document.dispatchEvent(nativeEvent);
+                    
+                    // Method 2: Try to physically click the canvas several times
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(function() {
+                            // Simulate mouse events on the canvas to ensure focus
+                            const mouseEvent = new MouseEvent('click', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window,
+                                detail: 1, // single click
+                                screenX: 100,
+                                screenY: 100,
+                                clientX: 100,
+                                clientY: 100
+                            });
+                            canvas.dispatchEvent(mouseEvent);
+                            
+                            // Try to get canvas focus another way
+                            if (typeof canvas.focus === 'function') {
+                                canvas.focus();
+                            }
+                            
+                            // Also try touching the canvas
+                            const touchEvent = new TouchEvent('touchstart', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window
+                            });
+                            canvas.dispatchEvent(touchEvent);
+                        }, i * 50);
+                    }
+                }
                 
-                // Generate several space key events over a short period to ensure one is captured
-                for (let i = 0; i < 5; i++) {
-                    // Stagger the events to increase chance of capture
+                // Method 3: Try multiple spacebar events with different timing
+                for (let i = 0; i < 10; i++) {
                     setTimeout(function() {
-                        // Space key event
+                        // Create and dispatch a spacebar event
                         const spaceEvent = new KeyboardEvent('keydown', {
                             key: ' ',
                             code: 'Space',
@@ -392,60 +502,183 @@
                         });
                         document.dispatchEvent(spaceEvent);
                         
-                        // Also try to click on canvas to ensure focus
-                        const canvas = document.querySelector('canvas');
+                        // Also try direct keydown on the canvas
                         if (canvas) {
-                            canvas.focus();
-                            canvas.click();
+                            canvas.dispatchEvent(spaceEvent);
                         }
                         
-                        console.log("Space keydown event dispatched - attempt " + (i+1));
-                    }, i * 50);
+                        // Every time, reset the game state
+                        window.showTitleScreen = false;
+                        if (typeof window.gameState !== 'undefined') {
+                            window.gameState = "playing";
+                        }
+                        
+                        console.log("Dispatched space keydown event - attempt " + (i+1));
+                    }, 100 + (i * 100)); // Spread out over time with increasing delays
                 }
                 
-                // Direct state manipulation with a slight delay for event propagation
+                // Method 4: Create and dispatch an old-style keyboard event (for compatibility)
                 setTimeout(function() {
-                    // Force game state again after a short delay
+                    // This is for older browsers or frameworks
+                    try {
+                        // Fallback to window.event for older implementations
+                        const oldEvent = document.createEvent('KeyboardEvent');
+                        const initMethod = typeof oldEvent.initKeyboardEvent !== 'undefined' ? 'initKeyboardEvent' : 'initKeyEvent';
+                        
+                        oldEvent[initMethod](
+                            'keydown',
+                            true,      // bubbles
+                            true,      // cancelable
+                            window,    // view
+                            false,     // ctrlKey
+                            false,     // altKey
+                            false,     // shiftKey
+                            false,     // metaKey
+                            32,        // keyCode
+                            0          // charCode
+                        );
+                        
+                        // Override the properties that might not have been set correctly
+                        Object.defineProperty(oldEvent, 'keyCode', { get: function() { return 32; } });
+                        Object.defineProperty(oldEvent, 'which', { get: function() { return 32; } });
+                        Object.defineProperty(oldEvent, 'key', { get: function() { return ' '; } });
+                        Object.defineProperty(oldEvent, 'code', { get: function() { return 'Space'; } });
+                        
+                        document.dispatchEvent(oldEvent);
+                        console.log("Dispatched old-style keyboard event");
+                    } catch (e) {
+                        console.log("Old-style event failed, continuing with other methods");
+                    }
+                }, 500);
+                
+                // Method 5: Find and trigger any game-specific start functions
+                setTimeout(function() {
                     window.showTitleScreen = false;
                     if (typeof window.gameState !== 'undefined') {
                         window.gameState = "playing";
                     }
                     
-                    // Try to call any game-specific start functions that might exist
+                    // Look for common game start functions
                     if (typeof window.startGame === 'function') {
                         window.startGame();
+                        console.log("Called window.startGame() function");
                     }
+                    
                     if (typeof window.start === 'function') {
                         window.start();
+                        console.log("Called window.start() function");
                     }
                     
-                    // Make absolutely sure controls are visible
-                    if (mobileControls) {
-                        mobileControls.style.display = 'block';
-                        mobileControls.style.visibility = 'visible';
-                        mobileControls.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent;');
+                    // Look for any function with 'start' in its name on the window object
+                    for (let prop in window) {
+                        if (typeof window[prop] === 'function' && 
+                            (prop.toLowerCase().includes('start') || prop.toLowerCase().includes('play'))) {
+                            try {
+                                window[prop]();
+                                console.log("Called potential game starter function:", prop);
+                            } catch (e) {
+                                // Ignore errors from calling random functions
+                            }
+                        }
                     }
                     
-                    // Start checking the game state to ensure transition
-                    checkAndUpdateGameState();
-                }, 100);
-            } catch (e) {
-                console.error("Error starting game:", e);
+                    // Continue checking to make sure the game starts
+                    continueCheckingGameState();
+                }, 1000);
                 
-                // Final fallback
+            } catch (e) {
+                console.error("Error in advanced game start:", e);
+                
+                // Last resort fallback
                 window.showTitleScreen = false;
                 if (typeof window.gameState !== 'undefined') {
                     window.gameState = "playing";
                 }
                 
-                // Ensure controls are visible even if there's an error
+                // Ensure mobile controls are visible
                 if (mobileControls) {
                     mobileControls.style.display = 'block';
-                    mobileControls.style.visibility = 'visible';
                 }
+                
+                // Try the continuous checking approach
+                continueCheckingGameState();
             }
             
             return false; // Prevent default action
+        }
+        
+        // More aggressive state checking function that tries multiple approaches
+        function continueCheckingGameState() {
+            console.log("Starting continuous game state checking");
+            
+            // Set up a more frequent interval to check game state
+            const stateCheckInterval = setInterval(function() {
+                console.log("Game state check:", window.gameState, "Title screen:", window.showTitleScreen);
+                
+                // If still on title screen, try multiple methods to start
+                if (window.showTitleScreen === true || 
+                    window.gameState === "titleScreen" || 
+                    window.gameState === "start" || 
+                    window.gameState !== "playing") {
+                    
+                    console.log("Game still not playing, applying more methods");
+                    
+                    // Force game state directly
+                    window.showTitleScreen = false;
+                    window.gameState = "playing";
+                    
+                    // Try to create and dispatch a space keydown event
+                    const spaceEvent = new KeyboardEvent('keydown', {
+                        key: ' ',
+                        code: 'Space',
+                        keyCode: 32,
+                        which: 32,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    document.dispatchEvent(spaceEvent);
+                    
+                    // Try to click the canvas
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        canvas.focus();
+                        canvas.click();
+                    }
+                    
+                    // Hide the start button again just to be sure
+                    const canvasStartButton = document.getElementById('mobile-canvas-start-button');
+                    if (canvasStartButton) {
+                        canvasStartButton.style.display = 'none';
+                        canvasStartButton.style.visibility = 'hidden';
+                    }
+                    
+                    // Ensure controls are visible
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'block';
+                        mobileControls.style.visibility = 'visible';
+                        mobileControls.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent;');
+                    }
+                } 
+                // If we've successfully moved to playing state, clear the interval
+                else if (window.gameState === "playing") {
+                    console.log("Game successfully started, clearing continuous check");
+                    clearInterval(stateCheckInterval);
+                    
+                    // Ensure controls are visible in playing state
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'block';
+                        mobileControls.style.visibility = 'visible';
+                        mobileControls.setAttribute('style', 'display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent;');
+                    }
+                }
+            }, 100); // Check every 100ms
+            
+            // Safety cleanup - don't let it run forever
+            setTimeout(function() {
+                clearInterval(stateCheckInterval);
+            }, 10000); // Stop after 10 seconds max
         }
         
         // Helper function to check and update game state
@@ -778,6 +1011,11 @@
                                     node.style.maxWidth = '100%';
                                     node.style.maxHeight = '100%';
                                     
+                                    // Make sure the canvas can receive input events
+                                    node.style.touchAction = 'auto';
+                                    node.style.pointerEvents = 'auto';
+                                    node.style.cursor = 'pointer';
+                                    
                                     // Create a container for the canvas if none exists
                                     if (!node.parentNode || node.parentNode === document.body) {
                                         const container = document.createElement('div');
@@ -791,6 +1029,9 @@
                                         container.style.alignItems = 'center';
                                         container.style.zIndex = '1';
                                         
+                                        // Ensure container doesn't block events to the canvas
+                                        container.style.pointerEvents = 'none';
+                                        
                                         // Replace the canvas with the container
                                         if (node.parentNode) {
                                             node.parentNode.replaceChild(container, node);
@@ -798,9 +1039,22 @@
                                         
                                         // Add the canvas to the container
                                         container.appendChild(node);
+                                        
+                                        // Important: Re-enable pointer events on the canvas itself
+                                        node.style.pointerEvents = 'auto';
+                                        
+                                        // Add helper to auto-start game when canvas is clicked
+                                        node.addEventListener('click', function() {
+                                            console.log("Canvas clicked directly");
+                                            if (window.showTitleScreen === true || 
+                                                window.gameState === "titleScreen" || 
+                                                window.gameState === "start") {
+                                                startGameMobile();
+                                            }
+                                        });
                                     }
                                     
-                                    console.log("Mobile canvas positioning applied - centered in viewport");
+                                    console.log("Mobile canvas positioning applied - centered in viewport with pointer events enabled");
                                 }
                                 
                                 // Disconnect after finding canvas
@@ -833,6 +1087,11 @@
                     canvas.style.maxWidth = '100%';
                     canvas.style.maxHeight = '100%';
                     
+                    // Make sure the canvas can receive input events
+                    canvas.style.touchAction = 'auto';
+                    canvas.style.pointerEvents = 'auto';
+                    canvas.style.cursor = 'pointer';
+                    
                     // Create a container for the canvas if none exists
                     if (!canvas.parentNode || canvas.parentNode === document.body) {
                         const container = document.createElement('div');
@@ -846,6 +1105,9 @@
                         container.style.alignItems = 'center';
                         container.style.zIndex = '1';
                         
+                        // Ensure container doesn't block events to the canvas
+                        container.style.pointerEvents = 'none';
+                        
                         // Replace the canvas with the container
                         if (canvas.parentNode) {
                             canvas.parentNode.replaceChild(container, canvas);
@@ -853,7 +1115,22 @@
                         
                         // Add the canvas to the container
                         container.appendChild(canvas);
+                        
+                        // Important: Re-enable pointer events on the canvas itself
+                        canvas.style.pointerEvents = 'auto';
+                        
+                        // Add helper to auto-start game when canvas is clicked
+                        canvas.addEventListener('click', function() {
+                            console.log("Canvas clicked directly (existing canvas)");
+                            if (window.showTitleScreen === true || 
+                                window.gameState === "titleScreen" || 
+                                window.gameState === "start") {
+                                startGameMobile();
+                            }
+                        });
                     }
+                    
+                    console.log("Mobile existing canvas positioned with pointer events enabled");
                 }
             }
         }
