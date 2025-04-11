@@ -455,6 +455,12 @@
                 startButton.style.display = 'none';
             }
             
+            // Hide mobile start button too
+            const mobileStartButton = document.getElementById('mobile-start-button');
+            if (mobileStartButton) {
+                mobileStartButton.style.display = 'none';
+            }
+            
             // Give focus back to the canvas for proper game input
             try {
                 const canvasElement = document.querySelector('canvas');
@@ -655,81 +661,135 @@
         
         // Function to monitor game state and ensure buttons show correctly
         function setupRestartButtonMonitor() {
-            console.log("Setting up enhanced button monitor v4");
+            console.log("Setting up game state monitor for button showing");
             
-            let lastState = "";
-            let leaderboardButtonShowAttempts = 0;
+            // Immediately check if we're already in game over state
+            if (window.gameState === "gameOver") {
+                console.log("Game already in gameOver state - showing submit buttons");
+                showAllLeaderboardButtons();
+            }
             
-            // Check if the buttons initially exist
-            setTimeout(function() {
-                // Create leaderboard button if it doesn't exist
-                if (!document.getElementById('submitLeaderboardBtn')) {
-                    createLeaderboardButton();
-                }
-                updateLeaderboardButtonVisibility();
-            }, 500);
-            
-            // Monitor very frequently for maximum responsiveness
-            setInterval(function() {
+            // Set up continuous monitoring
+            const gameStateChecker = setInterval(function() {
                 try {
-                    // Get current game state
-                    const currentState = window.gameState || "";
-                    
-                    // Only log when state changes
-                    if (currentState !== lastState) {
-                        console.log(`Game state changed from "${lastState}" to "${currentState}"`);
-                        lastState = currentState;
-                        leaderboardButtonShowAttempts = 0;
+                    // Check if game is in game over state
+                    if (window.gameState === "gameOver") {
+                        console.log("Game state monitor detected gameOver - showing submit buttons");
+                        // Show the guarantee button
+                        showAllLeaderboardButtons();
                         
-                        // Add aggressive event listeners whenever we enter game over state
-                        if (currentState === "gameOver") {
-                            // Small delay to ensure DOM is ready
-                            setTimeout(function() {
-                                addLeaderboardButtonListeners();
-                                updateLeaderboardButtonVisibility();
-                                
-                                // Check again after a delay to ensure it appears
-                                setTimeout(updateLeaderboardButtonVisibility, 200);
-                                setTimeout(updateLeaderboardButtonVisibility, 500);
-                                setTimeout(updateLeaderboardButtonVisibility, 1000);
-                            }, 100);
+                        // Make doubly sure the mobile start button is hidden
+                        const startButton = document.getElementById('mobile-start-button');
+                        if (startButton) {
+                            startButton.style.display = 'none';
                         }
                     }
                     
-                    // Check for game over state to show leaderboard button
-                    if (currentState === "gameOver") {
-                        leaderboardButtonShowAttempts++;
-                        
-                        // Update leaderboard button visibility every attempt
-                        updateLeaderboardButtonVisibility();
-                        
-                        // Extra logging for debugging
-                        if (leaderboardButtonShowAttempts % 10 === 0) {
-                            const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                            if (leaderboardBtn) {
-                                console.log(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button status:`, {
-                                    display: leaderboardBtn.style.display,
-                                    visibility: leaderboardBtn.style.visibility,
-                                    opacity: leaderboardBtn.style.opacity,
-                                    zIndex: leaderboardBtn.style.zIndex,
-                                    scoreSubmitted: window.leaderboardScoreSubmitted
-                                });
-                            } else {
-                                console.error(`[Attempt ${leaderboardButtonShowAttempts}] Leaderboard button not found, recreating...`);
-                                createLeaderboardButton();
-                            }
+                    // Check if game is in playing state
+                    if (window.gameState === "playing") {
+                        // Make sure start button is hidden during gameplay
+                        const startButton = document.getElementById('mobile-start-button');
+                        if (startButton) {
+                            startButton.style.display = 'none';
                         }
-                    } else {
-                        // Hide the leaderboard submit button when not in game over
-                        const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
-                        if (leaderboardBtn) {
-                            leaderboardBtn.style.display = 'none';
+                    }
+                    
+                    // If we're on title screen, make sure the start button is shown
+                    if (window.gameState === "titleScreen" || window.showTitleScreen) {
+                        const startButton = document.getElementById('mobile-start-button');
+                        if (startButton) {
+                            startButton.style.display = 'block';
                         }
                     }
                 } catch (e) {
-                    console.error("Error in button monitor:", e);
+                    console.error("Error in game state monitor:", e);
                 }
-            }, 50); // Check every 50ms for maximum responsiveness
+            }, 1000);
+            
+            // Also set up a direct draw loop hook to catch game over state
+            try {
+                // Use a safe approach to patch the draw function
+                // We'll use a mutation observer to watch for canvas creation
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeName === 'CANVAS') {
+                                    console.log("Canvas detected - setting up draw loop patch");
+                                    setTimeout(patchDrawLoop, 1000);
+                                    observer.disconnect();
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, { childList: true, subtree: true });
+                
+                // Also try immediately in case canvas is already there
+                if (document.querySelector('canvas')) {
+                    console.log("Canvas already exists - setting up draw loop patch");
+                    setTimeout(patchDrawLoop, 1000);
+                }
+            } catch (e) {
+                console.error("Error setting up canvas observer:", e);
+            }
+        }
+        
+        // Function to patch the draw loop for direct game state monitoring
+        function patchDrawLoop() {
+            try {
+                // Only run this once
+                if (window._drawLoopPatched) return;
+                window._drawLoopPatched = true;
+                
+                console.log("Attempting to patch p5.js draw loop");
+                
+                // Check for p5 instance
+                const p5Instance = window.p5Instance || window.p || window.draw && window;
+                
+                if (p5Instance && p5Instance.draw) {
+                    console.log("Found draw function to patch");
+                    
+                    // Store original draw function
+                    const originalDraw = p5Instance.draw;
+                    
+                    // Override draw function
+                    p5Instance.draw = function() {
+                        // Call original draw function
+                        originalDraw.apply(this, arguments);
+                        
+                        // Check game state after drawing
+                        if (window.gameState === "gameOver") {
+                            // After a brief delay, show the buttons
+                            if (!window._gameOverActioned) {
+                                window._gameOverActioned = true;
+                                console.log("Draw loop detected gameOver - showing submit buttons");
+                                setTimeout(showAllLeaderboardButtons, 500);
+                                
+                                // Reset the flag after some time to allow for state changes
+                                setTimeout(function() {
+                                    window._gameOverActioned = false;
+                                }, 3000);
+                            }
+                        } else {
+                            // Not in game over, ensure start button is hidden during gameplay
+                            if (window.gameState === "playing") {
+                                const startButton = document.getElementById('mobile-start-button');
+                                if (startButton && startButton.style.display !== 'none') {
+                                    startButton.style.display = 'none';
+                                }
+                            }
+                        }
+                    };
+                    
+                    console.log("Successfully patched draw loop for game state monitoring");
+                } else {
+                    console.warn("Could not find p5.js draw function to patch");
+                }
+            } catch (e) {
+                console.error("Error patching draw loop:", e);
+            }
         }
         
         // Function to update leaderboard submit button visibility based on game state
@@ -841,7 +901,7 @@
         function submitToLeaderboard() {
             console.log("Mobile submit to leaderboard button clicked");
             try {
-                // Extra safety check - hide the submit button
+                // Extra safety check - hide ALL buttons to prevent double submission
                 const leaderboardBtn = document.getElementById('submitLeaderboardBtn');
                 if (leaderboardBtn) {
                     leaderboardBtn.style.display = 'none';
@@ -853,162 +913,158 @@
                     bruteForceButton.style.display = 'none';
                 }
                 
-                // First try using the game's native function if available
-                if (typeof window.showLeaderboardForm === 'function') {
-                    console.log("Using game's native showLeaderboardForm function");
-                    window.showLeaderboardForm();
-                    window.gameState = "enteringScore";
-                    return; // Exit early since the native function will handle everything
+                // Hide the guaranteed overlay
+                const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
+                if (guaranteedButton) {
+                    guaranteedButton.style.display = 'none';
                 }
                 
-                // If native function not available, use our custom implementation
-                // Get the leaderboard form element
-                const form = document.getElementById('leaderboardForm');
-                if (!form) {
-                    console.error("Leaderboard form element not found!");
+                // First try using the game's native function if available
+                if (typeof window.showLeaderboardForm === 'function') {
+                    console.log("Using game's native showLeaderboardForm");
+                    window.showLeaderboardForm();
                     return;
                 }
                 
-                // Set game state directly
-                window.gameState = "enteringScore";
-                
-                // Reset the form fields if they contain previous entries
-                const nameInput = document.getElementById('playerName');
-                const emailInput = document.getElementById('playerEmail');
-                
-                if (nameInput) {
-                    nameInput.value = '';
+                // Create and show a simple form for name input
+                const existingForm = document.getElementById('mobileLeaderboardForm');
+                if (existingForm) {
+                    existingForm.remove();
                 }
                 
-                if (emailInput) {
-                    emailInput.value = '';
-                }
+                console.log("Creating mobile leaderboard submission form");
                 
-                // Make form fully visible with high z-index
-                form.style.display = 'block';
-                form.style.opacity = '1';
-                form.style.visibility = 'visible';
+                const formContainer = document.createElement('div');
+                formContainer.id = 'mobileLeaderboardForm';
+                formContainer.style.position = 'fixed';
+                formContainer.style.top = '0';
+                formContainer.style.left = '0';
+                formContainer.style.width = '100%';
+                formContainer.style.height = '100%';
+                formContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                formContainer.style.display = 'flex';
+                formContainer.style.justifyContent = 'center';
+                formContainer.style.alignItems = 'center';
+                formContainer.style.flexDirection = 'column';
+                formContainer.style.zIndex = '10000001';
+                formContainer.style.fontFamily = 'Arial, sans-serif';
                 
-                // Apply mobile form enhancements
-                enhanceFormForMobile(form);
+                const formTitle = document.createElement('h2');
+                formTitle.textContent = 'SUBMIT YOUR SCORE';
+                formTitle.style.color = 'white';
+                formTitle.style.marginBottom = '20px';
+                formTitle.style.fontSize = '24px';
                 
-                // Store score for submission
-                window.pendingScore = window.score;
+                const scoreDisplay = document.createElement('div');
+                scoreDisplay.textContent = 'Score: ' + window.score;
+                scoreDisplay.style.color = 'white';
+                scoreDisplay.style.fontSize = '20px';
+                scoreDisplay.style.marginBottom = '20px';
                 
-                console.log("Leaderboard form displayed via direct manipulation");
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = 'Enter your name';
+                nameInput.style.padding = '10px';
+                nameInput.style.fontSize = '18px';
+                nameInput.style.marginBottom = '20px';
+                nameInput.style.width = '80%';
+                nameInput.style.maxWidth = '300px';
+                nameInput.style.borderRadius = '5px';
+                nameInput.style.border = 'none';
                 
-                // Add special mobile event handlers for form submission
-                const submitButton = document.getElementById('submitScore');
-                const cancelButton = document.getElementById('cancelSubmit');
+                const submitButton = document.createElement('button');
+                submitButton.textContent = 'SUBMIT';
+                submitButton.style.padding = '15px 30px';
+                submitButton.style.fontSize = '20px';
+                submitButton.style.backgroundColor = '#ff3333';
+                submitButton.style.color = 'white';
+                submitButton.style.border = 'none';
+                submitButton.style.borderRadius = '5px';
+                submitButton.style.cursor = 'pointer';
                 
-                if (submitButton) {
-                    // Remove any previous listeners to avoid duplicates
-                    const newSubmitBtn = submitButton.cloneNode(true);
-                    submitButton.parentNode.replaceChild(newSubmitBtn, submitButton);
-                    
-                    // Add event listener for the submit button
-                    newSubmitBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                        
-                        console.log("Mobile submit button clicked");
-                        
-                        // Get form values
-                        const nameInput = document.getElementById('playerName');
-                        const emailInput = document.getElementById('playerEmail');
-                        const emailError = document.getElementById('emailError');
-                        
-                        if (!nameInput || !emailInput) {
-                            console.error("Form inputs not found");
-                            return;
-                        }
-                        
-                        // Get values
-                        const email = emailInput.value.trim();
-                        const name = nameInput.value.trim() || 'Anonymous Player';
-                        
-                        // Validate email
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        if (!emailRegex.test(email)) {
-                            if (emailError) {
-                                emailError.style.display = 'block';
-                            }
-                            console.error("Invalid email format");
-                            return;
-                        }
-                        
-                        if (emailError) {
-                            emailError.style.display = 'none';
-                        }
-                        
-                        console.log("Submitting score:", name, email, window.pendingScore);
-                        
-                        // Call the game's submitScoreToLeaderboard function directly
-                        if (typeof window.submitScoreToLeaderboard === 'function') {
-                            window.submitScoreToLeaderboard(name, email, window.pendingScore);
-                        } else {
-                            console.error("submitScoreToLeaderboard function not found!");
-                        }
-                    }, true);
-                }
+                formContainer.appendChild(formTitle);
+                formContainer.appendChild(scoreDisplay);
+                formContainer.appendChild(nameInput);
+                formContainer.appendChild(submitButton);
                 
-                if (cancelButton) {
-                    // Remove any previous listeners to avoid duplicates
-                    const newCancelBtn = cancelButton.cloneNode(true);
-                    cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
-                    
-                    // Add event listener for the cancel button
-                    newCancelBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                        
-                        console.log("Mobile cancel button clicked");
-                        
-                        // Hide the form
-                        if (typeof window.hideLeaderboardForm === 'function') {
-                            window.hideLeaderboardForm();
-                    } else {
-                            form.style.display = 'none';
-                        }
-                        
-                        // Return to game over screen
-                        window.gameState = "gameOver";
-                    }, true);
-                }
+                document.body.appendChild(formContainer);
                 
-                // Focus on name input after a short delay
-                setTimeout(() => {
-                    const nameInput = document.getElementById('playerName');
-                    if (nameInput) {
-                        // Attempt to focus and scroll into view
-                        nameInput.focus();
-                        nameInput.scrollIntoView(false);
-                        console.log("Focus set on name input field");
+                // Focus the name input for mobile keyboards
+                setTimeout(() => nameInput.focus(), 300);
+                
+                // When the submit button is clicked, submit to Supabase
+                submitButton.addEventListener('click', async function() {
+                    const playerName = nameInput.value.trim();
+                    if (!playerName) {
+                        alert('Please enter your name');
+                        return;
                     }
-                }, 300);
-                
-                // Ensure the form doesn't get hidden by preventing propagation of events
-                form.addEventListener('touchstart', function(e) {
-                    e.stopPropagation();
-                }, { capture: true });
-                
-                form.addEventListener('touchmove', function(e) {
-                    e.stopPropagation();
-                }, { capture: true });
-                
-                form.addEventListener('touchend', function(e) {
-                    e.stopPropagation();
-                }, { capture: true });
+                    
+                    try {
+                        console.log("Submitting score to Supabase: ", {
+                            score: window.score,
+                            player_name: playerName
+                        });
+                        
+                        // Check if we can use the game's built-in submit function
+                        if (typeof window.submitScoreToLeaderboard === 'function') {
+                            console.log("Using game's submitScoreToLeaderboard function");
+                            window.submitScoreToLeaderboard(playerName, window.score);
+                        } 
+                        // Otherwise use direct Supabase access
+                        else if (window.supabaseClient) {
+                            console.log("Using direct Supabase access");
+                            const { data, error } = await window.supabaseClient
+                                .from('leaderboard')
+                                .insert([{
+                                    player_name: playerName,
+                                    score: window.score
+                                }]);
+                                
+                            if (error) {
+                                console.error("Supabase error:", error);
+                                alert('Error submitting score: ' + error.message);
+                                return;
+                            }
+                            
+                            console.log("Score submitted successfully:", data);
+                        } else {
+                            console.error("No submission method available");
+                            alert('Error: Could not connect to leaderboard');
+                            return;
+                        }
+                        
+                        // Show success message
+                        formTitle.textContent = 'SCORE SUBMITTED!';
+                        formContainer.removeChild(nameInput);
+                        formContainer.removeChild(submitButton);
+                        
+                        const newGameButton = document.createElement('button');
+                        newGameButton.textContent = 'PLAY AGAIN';
+                        newGameButton.style.padding = '15px 30px';
+                        newGameButton.style.fontSize = '20px';
+                        newGameButton.style.backgroundColor = '#4CAF50';
+                        newGameButton.style.color = 'white';
+                        newGameButton.style.border = 'none';
+                        newGameButton.style.borderRadius = '5px';
+                        newGameButton.style.cursor = 'pointer';
+                        newGameButton.style.marginTop = '20px';
+                        
+                        formContainer.appendChild(newGameButton);
+                        
+                        newGameButton.addEventListener('click', function() {
+                            formContainer.remove();
+                            location.reload(); // Quick way to restart the game
+                        });
+                        
+                    } catch (e) {
+                        console.error("Error submitting score:", e);
+                        alert('Error submitting score. Please try again.');
+                    }
+                });
                 
             } catch (e) {
                 console.error("Error in submitToLeaderboard:", e);
-                
-                // As a last resort, try calling the game's native function
-                    if (typeof window.showLeaderboardForm === 'function') {
-                    console.log("Falling back to game's native showLeaderboardForm");
-                        window.showLeaderboardForm();
-                        window.gameState = "enteringScore";
-                }
             }
         }
         
@@ -1172,6 +1228,32 @@
                 console.log("Mobile device detected via DOMContentLoaded");
                 document.getElementById('mobileControls').style.display = 'block';
                 
+                // Handle mobile start button
+                const mobileStartButton = document.getElementById('mobile-start-button');
+                if (mobileStartButton) {
+                    // Show the button
+                    mobileStartButton.style.display = 'block';
+                    
+                    // Set up click/touch handlers to ensure it disappears after use
+                    mobileStartButton.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startGame();
+                        this.style.display = 'none';
+                        return false;
+                    };
+                    
+                    mobileStartButton.ontouchstart = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startGame();
+                        this.style.display = 'none';
+                        return false;
+                    };
+                    
+                    console.log("Mobile start button initialized");
+                }
+                
                 // Set up game state monitoring for button visibility
                 setupRestartButtonMonitor();
                 
@@ -1194,6 +1276,14 @@
                     e.stopPropagation();
                     submitToLeaderboard();
                 }
+                
+                // Also check guaranteed-mobile-submit
+                if (e.target.id === 'guaranteed-mobile-submit' || e.target.closest('#guaranteed-mobile-submit')) {
+                    console.log("Guaranteed submit button touched via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitToLeaderboard();
+                }
             }, {capture: true, passive: false});
             
             document.addEventListener('click', function(e) {
@@ -1201,6 +1291,14 @@
                 const leaderboardButton = document.getElementById('submitLeaderboardBtn');
                 if (leaderboardButton && e.target === leaderboardButton) {
                     console.log("Leaderboard submit button clicked via global handler");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitToLeaderboard();
+                }
+                
+                // Also check guaranteed-mobile-submit
+                if (e.target.id === 'guaranteed-mobile-submit' || e.target.closest('#guaranteed-mobile-submit')) {
+                    console.log("Guaranteed submit button clicked via global handler");
                     e.preventDefault();
                     e.stopPropagation();
                     submitToLeaderboard();
@@ -1482,30 +1580,40 @@
         function showAllLeaderboardButtons() {
             console.log("Showing ALL leaderboard buttons for maximum reliability");
             
-            // Show the main button first
-            window.forceShowLeaderboardButton();
+            // Most important: Show the guaranteed overlay as a completely reliable method
+            const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
+            if (guaranteedButton) {
+                guaranteedButton.style.display = 'block';
+                guaranteedButton.style.position = 'fixed';
+                guaranteedButton.style.top = '0';
+                guaranteedButton.style.left = '0';
+                guaranteedButton.style.width = '100%';
+                guaranteedButton.style.height = '100%';
+                guaranteedButton.style.zIndex = '10000000';
+                guaranteedButton.style.pointerEvents = 'auto';
+                
+                // Make sure to hide the mobile start button if it's still visible
+                const startButton = document.getElementById('mobile-start-button');
+                if (startButton) {
+                    startButton.style.display = 'none';
+                }
+                
+                console.log("Guaranteed submit overlay displayed");
+            }
             
-            // Show the brute force button
+            // Show the brute force button as another option
             const bruteForceButton = document.getElementById('brute-force-mobile-button');
             if (bruteForceButton) {
                 bruteForceButton.style.display = 'block';
                 bruteForceButton.style.position = 'fixed';
-                bruteForceButton.style.zIndex = '10000001';
+                bruteForceButton.style.zIndex = '9999999';
                 bruteForceButton.style.pointerEvents = 'auto';
                 bruteForceButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
                 bruteForceButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
             }
             
-            // Show the guaranteed overlay as a last resort
-            const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
-            if (guaranteedButton) {
-                guaranteedButton.style.display = 'block';
-                guaranteedButton.style.position = 'fixed';
-                guaranteedButton.style.zIndex = '9999999';
-                guaranteedButton.style.pointerEvents = 'auto';
-                guaranteedButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-                guaranteedButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
-            }
+            // Also try the main button as a third option
+            window.forceShowLeaderboardButton();
         }
         
         // Add patch for game loop to ensure buttons are shown
@@ -1612,7 +1720,7 @@
 </head>
 <body>
     <!-- Simple mobile start button, completely separate from the game's original controls -->
-    <div id="mobile-start-button">TAP TO START</div>
+    <div id="mobile-start-button" onclick="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();" ontouchstart="startGame(); this.style.display='none'; event.preventDefault(); event.stopPropagation();">TAP TO START</div>
     
     <!-- Game will be rendered by p5.js -->
     
@@ -1646,8 +1754,8 @@
     </div>
 
     <!-- Add this immediately before the end of the body tag -->
-    <div id="guaranteed-mobile-submit" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999999; background-color: rgba(0,0,0,0.7); pointer-events: all;">
-        <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 100px; background-color: #ff3333; color: white; text-align: center; font-size: 26px; line-height: 100px; border-radius: 10px; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; border: 5px solid white; box-shadow: 0 0 30px #ff0000; animation: mobilePulse 1s infinite alternate;">
+    <div id="guaranteed-mobile-submit" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000000; background-color: rgba(0,0,0,0.8); pointer-events: all;">
+        <div onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 350px; height: 150px; background-color: #ff3333; color: white; text-align: center; font-size: 32px; line-height: 150px; border-radius: 15px; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; border: 8px solid white; box-shadow: 0 0 50px #ff0000; animation: mobilePulse 1s infinite alternate; cursor: pointer;">
             SUBMIT SCORE
         </div>
         <style>
