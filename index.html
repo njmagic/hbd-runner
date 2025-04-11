@@ -24,30 +24,49 @@
         
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
-            display: none;
+            display: none; /* Only shown on mobile */
             position: fixed;
-            top: 0;
+            bottom: 20px;
             left: 0;
             width: 100%;
-            height: 100%;
-            z-index: 1000;
+            padding: 0;
+            z-index: 9998;
             pointer-events: none;
         }
         
-        .control-area {
-            position: absolute;
-            width: 50%;
-            height: 100%;
+        /* Individual mobile buttons */
+        .mobile-button {
             pointer-events: auto;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 10px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         
-        #leftControl {
-            left: 0;
+        #jumpButton {
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            position: fixed;
+            left: 40px;
+            bottom: 30px;
         }
         
-        #rightControl {
-            right: 0;
+        #shootButton {
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            position: fixed;
+            right: 40px;
+            bottom: 30px;
         }
         
         /* Mobile leaderboard submit button - only shows on game over */
@@ -117,15 +136,24 @@
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHdtaWtoenp2dGNhZmh0aWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1NDA5MDAsImV4cCI6MjAyOTExNjkwMH0.o71bhbTBK_2FHlJYFrELCngtaLWYtFjuXjiN7SuSHW4';
             window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
             
-            // Make mobile controls visible on mobile devices
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+            // Center the canvas for mobile devices
+            centerCanvasOnMobile();
+            
+            // Initialize mobile checks
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                 (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
                 ('ontouchstart' in window) ||
-                (navigator.maxTouchPoints > 0)) {
-                document.getElementById('mobileControls').style.display = 'block';
+                (navigator.maxTouchPoints > 0);
+                
+            // If on mobile, show the start button (controls will be shown during gameplay)
+            if (isMobile) {
+                setTimeout(function() {
+                    const startBtn = document.getElementById('mobile-start-button');
+                    if (startBtn && (window.showTitleScreen === true || window.gameState === "titleScreen")) {
+                        startBtn.style.display = 'block';
+                    }
+                }, 500);
             }
-            
-            centerCanvasOnMobile();
         });
         
         // Functions exposed to window for mobile integration
@@ -391,26 +419,41 @@
                         bruteForceButton.style.display = 'block';
                     }
                     
-                    // Hide start button
+                    // Hide start button and controls
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'none';
                     }
+                    
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'none';
+                    }
                 }
                 
-                // Title screen - show start button
+                // Title screen - show start button, hide controls
                 if ((window.showTitleScreen === true || window.gameState === "titleScreen") && window.gameState !== "playing") {
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'block';
                     }
+                    
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'none';
+                    }
                 }
                 
-                // Playing state - hide start button
+                // Playing state - hide start button, show controls
                 if (window.gameState === "playing") {
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'none';
+                    }
+                    
+                    const mobileControls = document.getElementById('mobileControls');
+                    if (mobileControls) {
+                        mobileControls.style.display = 'block';
                     }
                 }
             } catch (e) {
@@ -526,7 +569,7 @@
 <body>
     <!-- Simple mobile start button, completely separate from the game's original controls -->
     <div id="mobile-start-button" 
-         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 240px; height: 100px; background-color: rgba(0, 0, 0, 0.7); color: white; font-size: 24px; font-family: Arial, sans-serif; text-align: center; line-height: 100px; border-radius: 10px; border: 4px solid white; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto;"
+         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff;"
          onclick="startGameMobile(); return false;" 
          ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
          TAP TO START
@@ -536,8 +579,16 @@
     
     <!-- Mobile touch controls overlay -->
     <div id="mobileControls">
-        <div id="leftControl" class="control-area" onclick="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" onmousedown="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" ontouchstart="mobileJump(); if(window.showTitleScreen === true) startGameMobile();"></div>
-        <div id="rightControl" class="control-area" onclick="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" onmousedown="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" ontouchstart="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();"></div>
+        <div id="jumpButton" class="mobile-button" 
+             onclick="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" 
+             ontouchstart="mobileJump(); if(window.showTitleScreen === true) startGameMobile(); event.preventDefault();">
+            JUMP
+        </div>
+        <div id="shootButton" class="mobile-button" 
+             onclick="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" 
+             ontouchstart="mobileShoot(); if(window.showTitleScreen === true) startGameMobile(); event.preventDefault();">
+            SHOOT
+        </div>
     </div>
     
     <!-- Leaderboard submission button for mobile -->
