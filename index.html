@@ -1308,6 +1308,10 @@
                 opacity: 1 !important;
                 visibility: visible !important;
                 animation: pulseLarge 1.5s infinite alternate !important;
+                touch-action: manipulation !important;
+                -webkit-user-select: none !important;
+                user-select: none !important;
+                -webkit-touch-callout: none !important;
             `;
             
             // Try setting individual properties for browsers that might ignore cssText
@@ -1316,6 +1320,11 @@
             leaderboardBtn.style.visibility = 'visible';
             leaderboardBtn.style.opacity = '1';
             leaderboardBtn.style.zIndex = '999999';
+            leaderboardBtn.style.pointerEvents = 'auto';
+            
+            // Direct event handlers - most reliable
+            leaderboardBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+            leaderboardBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
             
             // Ensure it has proper class
             if (!leaderboardBtn.classList.contains("control-area")) {
@@ -1329,6 +1338,32 @@
             
             // Call to add event listeners
             addLeaderboardButtonListeners(leaderboardBtn);
+            
+            // Also force show the brute force button as a reliable fallback
+            const bruteForceButton = document.getElementById('brute-force-mobile-button');
+            if (bruteForceButton) {
+                bruteForceButton.style.display = 'block';
+                bruteForceButton.style.position = 'fixed';
+                bruteForceButton.style.bottom = '30%';
+                bruteForceButton.style.left = '0';
+                bruteForceButton.style.right = '0';
+                bruteForceButton.style.margin = '0 auto';
+                bruteForceButton.style.zIndex = '10000001';
+                bruteForceButton.style.width = '90%';
+                bruteForceButton.style.maxWidth = '320px';
+                bruteForceButton.style.height = '120px';
+                bruteForceButton.style.pointerEvents = 'auto';
+                bruteForceButton.style.cursor = 'pointer';
+                bruteForceButton.style.touchAction = 'manipulation';
+                bruteForceButton.style.webkitUserSelect = 'none';
+                bruteForceButton.style.userSelect = 'none';
+                
+                // Direct event handlers - most reliable
+                bruteForceButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                bruteForceButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                
+                console.log("Brute force button visibility ensured");
+            }
             
             // Double check visibility after a short delay
             setTimeout(function() {
@@ -1352,11 +1387,36 @@
             
             console.log("Adding enhanced event listeners to leaderboard button");
             
-            // Remove any existing listeners first
+            // Remove any existing listeners first by cloning the element
             const newButton = leaderboardBtn.cloneNode(true);
             if (leaderboardBtn.parentNode) {
                 leaderboardBtn.parentNode.replaceChild(newButton, leaderboardBtn);
             }
+            
+            // Set critical properties directly on the element
+            newButton.style.display = 'block';
+            newButton.style.position = 'fixed';
+            newButton.style.top = '40%';
+            newButton.style.left = '50%';
+            newButton.style.transform = 'translate(-50%, -50%)';
+            newButton.style.zIndex = '9999999';
+            newButton.style.width = '300px';
+            newButton.style.height = '100px';
+            newButton.style.backgroundColor = 'rgba(220, 40, 40, 0.95)';
+            newButton.style.color = 'white';
+            newButton.style.fontWeight = 'bold';
+            newButton.style.pointerEvents = 'auto';
+            
+            // Most importantly, set these properties
+            newButton.style.cursor = 'pointer';
+            newButton.style.userSelect = 'none';
+            newButton.style.webkitUserSelect = 'none';
+            newButton.style.touchAction = 'manipulation';
+            newButton.style.webkitTouchCallout = 'none';
+            
+            // Add inline event handlers (most reliable method)
+            newButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+            newButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
             
             // Add all possible event types for maximum compatibility
             const eventTypes = ['click', 'touchstart', 'mousedown', 'pointerdown', 'touchend', 'mouseup'];
@@ -1372,7 +1432,7 @@
                     this.style.backgroundColor = 'rgba(180, 20, 20, 0.95)';
                     
                     // Call the submission function
-                        submitToLeaderboard();
+                    submitToLeaderboard();
                     
                     // Restore button appearance after a short delay
                     setTimeout(() => {
@@ -1388,7 +1448,64 @@
             newButton.setAttribute('role', 'button');
             newButton.setAttribute('aria-label', 'Submit your score to the leaderboard');
             
+            // Also set up the brute force button
+            const bruteForceButton = document.getElementById('brute-force-mobile-button');
+            if (bruteForceButton) {
+                // Make sure the brute force button is visible
+                bruteForceButton.style.display = 'block';
+                bruteForceButton.style.position = 'fixed';
+                bruteForceButton.style.zIndex = '10000001';
+                bruteForceButton.style.pointerEvents = 'auto';
+                
+                // Ensure it has proper event handlers
+                bruteForceButton.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Brute force button clicked");
+                    submitToLeaderboard();
+                    return false;
+                };
+                
+                bruteForceButton.ontouchstart = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Brute force button touched");
+                    submitToLeaderboard();
+                    return false;
+                };
+            }
+            
             return newButton;
+        }
+        
+        // Add a new helper function to show all leaderboard buttons 
+        function showAllLeaderboardButtons() {
+            console.log("Showing ALL leaderboard buttons for maximum reliability");
+            
+            // Show the main button first
+            window.forceShowLeaderboardButton();
+            
+            // Show the brute force button
+            const bruteForceButton = document.getElementById('brute-force-mobile-button');
+            if (bruteForceButton) {
+                bruteForceButton.style.display = 'block';
+                bruteForceButton.style.position = 'fixed';
+                bruteForceButton.style.zIndex = '10000001';
+                bruteForceButton.style.pointerEvents = 'auto';
+                bruteForceButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                bruteForceButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+            }
+            
+            // Show the guaranteed overlay as a last resort
+            const guaranteedButton = document.getElementById('guaranteed-mobile-submit');
+            if (guaranteedButton) {
+                guaranteedButton.style.display = 'block';
+                guaranteedButton.style.position = 'fixed';
+                guaranteedButton.style.zIndex = '9999999';
+                guaranteedButton.style.pointerEvents = 'auto';
+                guaranteedButton.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                guaranteedButton.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+            }
         }
         
         // Add patch for game loop to ensure buttons are shown
@@ -1418,6 +1535,7 @@
                                     setTimeout(updateLeaderboardButtonVisibility, 500);
                                     setTimeout(updateLeaderboardButtonVisibility, 1000);
                                     setTimeout(window.forceShowLeaderboardButton, 1500);
+                                    setTimeout(showAllLeaderboardButtons, 2000); // Show all buttons after a delay
                                 }
                             }
                             
@@ -1431,6 +1549,7 @@
                                 if (!leaderboardBtn || leaderboardBtn.style.display !== 'block') {
                                     console.log("Button not visible during game over, forcing display...");
                                     window.forceShowLeaderboardButton();
+                                    showAllLeaderboardButtons(); // Show all buttons if main one isn't visible
                                 }
                             }
                         }
@@ -1459,10 +1578,12 @@
                                     console.log("Button doesn't exist in draw loop, creating...");
                                     createLeaderboardButton();
                                     setTimeout(window.forceShowLeaderboardButton, 0);
+                                    setTimeout(showAllLeaderboardButtons, 100); // Show all buttons
                                 } else if (leaderboardBtn.style.display !== 'block') {
                                     // Button exists but not visible
                                     console.log("Button exists but not visible in draw loop, showing...");
                                     window.forceShowLeaderboardButton();
+                                    setTimeout(showAllLeaderboardButtons, 100); // Show all buttons
                                 }
                             }
                         } catch (e) {
@@ -1482,6 +1603,7 @@
                         console.log("Initial delayed check for game over state");
                         updateLeaderboardButtonVisibility();
                         window.forceShowLeaderboardButton();
+                        showAllLeaderboardButtons(); // Show all buttons
                     }
                 }, 2000);
             }, 1000); // Wait for game to initialize
@@ -1524,7 +1646,7 @@
     </div>
 
     <!-- Add this immediately before the end of the body tag -->
-    <div id="guaranteed-mobile-submit" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999999; background-color: rgba(0,0,0,0.7); pointer-events: all;">
+    <div id="guaranteed-mobile-submit" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999999; background-color: rgba(0,0,0,0.7); pointer-events: all;">
         <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 100px; background-color: #ff3333; color: white; text-align: center; font-size: 26px; line-height: 100px; border-radius: 10px; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; border: 5px solid white; box-shadow: 0 0 30px #ff0000; animation: mobilePulse 1s infinite alternate;">
             SUBMIT SCORE
         </div>
@@ -1537,7 +1659,7 @@
     </div>
 
     <!-- Add this right after the closing body tag -->
-    <div id="brute-force-mobile-button" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
+    <div id="brute-force-mobile-button" onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation();" style="display: none; position: fixed; bottom: 30%; left: 0; right: 0; z-index: 10000000; margin: 0 auto; width: 90%; max-width: 320px; height: 120px; background: red; color: white; font-size: 30px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; line-height: 120px; border-radius: 20px; border: 8px solid white; box-shadow: 0 0 50px #ff0000;">SUBMIT SCORE</div>
 
     <!-- Simple mobile integration script - directly embedded to avoid external file issues -->
 <script>
@@ -1547,6 +1669,74 @@
                         (window.matchMedia && window.matchMedia("(max-width: 768px)").matches) ||
                         ('ontouchstart' in window) ||
                         (navigator.maxTouchPoints > 0);
+                        
+        // Initialize leaderboard buttons immediately with direct event handlers        
+        if (isMobile) {
+            console.log("Mobile device detected - initializing leaderboard buttons with direct handlers");
+            
+            // Set up both buttons immediately
+            setTimeout(function() {
+                // Main submit button
+                const submitBtn = document.getElementById('submitLeaderboardBtn');
+                if (submitBtn) {
+                    submitBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                    submitBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                    console.log("Direct handlers added to main submit button");
+                }
+                
+                // Brute force button
+                const bruteForceBtn = document.getElementById('brute-force-mobile-button');
+                if (bruteForceBtn) {
+                    bruteForceBtn.setAttribute('onclick', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                    bruteForceBtn.setAttribute('ontouchstart', 'submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;');
+                    console.log("Direct handlers added to brute force button");
+                }
+                
+                // Register global touch handler for additional reliability
+                document.addEventListener('touchstart', function(e) {
+                    // For the main submit button
+                    if (e.target.id === 'submitLeaderboardBtn' || e.target.closest('#submitLeaderboardBtn')) {
+                        console.log("Submit button touched via global handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        submitToLeaderboard();
+                        return false;
+                    }
+                    
+                    // For the brute force button
+                    if (e.target.id === 'brute-force-mobile-button' || e.target.closest('#brute-force-mobile-button')) {
+                        console.log("Brute force button touched via global handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        submitToLeaderboard();
+                        return false;
+                    }
+                }, {capture: true, passive: false});
+                
+                // Register similar global click handler
+                document.addEventListener('click', function(e) {
+                    // For the main submit button
+                    if (e.target.id === 'submitLeaderboardBtn' || e.target.closest('#submitLeaderboardBtn')) {
+                        console.log("Submit button clicked via global handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        submitToLeaderboard();
+                        return false;
+                    }
+                    
+                    // For the brute force button
+                    if (e.target.id === 'brute-force-mobile-button' || e.target.closest('#brute-force-mobile-button')) {
+                        console.log("Brute force button clicked via global handler");
+                        e.preventDefault();
+                        e.stopPropagation();
+                        submitToLeaderboard();
+                        return false;
+                    }
+                }, {capture: true, passive: false});
+                
+                console.log("Global event handlers registered for maximum button reliability");
+            }, 100);
+        }
         
             // Add mobile form submission improvements when page loads
             function initMobileFormImprovements() {
