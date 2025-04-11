@@ -22,14 +22,6 @@
             background-color: #000;
         }
         
-        /* Ensure canvas is visible and active */
-        canvas {
-            display: block !important;
-            visibility: visible !important;
-            touch-action: auto !important;
-            pointer-events: auto !important;
-        }
-        
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
             display: none; /* Only shown when needed */
@@ -143,6 +135,10 @@
                 top: 50% !important;
                 left: 50% !important;
                 transform: translate(-50%, -50%) !important;
+                display: block !important;
+                visibility: visible !important;
+                touch-action: auto !important;
+                pointer-events: auto !important;
             }
             
             main {
@@ -405,6 +401,9 @@
         
         // Watch for p5.js initialization and ensure proper setup
         function ensureP5Animation() {
+            // Only run this on mobile devices
+            if (!window.isMobileDevice) return false;
+            
             // Check if the p5 instance is available now
             if (typeof window.p5 !== 'undefined') {
                 console.log("p5.js detected, setting up hooks");
@@ -453,8 +452,12 @@
             return false;
         }
         
-        // Start the p5 animation checker
-        setTimeout(ensureP5Animation, 800);
+        // Start the p5 animation checker - only if we're on a mobile device
+        setTimeout(function() {
+            if (window.isMobileDevice) {
+                ensureP5Animation();
+            }
+        }, 800);
         
         // Submit to leaderboard function
         function submitToLeaderboard() {
@@ -548,6 +551,9 @@
         
         // Function to specifically activate the canvas and ensure animations run
         function activateCanvas() {
+            // Only run this on mobile devices
+            if (!window.isMobileDevice) return;
+            
             // Check if the p5 instance exists and is initialized
             if (typeof window.p5 !== 'undefined' && typeof window.loop === 'function') {
                 // Ensure the p5 loop is running
@@ -593,6 +599,9 @@
         
         // Check if the canvas is actually active and animations are running
         function checkCanvasStatus() {
+            // Only run this on mobile devices
+            if (!window.isMobileDevice) return;
+            
             // Look for signs of animation on the title screen
             if (typeof window.frameCount !== 'undefined') {
                 console.log("Frame count detected:", window.frameCount);
