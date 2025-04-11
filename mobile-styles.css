@@ -22,6 +22,57 @@
         width: auto !important;
         height: auto !important;
     }
+    
+    /* Mobile leaderboard enhancements */
+    #leaderboardForm {
+        width: 90% !important;
+        max-width: 350px !important;
+        padding: 15px !important;
+    }
+    
+    #leaderboardForm input, 
+    #leaderboardForm button {
+        font-size: 16px !important;
+        padding: 12px 8px !important;
+        margin: 12px 0 !important;
+        border-radius: 4px !important;
+        -webkit-appearance: none; /* Removes default styling on iOS */
+    }
+    
+    #leaderboardForm input {
+        border: 1px solid #555 !important;
+    }
+    
+    #leaderboardForm input:focus {
+        outline: none !important;
+        border-color: #888 !important;
+    }
+    
+    #leaderboardForm button {
+        height: auto !important;
+        padding: 15px 10px !important;
+    }
+    
+    .form-title {
+        font-size: 20px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .error-message {
+        font-size: 14px !important;
+        margin-top: -8px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    /* For post-submission content */
+    table {
+        width: 100% !important;
+        font-size: 14px !important;
+    }
+    
+    th, td {
+        padding: 6px 4px !important;
+    }
 }
 
 /* Mobile controls styles */

@@ -23,6 +23,7 @@
     // Variables for mobile state tracking
     let mobileButtonsShown = false;
     let gameStarted = false;
+    let leaderboardHandled = false;
     
     // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -37,6 +38,9 @@
         
         // Ensure proper canvas activation
         setTimeout(activateCanvas, 1000);
+        
+        // Set up mobile-friendly leaderboard
+        enhanceLeaderboardForMobile();
     });
     
     // Create all mobile UI elements
@@ -166,12 +170,18 @@
     function setupGameStateMonitor() {
         setInterval(function() {
             // Access the game state from the original code
-            if (window.gameState === "gameOver") {
+            if (window.gameState === "gameOver" && !leaderboardHandled) {
+                // Game over state detected, ensure leaderboard works on mobile
+                leaderboardHandled = true;
+                
                 // Hide mobile controls on game over
                 const mobileControls = document.getElementById('mobileControls');
                 if (mobileControls) {
                     mobileControls.style.display = 'none';
                 }
+                
+                // Ensure leaderboard form enhancements are applied
+                applyLeaderboardEnhancements();
             }
             // Keep the controls visible while playing
             else if (window.gameState === "playing" && gameStarted && !mobileButtonsShown) {
@@ -181,7 +191,95 @@
                     mobileButtonsShown = true;
                 }
             }
+            
+            // Reset leaderboard handled flag when game restarts
+            if (window.gameState === "start" || window.gameState === "playing") {
+                leaderboardHandled = false;
+            }
         }, 500);
+    }
+    
+    // Add mobile-specific enhancements to the leaderboard form
+    function enhanceLeaderboardForMobile() {
+        // Listen for form display changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'style' || mutation.attributeName === 'display') {
+                    if (mutation.target.style.display === 'block') {
+                        applyLeaderboardEnhancements();
+                    }
+                }
+            });
+        });
+        
+        // Get the leaderboard form
+        const leaderboardForm = document.getElementById('leaderboardForm');
+        if (leaderboardForm) {
+            // Watch for changes to the form's style attribute
+            observer.observe(leaderboardForm, { attributes: true });
+            
+            // Set up form submission handling for mobile
+            setupLeaderboardFormSubmitHandling();
+        }
+    }
+    
+    // Apply mobile-friendly enhancements to the leaderboard form
+    function applyLeaderboardEnhancements() {
+        const leaderboardForm = document.getElementById('leaderboardForm');
+        if (!leaderboardForm) return;
+        
+        // Make the form more touch-friendly
+        leaderboardForm.style.width = '90%';
+        leaderboardForm.style.maxWidth = '350px';
+        
+        // Adjust form inputs for mobile
+        const inputs = leaderboardForm.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.style.fontSize = '16px'; // Prevents zoom on iOS
+            input.style.padding = '12px 8px'; // Larger touch target
+            
+            // Add autocomplete and inputmode attributes for better mobile keyboard
+            if (input.type === 'email') {
+                input.setAttribute('inputmode', 'email');
+                input.setAttribute('autocomplete', 'email');
+            } else {
+                input.setAttribute('autocomplete', 'name');
+            }
+        });
+        
+        // Enhance buttons for mobile
+        const buttons = leaderboardForm.querySelectorAll('button');
+        buttons.forEach(button => {
+            button.style.padding = '15px';
+            button.style.margin = '10px 0';
+            button.style.fontSize = '18px';
+        });
+        
+        console.log("Leaderboard form enhanced for mobile");
+    }
+    
+    // Set up proper handling for leaderboard form submission on mobile
+    function setupLeaderboardFormSubmitHandling() {
+        const submitButton = document.getElementById('submitScore');
+        const cancelButton = document.getElementById('cancelSubmit');
+        
+        if (submitButton) {
+            // Ensure the original click handler still works
+            // We're not replacing it, just enhancing it for mobile
+            submitButton.addEventListener('touchend', function(e) {
+                // Prevent double-firing if the original handler works
+                e.preventDefault();
+                this.click();
+            });
+        }
+        
+        if (cancelButton) {
+            // Ensure the cancel button works properly on mobile
+            cancelButton.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                this.click();
+            });
+        }
     }
     
     // Special touch event handling
