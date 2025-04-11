@@ -124,6 +124,31 @@
                 position: relative !important;
             }
         }
+        
+        /* Mobile START GAME button above canvas */
+        #mobile-canvas-start-button {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 60px;
+            line-height: 60px;
+            background-color: #ff3333;
+            color: white;
+            font-size: 20px;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 10px;
+            border: 3px solid white;
+            z-index: 99999;
+            text-transform: uppercase;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
     
     <script>
@@ -148,9 +173,16 @@
             // If on mobile, show the start button (controls will be shown during gameplay)
             if (isMobile) {
                 setTimeout(function() {
+                    // Show centered start button
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn && (window.showTitleScreen === true || window.gameState === "titleScreen")) {
                         startBtn.style.display = 'block';
+                    }
+                    
+                    // Show above-canvas start button
+                    const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
+                    if (canvasStartBtn && (window.showTitleScreen === true || window.gameState === "titleScreen")) {
+                        canvasStartBtn.style.display = 'block';
                     }
                 }, 500);
             }
@@ -218,10 +250,15 @@
         function startGameMobile() {
             console.log("Mobile start game clicked");
             
-            // Hide the mobile start button
+            // Hide both mobile start buttons
             const mobileStartButton = document.getElementById('mobile-start-button');
             if (mobileStartButton) {
                 mobileStartButton.style.display = 'none';
+            }
+            
+            const canvasStartButton = document.getElementById('mobile-canvas-start-button');
+            if (canvasStartButton) {
+                canvasStartButton.style.display = 'none';
             }
             
             // Create and dispatch a spacebar keydown event to start the game
@@ -419,10 +456,15 @@
                         bruteForceButton.style.display = 'block';
                     }
                     
-                    // Hide start button and controls
+                    // Hide all game buttons
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'none';
+                    }
+                    
+                    const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
+                    if (canvasStartBtn) {
+                        canvasStartBtn.style.display = 'none';
                     }
                     
                     const mobileControls = document.getElementById('mobileControls');
@@ -431,24 +473,34 @@
                     }
                 }
                 
-                // Title screen - show start button, hide controls
+                // Title screen - show start buttons, hide controls
                 if ((window.showTitleScreen === true || window.gameState === "titleScreen") && window.gameState !== "playing") {
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'block';
                     }
                     
+                    const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
+                    if (canvasStartBtn) {
+                        canvasStartBtn.style.display = 'block';
+                    }
+                    
                     const mobileControls = document.getElementById('mobileControls');
                     if (mobileControls) {
                         mobileControls.style.display = 'none';
                     }
                 }
                 
-                // Playing state - hide start button, show controls
+                // Playing state - hide start buttons, show controls
                 if (window.gameState === "playing") {
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'none';
+                    }
+                    
+                    const canvasStartBtn = document.getElementById('mobile-canvas-start-button');
+                    if (canvasStartBtn) {
+                        canvasStartBtn.style.display = 'none';
                     }
                     
                     const mobileControls = document.getElementById('mobileControls');
@@ -567,6 +619,13 @@
     </script>
 </head>
 <body>
+    <!-- Mobile START GAME button above canvas -->
+    <div id="mobile-canvas-start-button" 
+         onclick="startGameMobile(); return false;" 
+         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
+        START GAME
+    </div>
+    
     <!-- Simple mobile start button, completely separate from the game's original controls -->
     <div id="mobile-start-button" 
          style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff;"
