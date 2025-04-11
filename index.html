@@ -237,40 +237,76 @@
         
         // Mobile control functions
         function mobileJump() {
-            // Use keyCode 32 (spacebar) for jump
-            const e = new KeyboardEvent('keydown', { 
-                'keyCode': 32,
-                'key': ' ',
-                'code': 'Space',
-                'which': 32,
-                'bubbles': true
-            });
-            document.dispatchEvent(e);
             console.log("Mobile jump event fired");
             
-            // Hide start button if on title screen
-            if (window.showTitleScreen) {
-                const startBtn = document.getElementById('mobile-start-button');
-                if (startBtn) startBtn.style.display = 'none';
+            // If on title screen, start the game first
+            if (window.showTitleScreen === true || window.gameState === "titleScreen") {
+                console.log("Starting game from jump button");
+                startGameMobile();
+                
+                // Short delay before sending the actual jump command
+                setTimeout(function() {
+                    // Use keyCode 32 (spacebar) for jump
+                    const e = new KeyboardEvent('keydown', { 
+                        'keyCode': 32,
+                        'key': ' ',
+                        'code': 'Space',
+                        'which': 32,
+                        'bubbles': true,
+                        'cancelable': true
+                    });
+                    document.dispatchEvent(e);
+                    console.log("Delayed jump event fired after starting game");
+                }, 300);
+            } else {
+                // Regular jump if game already started
+                // Use keyCode 32 (spacebar) for jump
+                const e = new KeyboardEvent('keydown', { 
+                    'keyCode': 32,
+                    'key': ' ',
+                    'code': 'Space',
+                    'which': 32,
+                    'bubbles': true,
+                    'cancelable': true
+                });
+                document.dispatchEvent(e);
             }
         }
         
         function mobileShoot() {
-            // Use keyCode 90 (Z key) for shooting
-            const e = new KeyboardEvent('keydown', { 
-                'keyCode': 90,
-                'key': 'z',
-                'code': 'KeyZ', 
-                'which': 90,
-                'bubbles': true
-            });
-            document.dispatchEvent(e);
             console.log("Mobile shoot event fired");
             
-            // Hide start button if on title screen
-            if (window.showTitleScreen) {
-                const startBtn = document.getElementById('mobile-start-button');
-                if (startBtn) startBtn.style.display = 'none';
+            // If on title screen, start the game first
+            if (window.showTitleScreen === true || window.gameState === "titleScreen") {
+                console.log("Starting game from shoot button");
+                startGameMobile();
+                
+                // Short delay before sending the actual shoot command
+                setTimeout(function() {
+                    // Use keyCode 90 (Z key) for shooting
+                    const e = new KeyboardEvent('keydown', { 
+                        'keyCode': 90,
+                        'key': 'z',
+                        'code': 'KeyZ', 
+                        'which': 90,
+                        'bubbles': true,
+                        'cancelable': true
+                    });
+                    document.dispatchEvent(e);
+                    console.log("Delayed shoot event fired after starting game");
+                }, 300);
+            } else {
+                // Regular shoot if game already started
+                // Use keyCode 90 (Z key) for shooting
+                const e = new KeyboardEvent('keydown', { 
+                    'keyCode': 90,
+                    'key': 'z',
+                    'code': 'KeyZ', 
+                    'which': 90,
+                    'bubbles': true,
+                    'cancelable': true
+                });
+                document.dispatchEvent(e);
             }
         }
         
@@ -289,36 +325,121 @@
                 canvasStartButton.style.display = 'none';
             }
             
+            // Show mobile controls
+            const mobileControls = document.getElementById('mobileControls');
+            if (mobileControls) {
+                mobileControls.style.display = 'block';
+            }
+            
             // Create and dispatch a spacebar keydown event to start the game
             try {
-                // This will create a properly formed keyboard event that works across browsers
+                console.log("Attempting multiple methods to start game on mobile");
+                
+                // Method 1: Standard KeyboardEvent (modern browsers)
                 const spaceEvent = new KeyboardEvent('keydown', {
                     key: ' ',
                     code: 'Space',
                     keyCode: 32,
                     which: 32,
-                    bubbles: true
+                    bubbles: true,
+                    cancelable: true
                 });
                 document.dispatchEvent(spaceEvent);
-                console.log("Space keydown event dispatched to start game");
+                console.log("Space keydown event dispatched (method 1)");
                 
-                // For iOS/Safari which can sometimes be picky about simulated events
-                // Create a fallback method to directly set the game state variables if accessible
+                // Method 2: Try using legacy event for older browsers
                 setTimeout(function() {
-                    console.log("Checking if fallback method needed");
-                    if (window.showTitleScreen === true) {
-                        console.log("Using fallback method to start game");
-                        window.showTitleScreen = false;
-                        if (typeof window.gameState !== 'undefined') {
-                            window.gameState = "playing";
-                        }
+                    try {
+                        const legacyEvent = document.createEvent('KeyboardEvent');
+                        legacyEvent.initKeyboardEvent('keydown', true, true, window, ' ', 0, '', false, '');
+                        Object.defineProperty(legacyEvent, 'keyCode', { get: function() { return 32; } });
+                        Object.defineProperty(legacyEvent, 'which', { get: function() { return 32; } });
+                        document.dispatchEvent(legacyEvent);
+                        console.log("Legacy space keydown event dispatched (method 2)");
+                    } catch (e) {
+                        console.log("Legacy event method failed, continuing with other methods");
                     }
+                }, 50);
+                
+                // Method 3: Click the canvas to ensure focus
+                setTimeout(function() {
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        canvas.click();
+                        console.log("Canvas clicked to ensure focus (method 3)");
+                    }
+                }, 100);
+                
+                // Method 4: Aggressive fallback that directly sets game state variables
+                setTimeout(function() {
+                    console.log("Applying aggressive fallback method to start game");
+                    // Set the game state directly on the window object
+                    window.showTitleScreen = false;
+                    
+                    if (typeof window.gameState !== 'undefined') {
+                        window.gameState = "playing";
+                        console.log("Game state directly set to playing");
+                    }
+                    
+                    // Attempt to find and call the game's startGame function if it exists
+                    if (typeof window.startGame === 'function') {
+                        window.startGame();
+                        console.log("Called window.startGame() function");
+                    }
+                    
+                    // Ensure mobile controls are visible
+                    if (mobileControls) {
+                        mobileControls.style.display = 'block';
+                    }
+                    
+                    // Force game state check
+                    checkAndUpdateGameState();
                 }, 300);
             } catch (e) {
-                console.error("Error dispatching spacebar event:", e);
+                console.error("Error starting game:", e);
+                
+                // Final fallback if everything else fails
+                window.showTitleScreen = false;
+                if (typeof window.gameState !== 'undefined') {
+                    window.gameState = "playing";
+                }
+                
+                // Ensure mobile controls are visible in case of error
+                if (mobileControls) {
+                    mobileControls.style.display = 'block';
+                }
             }
             
             return false; // Prevent default action
+        }
+        
+        // Helper function to check and update game state
+        function checkAndUpdateGameState() {
+            if (window.showTitleScreen === true || window.gameState === "titleScreen") {
+                console.log("Game still on title screen, forcing state change");
+                window.showTitleScreen = false;
+                window.gameState = "playing";
+                
+                // Hide start buttons again just to be sure
+                const mobileStartButton = document.getElementById('mobile-start-button');
+                if (mobileStartButton) {
+                    mobileStartButton.style.display = 'none';
+                }
+                
+                const canvasStartButton = document.getElementById('mobile-canvas-start-button');
+                if (canvasStartButton) {
+                    canvasStartButton.style.display = 'none';
+                }
+                
+                // Show controls
+                const mobileControls = document.getElementById('mobileControls');
+                if (mobileControls) {
+                    mobileControls.style.display = 'block';
+                }
+                
+                // Schedule another check
+                setTimeout(checkAndUpdateGameState, 500);
+            }
         }
         
         // Submit to leaderboard function for mobile
@@ -502,7 +623,7 @@
                 }
                 
                 // Title screen - show start buttons, hide controls
-                if ((window.showTitleScreen === true || window.gameState === "titleScreen") && window.gameState !== "playing") {
+                if ((window.showTitleScreen === true || window.gameState === "titleScreen" || window.gameState === "start") && window.gameState !== "playing") {
                     const startBtn = document.getElementById('mobile-start-button');
                     if (startBtn) {
                         startBtn.style.display = 'block';
@@ -535,11 +656,20 @@
                     if (mobileControls) {
                         mobileControls.style.display = 'block';
                     }
+                    
+                    // Also check if we need to further ensure controls are visible
+                    if (mobileControls && window.getComputedStyle(mobileControls).display === 'none') {
+                        console.log("Forcing mobile controls display during gameplay");
+                        mobileControls.style.display = 'block';
+                        
+                        // Force style using !important
+                        mobileControls.setAttribute('style', 'display: block !important');
+                    }
                 }
             } catch (e) {
                 console.error("Error in game state monitor:", e);
             }
-        }, 500);
+        }, 250); // Check more frequently
         
         // Function to center the canvas on mobile devices
         function centerCanvasOnMobile() {
@@ -649,32 +779,40 @@
 <body>
     <!-- Mobile START GAME button above canvas -->
     <div id="mobile-canvas-start-button" 
-         style="display: block !important; visibility: visible !important;"
+         style="display: block !important; visibility: visible !important; -webkit-tap-highlight-color: transparent; user-select: none;"
          onclick="startGameMobile(); return false;" 
-         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
+         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;" 
+         ontouchmove="event.preventDefault(); event.stopPropagation();" 
+         ontouchend="event.preventDefault(); event.stopPropagation();">
         START GAME
     </div>
     
     <!-- Simple mobile start button, completely separate from the game's original controls -->
     <div id="mobile-start-button" 
-         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff;"
+         style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 120px; background-color: rgba(0, 0, 0, 0.8); color: white; font-size: 28px; font-family: 'Arial', sans-serif; text-align: center; line-height: 120px; border-radius: 15px; border: 5px solid #ff3333; z-index: 99999; -webkit-tap-highlight-color: transparent; pointer-events: auto; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); text-shadow: 0 0 10px #fff; user-select: none;"
          onclick="startGameMobile(); return false;" 
-         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;">
+         ontouchstart="startGameMobile(); event.preventDefault(); event.stopPropagation(); return false;"
+         ontouchmove="event.preventDefault(); event.stopPropagation();"
+         ontouchend="event.preventDefault(); event.stopPropagation();">
          TAP TO START
     </div>
     
     <!-- Game will be rendered by p5.js -->
     
     <!-- Mobile touch controls overlay -->
-    <div id="mobileControls">
+    <div id="mobileControls" style="display: none; -webkit-tap-highlight-color: transparent;">
         <div id="jumpButton" class="mobile-button" 
-             onclick="mobileJump(); if(window.showTitleScreen === true) startGameMobile();" 
-             ontouchstart="mobileJump(); if(window.showTitleScreen === true) startGameMobile(); event.preventDefault();">
+             onclick="mobileJump(); return false;" 
+             ontouchstart="mobileJump(); event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchmove="event.preventDefault(); event.stopPropagation();"
+             ontouchend="event.preventDefault(); event.stopPropagation();">
             JUMP
         </div>
         <div id="shootButton" class="mobile-button" 
-             onclick="mobileShoot(); if(window.showTitleScreen === true) startGameMobile();" 
-             ontouchstart="mobileShoot(); if(window.showTitleScreen === true) startGameMobile(); event.preventDefault();">
+             onclick="mobileShoot(); return false;" 
+             ontouchstart="mobileShoot(); event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchmove="event.preventDefault(); event.stopPropagation();"
+             ontouchend="event.preventDefault(); event.stopPropagation();">
             SHOOT
         </div>
     </div>
