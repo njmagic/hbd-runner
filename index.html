@@ -853,6 +853,15 @@
                     bruteForceButton.style.display = 'none';
                 }
                 
+                // First try using the game's native function if available
+                if (typeof window.showLeaderboardForm === 'function') {
+                    console.log("Using game's native showLeaderboardForm function");
+                    window.showLeaderboardForm();
+                    window.gameState = "enteringScore";
+                    return; // Exit early since the native function will handle everything
+                }
+                
+                // If native function not available, use our custom implementation
                 // Get the leaderboard form element
                 const form = document.getElementById('leaderboardForm');
                 if (!form) {
@@ -899,8 +908,8 @@
                     
                     // Add event listener for the submit button
                     newSubmitBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    e.preventDefault();
+                    e.stopPropagation();
                         
                         console.log("Mobile submit button clicked");
                         
@@ -950,15 +959,15 @@
                     
                     // Add event listener for the cancel button
                     newCancelBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    e.preventDefault();
+                    e.stopPropagation();
                         
                         console.log("Mobile cancel button clicked");
                         
                         // Hide the form
                         if (typeof window.hideLeaderboardForm === 'function') {
                             window.hideLeaderboardForm();
-                        } else {
+                    } else {
                             form.style.display = 'none';
                         }
                         
@@ -995,10 +1004,10 @@
                 console.error("Error in submitToLeaderboard:", e);
                 
                 // As a last resort, try calling the game's native function
-                if (typeof window.showLeaderboardForm === 'function') {
+                    if (typeof window.showLeaderboardForm === 'function') {
                     console.log("Falling back to game's native showLeaderboardForm");
-                    window.showLeaderboardForm();
-                    window.gameState = "enteringScore";
+                        window.showLeaderboardForm();
+                        window.gameState = "enteringScore";
                 }
             }
         }
@@ -1761,28 +1770,45 @@
                         if (typeof window.submitLeaderboardScore === 'function') {
                             window.submitLeaderboardScore(nameValue, emailValue);
                             console.log("Score submitted via game's native function");
+                        } else if (typeof window.submitScoreToLeaderboard === 'function') {
+                            // Use the exposed game function if available
+                            window.submitScoreToLeaderboard(nameValue, emailValue, window.score || window.pendingScore || 0);
+                            console.log("Score submitted via exposed submitScoreToLeaderboard function");
                         } else {
-                            console.warn("Game's native submitLeaderboardScore function not found");
+                            console.warn("Game's score submission functions not found");
                             
                             // Second method: Try to use Supabase directly if available
-                            if (window.supabase) {
-                                try {
-                                    window.supabase
-                                        .from('leaderboard')
-                                        .insert([{ 
-                                            name: nameValue, 
-                                            email: emailValue, 
-                                            score: window.score || window.pendingScore || 0 
-                                        }])
-                                        .then(function(response) {
-                                            console.log("Score submitted via direct Supabase call", response);
-                                        });
-                                } catch (err) {
-                                    console.error("Error in direct Supabase submission:", err);
-                                }
+                            if (window.supabaseClient) {
+                                window.supabaseClient
+                                    .from('leaderboard')
+                                    .insert([{ 
+                                        player_name: nameValue, 
+                                        email: emailValue, 
+                                        score: window.score || window.pendingScore || 0 
+                                    }])
+                                    .then(function(response) {
+                                        console.log("Score submitted via direct Supabase client call", response);
+                                    })
+                                    .catch(function(err) {
+                                        console.error("Error in Supabase client submission:", err);
+                                    });
+                            } else if (window.supabase) {
+                                window.supabase
+                                    .from('leaderboard')
+                                    .insert([{ 
+                                        player_name: nameValue, 
+                                        email: emailValue, 
+                                        score: window.score || window.pendingScore || 0 
+                                    }])
+                                    .then(function(response) {
+                                        console.log("Score submitted via direct Supabase call", response);
+                                    })
+                                    .catch(function(err) {
+                                        console.error("Error in Supabase submission:", err);
+                                    });
                             }
-                }
-            } catch (e) {
+                        }
+                    } catch (e) {
                         console.error("Error during score submission:", e);
                     }
                     

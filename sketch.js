@@ -2937,14 +2937,75 @@ function touchStarted() {
   touchStartTime = millis();
   touchStartY = touchY;
   
-  // Handle start button on title screen - COMPLETELY DISABLED
+  // Handle start button on title screen
   if (showTitleScreen) {
-    console.log("Touch detected on title screen - DELEGATING TO HTML HANDLERS ONLY");
+    console.log("Touch detected on title screen");
     
-    // DO NOT handle title screen touches here at all
-    // Let the HTML buttons and handlers manage everything
+    // Get start button dimensions
+    const startBtn = document.getElementById('startButton');
+    if (!startBtn) {
+      console.error("Start button element not found");
+      return false;
+    }
     
+    startBtn.style.display = 'block'; // Make sure it's visible
+    
+    // Start the game (same logic as pressing space)
+    showTitleScreen = false;
+    gameState = "playing";
+    
+    // Reset game elements (same as in keyPressed function)
+    score = 0;
+    enemiesKilled = 0;
+    enemies = [];
+    obstacles = [];
+    projectiles = [];
+    shootEffects = [];
+    powerUps = [];
+    slowMotion = false;
+    slowMotionTimer = 0;
+    scrollSpeed = normalScrollSpeed;
+    screenFlash = 0;
+    
+    // Reset player position
+    player.y = groundY;
+    player.vy = 0;
+    player.state = "running";
+    
+    // Reset offsets
+    groundOffset = 0;
+    backgroundOffset = 0;
+    midgroundOffset = 0;
+    foregroundOffset = 0;
+    
+    lastEnemySpawnTime = 0;
+    forceEnemySpawnCounter = 0;
+    lastPowerUpTime = 0;
+    
+    // Hide the start button
+    startBtn.style.display = 'none';
+    
+    console.log("Game started");
     return false; // Prevent default
+  }
+  
+  // Get pause button dimensions
+  const pauseBtn = document.getElementById('pauseButton');
+  if (pauseBtn) {
+    const pauseRect = pauseBtn.getBoundingClientRect();
+    
+    if (touchX >= pauseRect.left && touchX <= pauseRect.right &&
+        touchY >= pauseRect.top && touchY <= pauseRect.bottom) {
+      // Toggle between playing and paused
+      if (gameState === "playing") {
+        gameState = "paused";
+        console.log("Game paused");
+      } else if (gameState === "paused") {
+        gameState = "playing";
+        console.log("Game resumed");
+      }
+      return false; // Prevent default
+    }
   }
   
   // Only process gameplay touches when in the playing state
@@ -3006,80 +3067,6 @@ function touchStarted() {
       isJumping = true;
       isDucking = false;
       return false; // Prevent default
-    }
-  }
-  
-  // Special case: if we're on the game over screen and have the leaderboard button visible
-  if (gameState === "gameOver" && !leaderboardScoreSubmitted) {
-    // Define button dimensions (same as in mousePressed)
-    let buttonWidth = 300;
-    let buttonHeight = 45;
-    
-    // Calculate button position (same as in drawGameOverScreen)
-    let buttonY = height/2 + 65 + 35;
-    
-    // Check if touch is on the leaderboard button
-    if (touches.length > 0) {
-      const touch = touches[0];
-      if (touch.x > width/2 - buttonWidth/2 && 
-          touch.x < width/2 + buttonWidth/2 && 
-          touch.y > buttonY - buttonHeight/2 && 
-          touch.y < buttonY + buttonHeight/2) {
-        
-        console.log("Leaderboard button touched in game over screen");
-        showLeaderboardForm();
-        gameState = "enteringScore";
-        return false;
-      }
-    }
-  }
-  
-  // Support for leaderboard form buttons on mobile
-  if (gameState === "enteringScore" && isMobileDevice) {
-    // Get form element positions
-    const submitButton = document.getElementById('submitScore');
-    const cancelButton = document.getElementById('cancelSubmit');
-    
-    if (submitButton && cancelButton && touches.length > 0) {
-      const touch = touches[0];
-      
-      // Get button positions relative to the viewport
-      const submitRect = submitButton.getBoundingClientRect();
-      const cancelRect = cancelButton.getBoundingClientRect();
-      
-      // Check if touch is on submit button
-      if (touchX >= submitRect.left && touchX <= submitRect.right &&
-          touchY >= submitRect.top && touchY <= submitRect.bottom) {
-        console.log("Submit button touched");
-        
-        // Validate and submit score
-        const playerNameInput = document.getElementById('playerName');
-        const playerEmailInput = document.getElementById('playerEmail');
-        const emailError = document.getElementById('emailError');
-        
-        if (playerNameInput && playerEmailInput && emailError) {
-          const email = playerEmailInput.value.trim();
-          const name = playerNameInput.value.trim() || 'Anonymous Player';
-          
-          if (!isValidEmail(email)) {
-            emailError.style.display = 'block';
-          } else {
-            emailError.style.display = 'none';
-            submitScoreToLeaderboard(name, email, pendingScore);
-          }
-        }
-        
-        return false;
-      }
-      
-      // Check if touch is on cancel button
-      if (touchX >= cancelRect.left && touchX <= cancelRect.right &&
-          touchY >= cancelRect.top && touchY <= cancelRect.bottom) {
-        console.log("Cancel button touched");
-        hideLeaderboardForm();
-        gameState = "gameOver";
-        return false;
-      }
     }
   }
   
@@ -4810,105 +4797,15 @@ function showLeaderboardForm() {
   }
   
   console.log("Form element found, setting display to block");
-  
-  // Enhanced for mobile: Use direct style attributes to ensure visibility
   form.style.display = 'block';
-  form.style.opacity = '1';
-  form.style.visibility = 'visible';
-  form.style.zIndex = '10000001'; // Extremely high z-index to ensure it's on top
   
-  // Enhanced mobile styling
+  // Hide restart button when leaderboard form is shown (for mobile)
   if (isMobileDevice) {
-    console.log("Applying enhanced mobile styling to form");
-    
-    // Enhanced mobile styling
-    form.style.width = '90%';
-    form.style.maxWidth = '320px';
-    form.style.padding = '25px';
-    form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
-    form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
-    form.style.borderRadius = '15px';
-    form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
-    
-    // Enhanced input styling for mobile
-    const playerNameInput = document.getElementById('playerName');
-    const playerEmailInput = document.getElementById('playerEmail');
-    const submitButton = document.getElementById('submitScore');
-    const cancelButton = document.getElementById('cancelSubmit');
-    
-    if (playerNameInput && playerEmailInput) {
-      // Make inputs larger and more tappable
-      playerNameInput.style.height = '50px';
-      playerNameInput.style.fontSize = '18px';
-      playerNameInput.style.padding = '10px 15px';
-      playerNameInput.style.marginBottom = '15px';
-      playerNameInput.style.borderRadius = '8px';
-      playerNameInput.style.border = '2px solid #555';
-      
-      playerEmailInput.style.height = '50px';
-      playerEmailInput.style.fontSize = '18px';
-      playerEmailInput.style.padding = '10px 15px';
-      playerEmailInput.style.marginBottom = '15px';
-      playerEmailInput.style.borderRadius = '8px';
-      playerEmailInput.style.border = '2px solid #555';
-    }
-    
-    if (submitButton && cancelButton) {
-      // Make buttons more tappable
-      submitButton.style.height = '60px';
-      submitButton.style.fontSize = '20px';
-      submitButton.style.fontWeight = 'bold';
-      submitButton.style.textTransform = 'uppercase';
-      submitButton.style.margin = '10px 0';
-      submitButton.style.borderRadius = '8px';
-      submitButton.style.border = '2px solid #ff5252';
-      submitButton.style.backgroundColor = '#d32f2f';
-      submitButton.style.color = 'white';
-      
-      cancelButton.style.height = '60px';
-      cancelButton.style.fontSize = '20px';
-      cancelButton.style.fontWeight = 'bold';
-      cancelButton.style.textTransform = 'uppercase';
-      cancelButton.style.margin = '10px 0';
-      cancelButton.style.borderRadius = '8px';
-      cancelButton.style.border = '2px solid #555';
-    }
-    
-    // Hide mobile controls and buttons that might interfere
-    const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls) {
-      // Store all child elements except the leaderboard form
-      const children = mobileControls.querySelectorAll('div:not(#leaderboardForm)');
-      for (let child of children) {
-        child.style.display = 'none';
-      }
-    }
-    
-    // Hide any mobile submit buttons
-    const submitLeaderboardBtn = document.getElementById('submitLeaderboardBtn');
-    if (submitLeaderboardBtn) {
-      submitLeaderboardBtn.style.display = 'none';
-    }
-    
-    const bruteForceButton = document.getElementById('brute-force-mobile-button');
-    if (bruteForceButton) {
-      bruteForceButton.style.display = 'none';
-    }
-    
-    // Hide restart button when leaderboard form is shown (for mobile)
     const restartButton = document.getElementById('restartButton');
     if (restartButton) {
       restartButton.style.display = 'none';
       console.log("Mobile restart button hidden when showing leaderboard form");
     }
-    
-    // Focus on name input field after a short delay to ensure keyboard appears
-    setTimeout(() => {
-      if (playerNameInput) {
-        playerNameInput.focus();
-        console.log("Focus set on name input field");
-      }
-    }, 300);
   }
   
   // Make sure form fields are reset
@@ -5335,15 +5232,19 @@ function exposeGameFunctions() {
     }
   };
   
-  // Expose leaderboard functions for mobile integration
-  window.submitScoreToLeaderboard = submitScoreToLeaderboard;
-  window.hideLeaderboardForm = hideLeaderboardForm;
+  // Expose leaderboard form functions
   window.showLeaderboardForm = showLeaderboardForm;
-  window.fetchLeaderboardData = fetchLeaderboardData;
+  window.hideLeaderboardForm = hideLeaderboardForm;
+  window.submitScoreToLeaderboard = submitScoreToLeaderboard;
   
-  // Expose game variables
+  // Expose supabase client for mobile integration
+  window.supabaseClient = supabaseClient;
+  
+  // Expose core game variables
   window.gameState = gameState;
   window.player = player;
   window.groundY = groundY;
   window.jumpStrength = jumpStrength;
 }
+
+
