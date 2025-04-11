@@ -1,0 +1,106 @@
+/* 
+ * Mobile Styles for HBD Sidescroller
+ * This file contains ONLY mobile-specific styles and is loaded ONLY on mobile devices
+ * The original game code is NEVER modified
+ */
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+    body {
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    canvas {
+        max-width: 100% !important;
+        max-height: 100% !important;
+        width: auto !important;
+        height: auto !important;
+    }
+}
+
+/* Mobile controls styles */
+#mobileControls {
+    display: none; /* Hidden by default, shown via JS */
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    z-index: 9998;
+    pointer-events: none;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: opacity;
+}
+
+.mobile-button {
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 10px;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.1s ease;
+    user-select: none;
+}
+
+.mobile-button:active {
+    transform: scale(0.95);
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+#jumpButton {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    position: fixed;
+    left: 40px;
+    bottom: 30px;
+}
+
+#shootButton {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    position: fixed;
+    right: 40px;
+    bottom: 30px;
+}
+
+/* Mobile START GAME button */
+#mobile-start-button {
+    display: none; /* Hidden by default, shown via JS */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 280px;
+    height: 120px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 28px;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+    line-height: 120px;
+    border-radius: 15px;
+    border: 5px solid #ff3333;
+    z-index: 99999;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+    text-shadow: 0 0 10px #fff;
+    user-select: none;
+} 
