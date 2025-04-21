@@ -223,6 +223,9 @@ function setup() {
     const restartBtn = document.getElementById('restartButton');
     if (restartBtn) {
         console.log("Setting up mobile restart button listener.");
+        // Ensure restart button is initially hidden
+        restartBtn.style.display = 'none';
+        
         restartBtn.addEventListener('touchstart', function(e) {
             console.log("Mobile restart button touched.");
             e.preventDefault(); 
@@ -230,14 +233,15 @@ function setup() {
             
             // Hide the restart button immediately
             restartBtn.style.display = 'none'; 
-            // Show the start button for when we return to title
+            // REMOVED Showing start button here. Let drawTitleScreen handle it.
+            /* 
             const mobileStartBtn = document.getElementById('mobile-start-button');
             if (mobileStartBtn) { mobileStartBtn.style.display = 'block'; }
+            */
 
             // Simulate R key press
             console.log("Simulating R key press to restart game.");
             dispatchKeyEvent('keydown', 'r', 'KeyR', 82); 
-            // Note: Keyup for 'r' isn't typically needed for restart logic
 
         }, { passive: false });
     } else {
@@ -3712,6 +3716,21 @@ function drawTitleScreen() {
     // Show the start button element
     document.getElementById('startButton').style.display = 'block';
   }
+
+  // --- Mobile Button Visibility --- 
+  if (isMobileDevice) {
+      const mobileStartBtn = document.getElementById('mobile-start-button');
+      if (mobileStartBtn && mobileStartBtn.style.display !== 'block') {
+           console.log("Showing Start button on Title Screen");
+           mobileStartBtn.style.display = 'block'; // Show Start
+      }
+      const restartBtn = document.getElementById('restartButton');
+      if (restartBtn && restartBtn.style.display !== 'none') { 
+          // console.log("Hiding restart button on title screen");
+          restartBtn.style.display = 'none'; // Hide Restart
+      }
+  }
+  // --- End Mobile Button Visibility --- 
 }
 
 // Function to draw a more stable, cake-like birthday cake with 3 candles and cleaner icing

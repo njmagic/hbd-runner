@@ -240,14 +240,10 @@
             -webkit-tap-highlight-color: transparent;
             user-select: none; 
             -webkit-user-select: none;
-            /* REMOVED -webkit-touch-callout: none; as it's covered globally */
-            /* REMOVED transition: transform 0.2s, background-color 0.3s; */
-            /* REMOVED opacity: 1 !important; */
-            /* REMOVED visibility: visible !important; */
             
             /* --- Positioning --- */
             /* Place it above the canvas */
-            top: 15%; /* Position higher up */
+            top: 15%; /* Adjusted higher */
             left: 50%;
             transform: translate(-50%, -50%); 
         }
@@ -257,8 +253,8 @@
         
         /* Active state for restart button */
         #restartButton:active {
-            background-color: rgba(80, 80, 80, 0.9); /* Match start button active */
-            transform: translate(-50%, -50%) scale(0.95); /* Adjust transform */
+            background-color: rgba(80, 80, 80, 0.9); 
+            transform: translate(-50%, -50%) scale(0.95); 
             animation: none; 
         }
         /* Ensure mobile form has proper styling */
