@@ -3180,7 +3180,10 @@ function touchStarted() {
     }
   }
   
-  return false; // Prevent default for all touches to avoid zooming/scrolling
+  // If no specific element handled the touch, allow default behavior.
+  // This is important for allowing focus on input fields.
+  console.log("Touch not handled by specific handlers, allowing default.");
+  return true; 
 }
 
 function touchEnded() {
@@ -4901,20 +4904,33 @@ function setupLeaderboardFormEvents() {
   });
 
   // --- Add separate TOUCHSTART listeners for mobile reliability ---
-  // This ensures touch events directly trigger the click handlers above,
-  // potentially bypassing issues with event propagation in touchStarted.
   if (isMobileDevice) {
-      console.log("Adding direct touchstart listeners for mobile form buttons");
+      console.log("Adding direct touchstart listeners for mobile form buttons AND inputs");
       
+      // Input Field Listeners (Allow Default Behavior for Focus/Keyboard)
+      playerNameInput.addEventListener('touchstart', (e) => {
+          console.log("PlayerName input touchstart");
+          e.stopPropagation(); // Prevent touchStarted from interfering
+          // DO NOT preventDefault() here, as it's needed for focus/keyboard
+      }, { passive: true }); // Use passive: true if we don't preventDefault
+
+      playerEmailInput.addEventListener('touchstart', (e) => {
+          console.log("PlayerEmail input touchstart");
+          e.stopPropagation(); // Prevent touchStarted from interfering
+      }, { passive: true });
+
+      // Button Listeners (Prevent Default Behavior)
       submitButton.addEventListener('touchstart', (e) => {
           console.log("Submit button direct touchstart triggered -> click()");
           e.preventDefault(); // Prevent default touch behavior (like scrolling or double-tap zoom) and potential ghost clicks
+          e.stopPropagation(); // Stop event from bubbling further if needed
           submitButton.click(); // Manually trigger the click event
       }, { passive: false });
 
       cancelButton.addEventListener('touchstart', (e) => {
           console.log("Cancel button direct touchstart triggered -> click()");
           e.preventDefault();
+          e.stopPropagation(); 
           cancelButton.click();
       }, { passive: false });
   } else {
