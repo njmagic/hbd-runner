@@ -274,6 +274,8 @@
                 box-shadow: 0 0 30px rgba(0, 0, 0, 0.8) !important;
                 background-color: rgba(30, 30, 30, 0.95) !important;
                 z-index: 10000001 !important;
+                /* Ensure touch events pass through the form itself */
+                pointer-events: auto !important; 
             }
             
             #leaderboardForm input {
@@ -282,6 +284,13 @@
                 padding: 10px 15px !important;
                 margin-bottom: 15px !important;
                 border-radius: 8px !important;
+                /* Ensure inputs are touchable and interactive */
+                pointer-events: auto !important; 
+                -webkit-user-select: auto !important; /* Allow text selection */
+                user-select: auto !important;
+                touch-action: manipulation !important; /* Allow default touch actions like focus */
+                z-index: 10000002 !important; /* Ensure inputs are above form bg */
+                position: relative; /* Needed for z-index */
             }
             
             #leaderboardForm button {

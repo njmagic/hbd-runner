@@ -4956,105 +4956,19 @@ function showLeaderboardForm() {
   
   console.log("Form element found, setting display to block");
   
-  // Enhanced for mobile: Use direct style attributes to ensure visibility
+  // Set display and visibility
   form.style.display = 'block';
-  form.style.opacity = '1';
+  form.style.opacity = '1'; // Keep opacity for potential transitions
   form.style.visibility = 'visible';
-  form.style.zIndex = '10000001'; // Extremely high z-index to ensure it's on top
-  
-  // Enhanced mobile styling
-  if (isMobileDevice) {
+  // Let CSS handle z-index, positioning, and specific mobile styles
+
+  // REMOVED block applying dynamic inline styles for mobile
+  /* 
+  if (isMobileDevice) { 
     console.log("Applying enhanced mobile styling to form");
-    
-    // Enhanced mobile styling
-    form.style.width = '90%';
-    form.style.maxWidth = '320px';
-    form.style.padding = '25px';
-    form.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
-    form.style.border = '3px solid rgba(255, 255, 255, 0.9)';
-    form.style.borderRadius = '15px';
-    form.style.boxShadow = '0 0 30px rgba(0, 0, 0, 0.8)';
-    
-    // Enhanced input styling for mobile
-    const playerNameInput = document.getElementById('playerName');
-    const playerEmailInput = document.getElementById('playerEmail');
-    const submitButton = document.getElementById('submitScore');
-    const cancelButton = document.getElementById('cancelSubmit');
-    
-    if (playerNameInput && playerEmailInput) {
-      // Make inputs larger and more tappable
-      playerNameInput.style.height = '50px';
-      playerNameInput.style.fontSize = '18px';
-      playerNameInput.style.padding = '10px 15px';
-      playerNameInput.style.marginBottom = '15px';
-      playerNameInput.style.borderRadius = '8px';
-      playerNameInput.style.border = '2px solid #555';
-      
-      playerEmailInput.style.height = '50px';
-      playerEmailInput.style.fontSize = '18px';
-      playerEmailInput.style.padding = '10px 15px';
-      playerEmailInput.style.marginBottom = '15px';
-      playerEmailInput.style.borderRadius = '8px';
-      playerEmailInput.style.border = '2px solid #555';
-    }
-    
-    if (submitButton && cancelButton) {
-      // Make buttons more tappable
-      submitButton.style.height = '60px';
-      submitButton.style.fontSize = '20px';
-      submitButton.style.fontWeight = 'bold';
-      submitButton.style.textTransform = 'uppercase';
-      submitButton.style.margin = '10px 0';
-      submitButton.style.borderRadius = '8px';
-      submitButton.style.border = '2px solid #ff5252';
-      submitButton.style.backgroundColor = '#d32f2f';
-      submitButton.style.color = 'white';
-      
-      cancelButton.style.height = '60px';
-      cancelButton.style.fontSize = '20px';
-      cancelButton.style.fontWeight = 'bold';
-      cancelButton.style.textTransform = 'uppercase';
-      cancelButton.style.margin = '10px 0';
-      cancelButton.style.borderRadius = '8px';
-      cancelButton.style.border = '2px solid #555';
-    }
-    
-    // Hide mobile controls and buttons that might interfere
-    const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls) {
-      // Store all child elements except the leaderboard form
-      const children = mobileControls.querySelectorAll('div:not(#leaderboardForm)');
-      for (let child of children) {
-        child.style.display = 'none';
-      }
-    }
-    
-    // Hide any mobile submit buttons
-    const submitLeaderboardBtn = document.getElementById('submitLeaderboardBtn');
-    if (submitLeaderboardBtn) {
-      submitLeaderboardBtn.style.display = 'none';
-    }
-    
-    const bruteForceButton = document.getElementById('brute-force-mobile-button');
-    if (bruteForceButton) {
-      bruteForceButton.style.display = 'none';
-    }
-    
-    // Hide restart button when leaderboard form is shown (for mobile)
-    const restartButton = document.getElementById('restartButton');
-    if (restartButton) {
-      restartButton.style.display = 'none';
-      console.log("Mobile restart button hidden when showing leaderboard form");
-    }
-    
-    // Focus on name input field after a short delay to ensure keyboard appears
-    setTimeout(() => {
-      if (playerNameInput) {
-        playerNameInput.focus();
-        console.log("Focus set on name input field");
-      }
-    }, 300);
+    // ... (removed dynamic style setting code) ...
   }
+  */
   
   // Make sure form fields are reset
   const playerNameInput = document.getElementById('playerName');
@@ -5064,6 +4978,16 @@ function showLeaderboardForm() {
   if (playerNameInput) playerNameInput.value = '';
   if (playerEmailInput) playerEmailInput.value = '';
   if (emailError) emailError.style.display = 'none';
+
+  // REMOVED automatic focus attempt
+  /*
+  setTimeout(() => {
+      if (playerNameInput) {
+        playerNameInput.focus();
+        console.log("Focus set on name input field");
+      }
+  }, 300);
+  */
   
   pendingScore = score; // Store the current score for submission
   console.log("Form displayed, pendingScore set to:", pendingScore);
