@@ -197,14 +197,17 @@ function setup() {
       
       mobileStartBtn.addEventListener('touchstart', function(e) {
         console.log("Mobile start button touched.");
-        e.preventDefault(); // Prevent double-tap zoom or other artifacts
-        e.stopPropagation(); // Stop event from bubbling up
+        e.preventDefault(); 
+        e.stopPropagation(); 
         
-        // Hide the button immediately
-        mobileStartBtn.style.display = 'none';
-        
+        // Hide the start button immediately
+        mobileStartBtn.style.display = 'none'; 
+        // ALSO hide restart button if it happens to be visible
+        const restartBtn = document.getElementById('restartButton');
+        if (restartBtn) { restartBtn.style.display = 'none'; }
+
         // Simulate spacebar press to start the game via existing logic in keyPressed()
-        if (showTitleScreen) { // Only trigger if title screen is actually showing
+        if (showTitleScreen) { 
            console.log("Simulating Spacebar press to start game.");
            dispatchKeyEvent('keydown', ' ', 'Space', 32);
         } else {
@@ -225,8 +228,11 @@ function setup() {
             e.preventDefault(); 
             e.stopPropagation();
             
-            // Hide the button immediately
+            // Hide the restart button immediately
             restartBtn.style.display = 'none'; 
+            // Show the start button for when we return to title
+            const mobileStartBtn = document.getElementById('mobile-start-button');
+            if (mobileStartBtn) { mobileStartBtn.style.display = 'block'; }
 
             // Simulate R key press
             console.log("Simulating R key press to restart game.");
@@ -4991,50 +4997,62 @@ function showLeaderboardForm() {
   form.style.visibility = 'visible';
   // Let CSS handle z-index, positioning, and specific mobile styles
 
-  // REMOVED block applying dynamic inline styles for mobile
-  /* 
-  if (isMobileDevice) { 
-    console.log("Applying enhanced mobile styling to form");
-    // ... (removed dynamic style setting code) ...
+  // --- Mobile Button Visibility --- 
+  if (isMobileDevice) {
+      const restartBtn = document.getElementById('restartButton');
+      if (restartBtn) { 
+          // console.log("Hiding restart button while form is open.");
+          restartBtn.style.display = 'none'; // Hide Restart
+      } 
+      // Hide gameplay controls too
+      const mobileControlsDiv = document.getElementById('mobileControls');
+      if (mobileControlsDiv) { mobileControlsDiv.style.display = 'none'; }
   }
-  */
-  
-  // Make sure form fields are reset
-  const playerNameInput = document.getElementById('playerName');
-  const playerEmailInput = document.getElementById('playerEmail');
-  const emailError = document.getElementById('emailError');
-  
-  if (playerNameInput) playerNameInput.value = '';
-  if (playerEmailInput) playerEmailInput.value = '';
-  if (emailError) emailError.style.display = 'none';
+  // --- End Mobile Button Visibility --- 
 
-  // REMOVED automatic focus attempt
-  /*
-  setTimeout(() => {
-      if (playerNameInput) {
-        playerNameInput.focus();
-        console.log("Focus set on name input field");
-      }
-  }, 300);
-  */
-  
-  pendingScore = score; // Store the current score for submission
+  pendingScore = score; 
   console.log("Form displayed, pendingScore set to:", pendingScore);
 }
 
 // Hide the leaderboard form
 function hideLeaderboardForm() {
-  console.log("hideLeaderboardForm called - attempting to hide form");
-  
+  console.log("Hiding leaderboard form");
   const form = document.getElementById('leaderboardForm');
-  if (!form) {
-    console.error("Leaderboard form element not found in the DOM!");
-    return;
+  const mobileControlsDiv = document.getElementById('mobileControls'); 
+  const restartBtn = document.getElementById('restartButton');
+
+  if (form) {
+    form.style.display = 'none';
+  }
+
+  const previousState = gameState; // Capture state before potential change
+
+  // If we were entering score, revert state to gameOver
+  // This state change happens *before* we check for button visibility
+  if (previousState === "enteringScore") {
+    gameState = "gameOver"; 
   }
   
-  console.log("Form element found, setting display to none");
-  form.style.display = 'none';
-  console.log("Form hidden");
+  // --- Mobile Button Visibility --- 
+  if (isMobileDevice) {
+      // Show restart button if returning to GameOver or Leaderboard view
+      if (restartBtn && (gameState === 'gameOver' || gameState === 'leaderboard')) {
+          if (restartBtn.style.display !== 'block') {
+              // console.log("Showing restart button after closing form.");
+              restartBtn.style.display = 'block';
+          }
+      } else if (restartBtn) {
+          // console.log("Hiding restart button after closing form (not gameover/leaderboard).")
+          restartBtn.style.display = 'none'; // Hide otherwise
+      }
+      
+      // Hide mobile gameplay controls
+      if (mobileControlsDiv && mobileControlsDiv.style.display !== 'none') {
+           // console.log("Ensuring gameplay controls are hidden after closing form.");
+           mobileControlsDiv.style.display = 'none';
+      }
+  }
+  // --- End Mobile Button Visibility --- 
 }
 
 // Validate email format
