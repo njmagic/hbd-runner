@@ -3019,14 +3019,20 @@ function mousePressed() {
 }
 
 // Mobile touch controls
-function touchStarted() {
+function touchStarted(event) { // Added event parameter
   // Don't do anything if not on a mobile device
   if (!isMobileDevice) return;
   
   // Prevent default touch behavior to avoid zooming or scrolling
+  // --- Temporarily disabling global preventDefault to test mobile input focus ---
+  /* 
   if (touches[0]) {
-    touches[0].preventDefault = function() {};
+     // This might be preventing keyboard popup on real devices
+     // touches[0].preventDefault = function() {}; // Old method
+     // event.preventDefault(); // Standard method - let's disable for now
   }
+  */
+  // --- End temporary disable --- 
   
   // Debug mobile detection
   console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
