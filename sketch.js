@@ -95,6 +95,71 @@ let longPressThreshold = 200; // ms to detect a hold/long press
 let touchStartY = 0; // Track where touch started for gesture detection
 let controlsVisible = false;
 
+// ================ UTILITY/HELPER FUNCTIONS ================
+
+// Helper function to dispatch keyboard events
+function dispatchKeyEvent(type, key, code, keyCode) {
+  console.log(`Dispatching ${type}: key=${key}, code=${code}, keyCode=${keyCode}`);
+  window.dispatchEvent(new KeyboardEvent(type, {
+    key: key,
+    code: code,
+    keyCode: keyCode, // Deprecated but sometimes needed
+    which: keyCode,   // Deprecated but sometimes needed
+    bubbles: true,
+    cancelable: true
+  }));
+}
+
+// Validate email format
+function isValidEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+// Handle window resizing
+function windowResized() {
+  // Get the parent container dimensions (window or containing div)
+  let parentWidth = windowWidth;
+  let parentHeight = windowHeight;
+  
+  // Calculate the aspect ratio of our game (800x400 = 2:1)
+  let gameAspectRatio = 800 / 400;
+  
+  // Determine the best fit size while maintaining aspect ratio
+  let newWidth, newHeight;
+  
+  if (parentWidth / parentHeight > gameAspectRatio) {
+    // Window is wider than our game ratio, so height is the constraint
+    newHeight = parentHeight;
+    newWidth = newHeight * gameAspectRatio;
+  } else {
+    // Window is taller than our game ratio, so width is the constraint
+    newWidth = parentWidth;
+    newHeight = newWidth / gameAspectRatio;
+  }
+  
+  // Apply a safety margin to prevent edge bleeding
+  newWidth *= 0.95;
+  newHeight *= 0.95;
+  
+  // Resize the canvas
+  resizeCanvas(800, 400); // Keep the internal resolution the same
+  
+  // Scale the canvas element itself via CSS
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    // Log for debugging
+    console.log(`Resizing canvas to: ${newWidth}px x ${newHeight}px`);
+    canvas.style.width = `${newWidth}px`;
+    canvas.style.height = `${newHeight}px`;
+  }
+  
+  // Don't actually change the drawing surface, just its displayed size
+  return false; // Prevent default p5.js windowResized behavior
+}
+
+// ================ P5.JS CORE FUNCTIONS ================
+
 function setup() {
   createCanvas(800, 400);
   
@@ -104,8 +169,14 @@ function setup() {
   
   if (isMobileDevice) {
     console.log("Mobile device detected, enabling touch controls");
-    document.getElementById('mobileControls').style.display = 'block';
-    controlsVisible = true;
+    // Show the old mobile controls container (we'll replace controls later)
+    const mobileControlsDiv = document.getElementById('mobileControls');
+    if (mobileControlsDiv) {
+        mobileControlsDiv.style.display = 'block'; 
+        controlsVisible = true;
+    } else {
+        console.error("#mobileControls container not found");
+    }
     
     // Add HTML event listener for preventing zoom
     document.addEventListener('touchmove', function(e) {
@@ -116,6 +187,40 @@ function setup() {
     
     // Ensure proper canvas sizing on mobile
     windowResized();
+
+    // --- Mobile Start Button Logic ---
+    const mobileStartBtn = document.getElementById('mobile-start-button');
+    if (mobileStartBtn) {
+      console.log("Setting up mobile start button.");
+      // Show the button initially 
+      mobileStartBtn.style.display = 'block'; 
+      
+      mobileStartBtn.addEventListener('touchstart', function(e) {
+        console.log("Mobile start button touched.");
+        e.preventDefault(); // Prevent double-tap zoom or other artifacts
+        e.stopPropagation(); // Stop event from bubbling up
+        
+        // Hide the button immediately
+        mobileStartBtn.style.display = 'none';
+        
+        // Simulate spacebar press to start the game via existing logic in keyPressed()
+        if (showTitleScreen) { // Only trigger if title screen is actually showing
+           console.log("Simulating Spacebar press to start game.");
+           dispatchKeyEvent('keydown', ' ', 'Space', 32);
+        } else {
+           console.log("Start button touched but title screen not showing.");
+        }
+      }, { passive: false }); // Use passive: false because we call preventDefault
+    } else {
+       console.error("Mobile start button (#mobile-start-button) not found!");
+    }
+    // --- End Mobile Start Button Logic ---
+
+  } else {
+     // Ensure mobile start button is hidden on desktop
+     console.log("Desktop device detected. Hiding mobile start button.");
+     const mobileStartBtn = document.getElementById('mobile-start-button');
+     if (mobileStartBtn) { mobileStartBtn.style.display = 'none'; }
   }
   
   // Initialize Supabase client
@@ -4765,10 +4870,15 @@ function setupLeaderboardFormEvents() {
   const submitButton = document.getElementById('submitScore');
   const cancelButton = document.getElementById('cancelSubmit');
   const emailError = document.getElementById('emailError');
+
+  if (!leaderboardForm || !playerNameInput || !playerEmailInput || !submitButton || !cancelButton || !emailError) {
+      console.error("One or more leaderboard form elements not found!");
+      return;
+  }
   
-  // Submit button event listener
+  // --- Submit button CLICK event listener (handles desktop and is triggered by mobile touch) ---
   submitButton.addEventListener('click', () => {
-    console.log("Submit button clicked");
+    console.log("Submit button CLICKED");
     
     // Validate email
     const email = playerEmailInput.value.trim();
@@ -4783,12 +4893,33 @@ function setupLeaderboardFormEvents() {
     submitScoreToLeaderboard(name, email, pendingScore);
   });
   
-  // Cancel button event listener
+  // --- Cancel button CLICK event listener (handles desktop and is triggered by mobile touch) ---
   cancelButton.addEventListener('click', () => {
-    console.log("Cancel button clicked");
+    console.log("Cancel button CLICKED");
     hideLeaderboardForm();
     gameState = "gameOver"; // Return to game over screen
   });
+
+  // --- Add separate TOUCHSTART listeners for mobile reliability ---
+  // This ensures touch events directly trigger the click handlers above,
+  // potentially bypassing issues with event propagation in touchStarted.
+  if (isMobileDevice) {
+      console.log("Adding direct touchstart listeners for mobile form buttons");
+      
+      submitButton.addEventListener('touchstart', (e) => {
+          console.log("Submit button direct touchstart triggered -> click()");
+          e.preventDefault(); // Prevent default touch behavior (like scrolling or double-tap zoom) and potential ghost clicks
+          submitButton.click(); // Manually trigger the click event
+      }, { passive: false });
+
+      cancelButton.addEventListener('touchstart', (e) => {
+          console.log("Cancel button direct touchstart triggered -> click()");
+          e.preventDefault();
+          cancelButton.click();
+      }, { passive: false });
+  } else {
+       console.log("Desktop detected, skipping direct touchstart listeners for form buttons.");
+  }
 }
 
 // Show the leaderboard form
