@@ -3024,15 +3024,22 @@ function touchStarted(event) { // Added event parameter
   if (!isMobileDevice) return;
   
   // Prevent default touch behavior to avoid zooming or scrolling
-  // --- Temporarily disabling global preventDefault to test mobile input focus ---
-  /* 
-  if (touches[0]) {
-     // This might be preventing keyboard popup on real devices
-     // touches[0].preventDefault = function() {}; // Old method
-     // event.preventDefault(); // Standard method - let's disable for now
+  // --- Re-enabling global preventDefault, but we allow specific elements (inputs) to bypass later ---
+  if (event && typeof event.preventDefault === 'function') {
+     // Check if the touch target is NOT one of our interactive form inputs
+     const targetId = event.target.id;
+     if (targetId !== 'playerName' && targetId !== 'playerEmail') {
+         // console.log("Preventing default touch action for target:", event.target);
+         event.preventDefault(); // Prevent default for non-input elements
+     } else {
+         // console.log("Allowing default touch action for input:", targetId);
+     }
+  } else if (touches[0]) {
+      // Fallback if event object isn't standard (less likely)
+      // Check target similarly if possible, otherwise prevent cautiously
+      // touches[0].preventDefault(); 
   }
-  */
-  // --- End temporary disable --- 
+  // --- End preventDefault logic --- 
   
   // Debug mobile detection
   console.log("Touch detected on mobile device, isMobileDevice =", isMobileDevice);
@@ -3174,22 +3181,24 @@ function touchStarted(event) { // Added event parameter
       else if (touchX >= cancelRect.left && touchX <= cancelRect.right &&
           touchY >= cancelRect.top && touchY <= cancelRect.bottom) {
         console.log("Mobile touch on Cancel button -> triggering click()");
-        touches[0].preventDefault(); // Prevent default touch actions
+        // preventDefault is handled by the direct listener now
+        // touches[0].preventDefault(); 
         cancelButton.click();        // Trigger the existing desktop click handler
         handled = true;
       }
       
       // If we handled a button tap, prevent further default actions
       if (handled) {
+          // We already prevented default in the button listeners
           return false; 
       }
     }
   }
   
-  // If no specific element handled the touch, allow default behavior.
-  // This is important for allowing focus on input fields.
-  console.log("Touch not handled by specific handlers, allowing default.");
-  return true; 
+  // If no specific element handled the touch, prevent default.
+  // Default was prevented near the start unless it was an input field.
+  // console.log("Touch not handled by specific handlers, preventing default.");
+  return false; 
 }
 
 function touchEnded() {
@@ -4913,16 +4922,18 @@ function setupLeaderboardFormEvents() {
   if (isMobileDevice) {
       console.log("Adding direct touchstart listeners for mobile form buttons AND inputs");
       
-      // Input Field Listeners (Allow Default Behavior for Focus/Keyboard)
-      playerNameInput.addEventListener('touchstart', (e) => {
-          console.log("PlayerName input touchstart");
-          e.stopPropagation(); // Prevent touchStarted from interfering
-          // DO NOT preventDefault() here, as it's needed for focus/keyboard
-      }, { passive: true }); // Use passive: true if we don't preventDefault
+      // Input Field Listeners (Attempt to force focus)
+      playerNameInput.addEventListener('touchstart', function(e) { // Use function keyword for 'this'
+          console.log("PlayerName input touchstart -> trying focus()");
+          // e.stopPropagation(); // REMOVED stopPropagation
+          this.focus(); // Explicitly focus the input
+          // DO NOT preventDefault() here
+      }, { passive: true }); // Keep passive: true if not preventing default
 
-      playerEmailInput.addEventListener('touchstart', (e) => {
-          console.log("PlayerEmail input touchstart");
-          e.stopPropagation(); // Prevent touchStarted from interfering
+      playerEmailInput.addEventListener('touchstart', function(e) { // Use function keyword for 'this'
+          console.log("PlayerEmail input touchstart -> trying focus()");
+          // e.stopPropagation(); // REMOVED stopPropagation
+          this.focus(); // Explicitly focus the input
       }, { passive: true });
 
       // Button Listeners (Prevent Default Behavior)
