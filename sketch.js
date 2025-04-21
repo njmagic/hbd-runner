@@ -216,11 +216,37 @@ function setup() {
     }
     // --- End Mobile Start Button Logic ---
 
+    // --- Mobile Restart Button Logic ---
+    const restartBtn = document.getElementById('restartButton');
+    if (restartBtn) {
+        console.log("Setting up mobile restart button listener.");
+        restartBtn.addEventListener('touchstart', function(e) {
+            console.log("Mobile restart button touched.");
+            e.preventDefault(); 
+            e.stopPropagation();
+            
+            // Hide the button immediately
+            restartBtn.style.display = 'none'; 
+
+            // Simulate R key press
+            console.log("Simulating R key press to restart game.");
+            dispatchKeyEvent('keydown', 'r', 'KeyR', 82); 
+            // Note: Keyup for 'r' isn't typically needed for restart logic
+
+        }, { passive: false });
+    } else {
+        console.error("Mobile restart button (#restartButton) not found for listener setup!");
+    }
+    // --- End Mobile Restart Button Logic ---
+
   } else {
      // Ensure mobile start button is hidden on desktop
      console.log("Desktop device detected. Hiding mobile start button.");
      const mobileStartBtn = document.getElementById('mobile-start-button');
      if (mobileStartBtn) { mobileStartBtn.style.display = 'none'; }
+     // Ensure mobile restart button is hidden on desktop
+     const restartBtn = document.getElementById('restartButton');
+     if (restartBtn) { restartBtn.style.display = 'none'; }
   }
   
   // Initialize Supabase client
@@ -1505,7 +1531,15 @@ function draw() {
   // Check if we should show the title screen
   if (showTitleScreen) {
     drawTitleScreen();
-    
+                // --- Ensure restart button is hidden on title screen ---
+                if (isMobileDevice) {
+                  const restartBtn = document.getElementById('restartButton');
+                  if (restartBtn && restartBtn.style.display !== 'none') {
+                      // console.log("Hiding restart button on title screen");
+                      restartBtn.style.display = 'none';
+                  }
+              }
+              // --- End hide restart button ---
     // Add direct check for keys in the draw loop too for redundancy
     if (keyIsPressed && (key === ' ' || keyCode === 32)) {
       console.log("Key detected in draw loop, transitioning from title screen");
@@ -2531,25 +2565,9 @@ function draw() {
     }
   }
   
-  // Add mobile control hints if on mobile device - add this at the end of the 'playing' state code
-  if (isMobileDevice && controlsVisible) {
-    // Subtle control hints
-    push();
-    noStroke();
-    textAlign(CENTER, CENTER);
-    
-    // Left control area hint
-    fill(255, 100);
-    textSize(14);
-    text("TAP: JUMP\nHOLD: DUCK", width * 0.2, height - 75);
-    
-    // Right control area hint
-    fill(255, 100);
-    textSize(14);
-    text("SHOOT", width * 0.8, height - 40);
-    pop();
+  
   }
-}
+
 
 // Helper function to draw street reflections - white only (reduced)
 function drawStreetReflections() {
@@ -4234,12 +4252,12 @@ function drawGameOverScreen() {
   
   // Remove the following detection section since we're handling clicks in mousePressed()
   // We're not using mouseIsPressed here anymore
-      pop();
+     // pop();
   
   // Restart prompt with subtle styling instead of flashing
-  textSize(24);
-  fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
-  text("PRESS 'R' TO RESTART", width/2, height - 40);
+  // textSize(24);
+  // fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
+  // text("PRESS 'R' TO RESTART", width/2, height - 40);
   
   // Add newsletter opt-in notice at the bottom
   textSize(12); // Reduced from 14 to make it more subtle
