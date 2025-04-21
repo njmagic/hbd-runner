@@ -15,6 +15,9 @@
             align-items: center;
             height: 100vh;
             touch-action: none; /* Prevent browser handling of touch gestures */
+            position: relative;
+            min-height: -webkit-fill-available; /* iOS Safari fix */
+            min-height: 100vh;
         }
         /* Prevent double-tap to zoom */
         * { 
@@ -28,16 +31,13 @@
         }
         canvas {
             display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: auto !important; /* Override any inline width */
-            height: auto !important; /* Override any inline height */
+            width: auto !important;
+            height: auto !important;
             max-width: 100%;
             max-height: 100vh;
             object-fit: contain;
             touch-action: none !important;
+            flex-shrink: 0;
         }
         /* Touch controls overlay - only visible on mobile */
         #mobileControls {
@@ -144,7 +144,7 @@
             color: white;
             opacity: 1.0;
             font-family: 'Courier New', monospace;
-            font-size: 26px;
+            font-size: 20px;
             font-weight: bold;
             pointer-events: none;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
