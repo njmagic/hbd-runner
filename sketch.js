@@ -3041,44 +3041,36 @@ function touchStarted() {
     const cancelButton = document.getElementById('cancelSubmit');
     
     if (submitButton && cancelButton && touches.length > 0) {
-      const touch = touches[0];
+      // Use viewport coordinates for checking against button bounds
+      const touchX = touches[0].clientX;
+      const touchY = touches[0].clientY;
       
-      // Get button positions relative to the viewport
       const submitRect = submitButton.getBoundingClientRect();
       const cancelRect = cancelButton.getBoundingClientRect();
       
+      let handled = false;
+
       // Check if touch is on submit button
       if (touchX >= submitRect.left && touchX <= submitRect.right &&
           touchY >= submitRect.top && touchY <= submitRect.bottom) {
-        console.log("Submit button touched");
-        
-        // Validate and submit score
-        const playerNameInput = document.getElementById('playerName');
-        const playerEmailInput = document.getElementById('playerEmail');
-        const emailError = document.getElementById('emailError');
-        
-        if (playerNameInput && playerEmailInput && emailError) {
-          const email = playerEmailInput.value.trim();
-          const name = playerNameInput.value.trim() || 'Anonymous Player';
-          
-          if (!isValidEmail(email)) {
-            emailError.style.display = 'block';
-          } else {
-            emailError.style.display = 'none';
-            submitScoreToLeaderboard(name, email, pendingScore);
-          }
-        }
-        
-        return false;
+        console.log("Mobile touch on Submit button -> triggering click()");
+        touches[0].preventDefault(); // Prevent default touch actions
+        submitButton.click();        // Trigger the existing desktop click handler
+        handled = true;
       }
       
       // Check if touch is on cancel button
-      if (touchX >= cancelRect.left && touchX <= cancelRect.right &&
+      else if (touchX >= cancelRect.left && touchX <= cancelRect.right &&
           touchY >= cancelRect.top && touchY <= cancelRect.bottom) {
-        console.log("Cancel button touched");
-        hideLeaderboardForm();
-        gameState = "gameOver";
-        return false;
+        console.log("Mobile touch on Cancel button -> triggering click()");
+        touches[0].preventDefault(); // Prevent default touch actions
+        cancelButton.click();        // Trigger the existing desktop click handler
+        handled = true;
+      }
+      
+      // If we handled a button tap, prevent further default actions
+      if (handled) {
+          return false; 
       }
     }
   }
