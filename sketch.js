@@ -207,8 +207,13 @@ function setup() {
         if (restartBtn) { restartBtn.style.display = 'none'; }
 
         // Simulate spacebar press to start the game via existing logic in keyPressed()
-        console.log("Simulating Spacebar press to start game.");
-        dispatchKeyEvent('keydown', ' ', 'Space', 32);
+        // RE-ADD check for showTitleScreen
+        if (showTitleScreen) { 
+           console.log("Simulating Spacebar press to start game.");
+           dispatchKeyEvent('keydown', ' ', 'Space', 32);
+        } else {
+            console.log("Start button touched, but title screen wasn't showing. Ignoring.");
+        }
       }, { passive: false }); // Use passive: false because we call preventDefault
     } else {
        console.error("Mobile start button (#mobile-start-button) not found!");
@@ -2757,6 +2762,17 @@ function keyPressed() {
       console.log("Space bar detected on title screen, starting game");
       showTitleScreen = false;
       gameState = "playing"; // Set directly to playing since we skip the start state
+      
+      // --- Show Mobile Gameplay Controls --- 
+      if (isMobileDevice) {
+          const mobileControlsDiv = document.getElementById('mobileControls');
+          if (mobileControlsDiv && mobileControlsDiv.style.display !== 'block') {
+               console.log("Showing mobile gameplay controls on game start.");
+               mobileControlsDiv.style.display = 'block'; 
+          }
+      }
+      // --- End Show Mobile Gameplay Controls ---
+
       // Reset score and other gameplay elements
       score = 0;
       enemiesKilled = 0;
