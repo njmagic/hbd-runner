@@ -3709,19 +3709,18 @@ function drawTitleScreen() {
   
   // --- Mobile Button Visibility --- 
   if (isMobileDevice) {
-      // Start button visibility is handled by setup() and restart listener
-      /*
+      // Ensure Start Button is Visible 
       const mobileStartBtn = document.getElementById('mobile-start-button');
       if (mobileStartBtn && mobileStartBtn.style.display !== 'block') {
-           console.log("Showing Start button on Title Screen");
-           mobileStartBtn.style.display = 'block'; // Show Start
+           // console.log("Showing Start button on Title Screen");
+           mobileStartBtn.style.display = 'block'; // UNCOMMENTED this line
       }
-      */
+      
       // Ensure Restart Button is Hidden on Title Screen
       const restartBtn = document.getElementById('restartButton');
       if (restartBtn && restartBtn.style.display !== 'none') { 
           // console.log("Hiding restart button on title screen");
-          restartBtn.style.display = 'none'; // Hide Restart
+          restartBtn.style.display = 'none'; 
       }
   }
   // --- End Mobile Button Visibility --- 
@@ -4910,6 +4909,26 @@ function drawLeaderboardScreen() {
   text("PRESS 'R'\nTO RESTART", width - 50, height/2);
   
   pop();
+
+  // --- Mobile Button Visibility --- 
+  if (isMobileDevice) {
+      const restartBtn = document.getElementById('restartButton');
+      if (restartBtn && restartBtn.style.display !== 'block') {
+           // console.log("Showing restart button on Leaderboard Screen");
+           restartBtn.style.display = 'block'; // Show Restart
+      }
+      // Hide start button
+      const mobileStartBtn = document.getElementById('mobile-start-button');
+      if (mobileStartBtn && mobileStartBtn.style.display !== 'none') {
+          mobileStartBtn.style.display = 'none';
+      }
+      // Hide gameplay controls
+      const mobileControlsDiv = document.getElementById('mobileControls');
+      if (mobileControlsDiv && mobileControlsDiv.style.display !== 'none') {
+          mobileControlsDiv.style.display = 'none';
+      }
+  }
+  // --- End Mobile Button Visibility --- 
 }
 
 // ================ LEADERBOARD FUNCTIONS ================
