@@ -387,10 +387,10 @@
              style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 60px; text-align: center; line-height: 60px; font-family: 'Courier New', monospace; color: white; font-size: 18px; background-color: rgba(60, 60, 60, 0.6);">TAP TO START</div>
         <!-- Leaderboard submission button for mobile - enhanced version -->
         <div id="submitLeaderboardBtn"
-             onclick="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
-             onmousedown="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+             onclick="showLeaderboardForm(); event.preventDefault(); event.stopPropagation(); return false;"
+             onmousedown="showLeaderboardForm(); event.preventDefault(); event.stopPropagation(); return false;"
              onmouseup="event.preventDefault(); event.stopPropagation(); return false;"
-             ontouchstart="submitToLeaderboard(); event.preventDefault(); event.stopPropagation(); return false;"
+             ontouchstart="showLeaderboardForm(); event.preventDefault(); event.stopPropagation(); return false;"
              ontouchend="event.preventDefault(); event.stopPropagation(); return false;"
              ontouchmove="event.preventDefault(); event.stopPropagation(); return false;"
              style="font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: none; position: fixed !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 999999 !important; width: 300px !important; height: 100px !important; line-height: 100px !important; background-color: rgba(220, 40, 40, 0.95) !important; border: 5px solid rgba(255, 255, 255, 0.95) !important; font-size: 26px !important;">

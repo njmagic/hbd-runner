@@ -192,29 +192,67 @@ function setup() {
     const mobileStartBtn = document.getElementById('mobile-start-button');
     if (mobileStartBtn) {
       console.log("Setting up mobile start button.");
-      // Show the button initially 
-      mobileStartBtn.style.display = 'block'; 
+      mobileStartBtn.style.display = 'block'; // Show initially
       
       mobileStartBtn.addEventListener('touchstart', function(e) {
         console.log("Mobile start button touched.");
         e.preventDefault(); 
         e.stopPropagation(); 
         
+        // -- DEBUG LOG --
+        console.log(`[StartBtn Touch] Current State: showTitleScreen=${showTitleScreen}, gameState=${gameState}`);
+        // -- END DEBUG LOG --
+
         // Hide the start button immediately
         mobileStartBtn.style.display = 'none'; 
-        // ALSO hide restart button if it happens to be visible
         const restartBtn = document.getElementById('restartButton');
         if (restartBtn) { restartBtn.style.display = 'none'; }
 
-        // Simulate spacebar press to start the game via existing logic in keyPressed()
-        // RE-ADD check for showTitleScreen
+        // Execute direct start game logic ONLY if title screen is showing
         if (showTitleScreen) { 
-           console.log("Simulating Spacebar press to start game.");
-           dispatchKeyEvent('keydown', ' ', 'Space', 32);
+            console.log("Executing direct start game logic.");
+            showTitleScreen = false;
+            gameState = "playing"; 
+            
+            // Show Mobile Gameplay Controls 
+            const mobileControlsDiv = document.getElementById('mobileControls');
+            if (mobileControlsDiv && mobileControlsDiv.style.display !== 'block') {
+                 mobileControlsDiv.style.display = 'block'; 
+            }
+
+            // Reset score and other gameplay elements
+            score = 0;
+            enemiesKilled = 0;
+            enemies = [];
+            obstacles = [];
+            projectiles = [];
+            shootEffects = [];
+            powerUps = []; 
+            slowMotion = false;
+            slowMotionTimer = 0;
+            scrollSpeed = normalScrollSpeed;
+            screenFlash = 0;
+            
+            // Reset player position
+            player.y = groundY;
+            player.vy = 0;
+            player.state = "running";
+            
+            // Reset offsets
+            groundOffset = 0;
+            backgroundOffset = 0;
+            midgroundOffset = 0;
+            foregroundOffset = 0;
+            
+            lastEnemySpawnTime = 0;
+            forceEnemySpawnCounter = 0;
+            lastPowerUpTime = 0;
         } else {
             console.log("Start button touched, but title screen wasn't showing. Ignoring.");
         }
-      }, { passive: false }); // Use passive: false because we call preventDefault
+        // --- End direct Spacebar logic ---
+
+      }, { passive: false }); 
     } else {
        console.error("Mobile start button (#mobile-start-button) not found!");
     }
@@ -224,25 +262,77 @@ function setup() {
     const restartBtn = document.getElementById('restartButton');
     if (restartBtn) {
         console.log("Setting up mobile restart button listener.");
-        // Ensure restart button is initially hidden
-        restartBtn.style.display = 'none';
+        restartBtn.style.display = 'none'; // Ensure hidden initially
         
         restartBtn.addEventListener('touchstart', function(e) {
-            console.log("Mobile restart button touched.");
+            console.log("Mobile restart button touched - restarting game directly.");
             e.preventDefault(); 
             e.stopPropagation();
             
             // Hide the restart button immediately
             restartBtn.style.display = 'none'; 
-            // REMOVED Showing start button here. Let drawTitleScreen handle it.
-            /* 
-            const mobileStartBtn = document.getElementById('mobile-start-button');
-            if (mobileStartBtn) { mobileStartBtn.style.display = 'block'; }
-            */
 
-            // Simulate R key press
-            console.log("Simulating R key press to restart game.");
-            dispatchKeyEvent('keydown', 'r', 'KeyR', 82); 
+            // --- Directly execute game start logic --- 
+            console.log("Executing direct game restart logic (mobile).");
+            showTitleScreen = false; // Go directly to playing
+            gameState = "playing"; 
+            
+             // --- Show Mobile Gameplay Controls --- 
+            const mobileControlsDiv = document.getElementById('mobileControls');
+            if (mobileControlsDiv && mobileControlsDiv.style.display !== 'block') {
+                 console.log("Showing mobile gameplay controls on mobile restart.");
+                 mobileControlsDiv.style.display = 'block'; 
+            }
+            // --- End Show Mobile Gameplay Controls ---
+
+            // Reset score and other gameplay elements (same as spacebar start)
+            score = 0;
+            enemiesKilled = 0;
+            enemies = [];
+            obstacles = [];
+            projectiles = [];
+            shootEffects = [];
+            powerUps = []; // Clear power-ups
+            
+            // Reset power-ups status
+            activePowerUps.shield = 0;
+            activePowerUps.beamShot = 0;
+            activePowerUps.rapidFire = 0;
+            
+            // Reset game state variables
+            slowMotion = false;
+            slowMotionTimer = 0;
+            scrollSpeed = normalScrollSpeed;
+            screenFlash = 0;
+            
+            // Reset player position and state
+            player.y = groundY;
+            player.vy = 0;
+            player.state = "running";
+            
+            // Reset environment offsets
+            groundOffset = 0;
+            backgroundOffset = 0;
+            midgroundOffset = 0;
+            foregroundOffset = 0;
+            
+            // Reset spawn timers
+            lastEnemySpawnTime = 0;
+            forceEnemySpawnCounter = 0;
+            lastPowerUpTime = 0;
+            
+            // Reset leaderboard submission status (important)
+            leaderboardScoreSubmitted = false;
+            
+            // Ensure leaderboard form is hidden
+            hideLeaderboardForm(); 
+
+            // Explicitly HIDE the start button (should not show after restart)
+            const mobileStartBtn = document.getElementById('mobile-start-button');
+            if (mobileStartBtn) { 
+                mobileStartBtn.style.display = 'none'; 
+            }
+            // --- End direct game start logic ---
 
         }, { passive: false });
     } else {
@@ -4299,6 +4389,25 @@ function drawGameOverScreen() {
   text("Joining the leaderboard opts you in for our amazing newsletter", width/2, height - 15);
   
   pop();
+
+  // --- Show Mobile Restart Button ---
+  // Only show the restart button on game over screen for mobile devices
+  if (isMobileDevice) {
+      const restartBtn = document.getElementById('restartButton');
+      if (restartBtn && restartBtn.style.display !== 'block') {
+          console.log("Showing mobile restart button on game over screen.");
+          restartBtn.style.display = 'block';
+          
+          // Also ensure the start button is hidden
+          const mobileStartBtn = document.getElementById('mobile-start-button');
+          if (mobileStartBtn) {
+              mobileStartBtn.style.display = 'none';
+          }
+      } else if (!restartBtn) {
+          console.error("Mobile restart button not found in drawGameOverScreen!");
+      }
+  }
+  // --- End Show Mobile Restart Button ---
 }
 
 
