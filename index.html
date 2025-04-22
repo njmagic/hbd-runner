@@ -238,7 +238,7 @@
             letter-spacing: 1px;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
-            user-select: none; 
+            user-select: none;
             -webkit-user-select: none;
             
             /* --- Positioning --- */
@@ -398,6 +398,11 @@
             @keyframes pulseLarge {
                  from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 30px rgba(255, 100, 100, 0.9); }
                  to { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 50px rgba(255, 150, 150, 0.95); }
+            }
+
+            /* Adjust canvas vertical position in landscape */
+            canvas {
+                transform: translateY(-30px);
             }
         }
         
