@@ -265,27 +265,26 @@ function setup() {
         restartBtn.style.display = 'none'; // Ensure hidden initially
         
         restartBtn.addEventListener('touchstart', function(e) {
-            console.log("Mobile restart button touched - restarting game directly.");
+            console.log("Mobile restart button touched - returning to title screen."); // UPDATED LOG
             e.preventDefault(); 
             e.stopPropagation();
             
             // Hide the restart button immediately
             restartBtn.style.display = 'none'; 
 
-            // --- Directly execute game start logic --- 
-            console.log("Executing direct game restart logic (mobile).");
-            showTitleScreen = false; // Go directly to playing
-            gameState = "playing"; 
+            // --- Reset to Title Screen State (like pressing 'R' on desktop) --- 
+            console.log("Executing direct restart logic (mobile) -> to Title Screen.");
+            showTitleScreen = true; // Go back to title screen on restart
+            gameState = "start";
             
-             // --- Show Mobile Gameplay Controls --- 
+            // Hide Mobile Gameplay Controls when returning to title screen
             const mobileControlsDiv = document.getElementById('mobileControls');
-            if (mobileControlsDiv && mobileControlsDiv.style.display !== 'block') {
-                 console.log("Showing mobile gameplay controls on mobile restart.");
-                 mobileControlsDiv.style.display = 'block'; 
+            if (mobileControlsDiv) {
+                 console.log("Hiding mobile gameplay controls on mobile restart.");
+                 mobileControlsDiv.style.display = 'none'; 
             }
-            // --- End Show Mobile Gameplay Controls ---
 
-            // Reset score and other gameplay elements (same as spacebar start)
+            // Reset score and other gameplay elements
             score = 0;
             enemiesKilled = 0;
             enemies = [];
@@ -324,15 +323,16 @@ function setup() {
             // Reset leaderboard submission status (important)
             leaderboardScoreSubmitted = false;
             
-            // Ensure leaderboard form is hidden
+            // Ensure leaderboard form is hidden (already called below, but good to be explicit)
             hideLeaderboardForm(); 
 
-            // Explicitly HIDE the start button (should not show after restart)
+            // Explicitly SHOW the start button again for the title screen
             const mobileStartBtn = document.getElementById('mobile-start-button');
             if (mobileStartBtn) { 
-                mobileStartBtn.style.display = 'none'; 
+                console.log("Showing mobile start button after restart.");
+                mobileStartBtn.style.display = 'block'; 
             }
-            // --- End direct game start logic ---
+            // --- End reset to Title Screen State ---
 
         }, { passive: false });
     } else {
