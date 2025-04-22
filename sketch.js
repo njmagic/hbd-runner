@@ -2855,22 +2855,6 @@ function checkCollision(rect1, rect2) {
          rect1.y < rect2.y + rect2.height &&
          rect1.y + rect1.height > rect2.y;
   
-  // Special case for jumping over obstacles
-  if (collision && rect1.type === "player" && rect2.type === "ground_obstacle") {
-    // If player is falling (positive vy) and their feet are near the top of the obstacle
-    // Allow landing on top of the obstacle instead of colliding
-    let playerBottom = rect1.y + rect1.height;
-    let obstacleTop = rect2.y;
-    
-    if (player.vy > 0 && playerBottom < obstacleTop + 10) {
-      // Player is landing on top of obstacle - prevent collision and place on top
-      player.y = obstacleTop - rect1.height + 1;
-      player.vy = 0;
-      player.state = "running";
-      return false; // No collision - player lands on obstacle
-    }
-  }
-  
   return collision;
 }
 
