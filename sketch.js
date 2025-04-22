@@ -123,7 +123,7 @@ function windowResized() {
   let parentHeight = window.innerHeight;
 
   // Define the buffer
-  const buffer = 20; // 20px buffer on each side (40px total reduction)
+  const buffer = 40; // INCREASED buffer to 40px (80px total reduction)
 
   // Calculate available dimensions after buffer
   let availableWidth = parentWidth - (buffer * 2);
@@ -5331,7 +5331,7 @@ function windowResized() {
   let parentHeight = window.innerHeight;
 
   // Define the buffer
-  const buffer = 20; // 20px buffer on each side (40px total reduction)
+  const buffer = 40; // INCREASED buffer to 40px (80px total reduction)
 
   // Calculate available dimensions after buffer
   let availableWidth = parentWidth - (buffer * 2);
