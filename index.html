@@ -285,6 +285,7 @@
                 touch-action: manipulation !important; /* Allow default touch actions like focus */
                 z-index: 10000002 !important; /* Ensure inputs are above form bg */
                 position: relative; /* Needed for z-index */
+                box-sizing: border-box; /* ADDED: Include padding/border in width */
             }
             
             #leaderboardForm button {
