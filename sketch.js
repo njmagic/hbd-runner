@@ -122,8 +122,19 @@ function windowResized() {
   let parentWidth = window.innerWidth;
   let parentHeight = window.innerHeight;
 
-  // Define the buffer
-  const buffer = 40; // INCREASED buffer to 40px (80px total reduction)
+  // Define the buffer BASED ON ORIENTATION
+  let buffer;
+  let isPortrait = parentHeight > parentWidth;
+
+  if (isPortrait) {
+    // Portrait mode: Use a very small buffer to maximize vertical space
+    buffer = 5; 
+    console.log("Resizing (Portrait) - Using small buffer:", buffer);
+  } else {
+    // Landscape mode: Keep the larger buffer to prevent cutoff
+    buffer = 40;
+    console.log("Resizing (Landscape) - Using large buffer:", buffer);
+  }
 
   // Calculate available dimensions after buffer
   let availableWidth = parentWidth - (buffer * 2);
@@ -170,7 +181,8 @@ function windowResized() {
   let canvas = document.querySelector('canvas');
   if (canvas) {
     // Log for debugging
-    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
+    // console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
+    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px, Orientation: ${isPortrait ? 'Portrait' : 'Landscape'})`); // More informative log
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
   }
@@ -5359,8 +5371,19 @@ function windowResized() {
   let parentWidth = window.innerWidth;
   let parentHeight = window.innerHeight;
 
-  // Define the buffer
-  const buffer = 40; // INCREASED buffer to 40px (80px total reduction)
+  // Define the buffer BASED ON ORIENTATION
+  let buffer;
+  let isPortrait = parentHeight > parentWidth;
+
+  if (isPortrait) {
+    // Portrait mode: Use a very small buffer to maximize vertical space
+    buffer = 5; 
+    console.log("Resizing (Portrait) - Using small buffer:", buffer);
+  } else {
+    // Landscape mode: Keep the larger buffer to prevent cutoff
+    buffer = 40;
+    console.log("Resizing (Landscape) - Using large buffer:", buffer);
+  }
 
   // Calculate available dimensions after buffer
   let availableWidth = parentWidth - (buffer * 2);
@@ -5407,7 +5430,8 @@ function windowResized() {
   let canvas = document.querySelector('canvas');
   if (canvas) {
     // Log for debugging
-    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
+    // console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
+    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px, Orientation: ${isPortrait ? 'Portrait' : 'Landscape'})`); // More informative log
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
   }
