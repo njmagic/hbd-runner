@@ -118,38 +118,59 @@ function isValidEmail(email) {
 
 // Handle window resizing
 function windowResized() {
-  // Get the parent container dimensions (window or containing div)
-  let parentWidth = windowWidth;
-  let parentHeight = windowHeight;
+  // Use innerWidth/Height for viewport dimensions
+  let parentWidth = window.innerWidth;
+  let parentHeight = window.innerHeight;
+
+  // Define the buffer
+  const buffer = 20; // 20px buffer on each side (40px total reduction)
+
+  // Calculate available dimensions after buffer
+  let availableWidth = parentWidth - (buffer * 2);
+  let availableHeight = parentHeight - (buffer * 2);
+
+  // Ensure available dimensions are not negative
+  availableWidth = max(0, availableWidth);
+  availableHeight = max(0, availableHeight);
   
-  // Calculate the aspect ratio of our game (800x400 = 2:1)
+  // Calculate the game aspect ratio
   let gameAspectRatio = 800 / 400;
   
-  // Determine the best fit size while maintaining aspect ratio
+  // Determine the best fit size while maintaining aspect ratio within buffered space
   let newWidth, newHeight;
   
-  if (parentWidth / parentHeight > gameAspectRatio) {
-    // Window is wider than our game ratio, so height is the constraint
-    newHeight = parentHeight;
+  if (availableWidth / availableHeight >= gameAspectRatio) {
+    // Available space is wider than or equal to game aspect ratio, height is constraint
+    newHeight = availableHeight;
     newWidth = newHeight * gameAspectRatio;
+    // If calculated width is too wide, recalculate based on width constraint
+    if (newWidth > availableWidth) {
+        newWidth = availableWidth;
+        newHeight = newWidth / gameAspectRatio;
+    }
   } else {
-    // Window is taller than our game ratio, so width is the constraint
-    newWidth = parentWidth;
+    // Available space is taller than game aspect ratio, width is constraint
+    newWidth = availableWidth;
     newHeight = newWidth / gameAspectRatio;
+     // If calculated height is too tall, recalculate based on height constraint
+    if (newHeight > availableHeight) {
+        newHeight = availableHeight;
+        newWidth = newHeight * gameAspectRatio;
+    }
   }
-  
-  // Apply a safety margin to prevent edge bleeding
-  newWidth *= 0.95;
-  newHeight *= 0.95;
-  
-  // Resize the canvas
-  resizeCanvas(800, 400); // Keep the internal resolution the same
+
+  // Ensure calculated dimensions are positive
+  newWidth = max(0, newWidth);
+  newHeight = max(0, newHeight);
+
+  // Keep the internal resolution the same
+  // resizeCanvas(800, 400); // No need to resize internal canvas here
   
   // Scale the canvas element itself via CSS
   let canvas = document.querySelector('canvas');
   if (canvas) {
     // Log for debugging
-    console.log(`Resizing canvas to: ${newWidth}px x ${newHeight}px`);
+    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
   }
@@ -5305,38 +5326,59 @@ async function submitScoreToLeaderboard(name, email, score) {
 
 // Handle window resizing for responsive canvas
 function windowResized() {
-  // Get the parent container dimensions (window or containing div)
-  let parentWidth = windowWidth;
-  let parentHeight = windowHeight;
+  // Use innerWidth/Height for viewport dimensions
+  let parentWidth = window.innerWidth;
+  let parentHeight = window.innerHeight;
+
+  // Define the buffer
+  const buffer = 20; // 20px buffer on each side (40px total reduction)
+
+  // Calculate available dimensions after buffer
+  let availableWidth = parentWidth - (buffer * 2);
+  let availableHeight = parentHeight - (buffer * 2);
+
+  // Ensure available dimensions are not negative
+  availableWidth = max(0, availableWidth);
+  availableHeight = max(0, availableHeight);
   
-  // Calculate the aspect ratio of our game (800x400 = 2:1)
+  // Calculate the game aspect ratio
   let gameAspectRatio = 800 / 400;
   
-  // Determine the best fit size while maintaining aspect ratio
+  // Determine the best fit size while maintaining aspect ratio within buffered space
   let newWidth, newHeight;
   
-  if (parentWidth / parentHeight > gameAspectRatio) {
-    // Window is wider than our game ratio, so height is the constraint
-    newHeight = parentHeight;
+  if (availableWidth / availableHeight >= gameAspectRatio) {
+    // Available space is wider than or equal to game aspect ratio, height is constraint
+    newHeight = availableHeight;
     newWidth = newHeight * gameAspectRatio;
+    // If calculated width is too wide, recalculate based on width constraint
+    if (newWidth > availableWidth) {
+        newWidth = availableWidth;
+        newHeight = newWidth / gameAspectRatio;
+    }
   } else {
-    // Window is taller than our game ratio, so width is the constraint
-    newWidth = parentWidth;
+    // Available space is taller than game aspect ratio, width is constraint
+    newWidth = availableWidth;
     newHeight = newWidth / gameAspectRatio;
+     // If calculated height is too tall, recalculate based on height constraint
+    if (newHeight > availableHeight) {
+        newHeight = availableHeight;
+        newWidth = newHeight * gameAspectRatio;
+    }
   }
-  
-  // Apply a safety margin to prevent edge bleeding
-  newWidth *= 0.95;
-  newHeight *= 0.95;
-  
-  // Resize the canvas
-  resizeCanvas(800, 400); // Keep the internal resolution the same
+
+  // Ensure calculated dimensions are positive
+  newWidth = max(0, newWidth);
+  newHeight = max(0, newHeight);
+
+  // Keep the internal resolution the same
+  // resizeCanvas(800, 400); // No need to resize internal canvas here
   
   // Scale the canvas element itself via CSS
   let canvas = document.querySelector('canvas');
   if (canvas) {
     // Log for debugging
-    console.log(`Resizing canvas to: ${newWidth}px x ${newHeight}px`);
+    console.log(`Resizing canvas CSS to: ${newWidth.toFixed(2)}px x ${newHeight.toFixed(2)}px (Buffer: ${buffer}px)`);
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
   }
