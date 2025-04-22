@@ -5601,37 +5601,115 @@ function exposeGameFunctions() {
   
   // Directly expose the critical functions
   window.mobileShoot = function() {
-    console.log("GLOBAL mobileShoot called");
-    // Create a simple projectile regardless of power-ups
-    if (player && projectiles) {
-      let projectile = {
-        x: player.x + 32,
-        y: player.y - 16,
-        vx: 12,
-        vy: 0,
-        isRed: true
-      };
-      
-      projectiles.push(projectile);
-      console.log("Projectile added:", projectiles.length);
-      
-      // Create visual effects
-      for (let i = 0; i < 5; i++) {
-        let angle = random(-PI/4, PI/4);
-        let speed = random(1, 4);
-        let effect = {
+    console.log("GLOBAL mobileShoot called - Checking powerups"); // Updated log
+    // Make sure player exists and game is playing
+    if (!player || gameState !== "playing") {
+        console.error("Cannot shoot - Player not found or game not in playing state.");
+        return;
+    }
+
+    // --- Replicate power-up check logic from keyPressed --- 
+    if (activePowerUps.beamShot > 0) {
+        // Beam shot - wider projectile that can hit multiple enemies
+        console.log("Mobile Shoot: Firing Beam Shot");
+        let beam = {
           x: player.x + 32,
           y: player.y - 16,
-          vx: cos(angle) * speed,
-          vy: sin(angle) * speed,
-          size: random(2, 5),
-          alpha: 255,
-          life: 8,
-          isRed: true
+          vx: 16, // Faster than normal shots
+          vy: 0,
+          width: 80, // Long beam
+          height: 12, // Wider than normal shots
+          isBeam: true,
+          hits: 0, // Track how many enemies this beam has hit
+          maxHits: 3 // Can hit up to 3 enemies
         };
-        shootEffects.push(effect);
+        projectiles.push(beam);
+        
+        // Beam visual effect - now red
+        for (let i = 0; i < 8; i++) {
+          let offset = random(-5, 5);
+          let effect = {
+            x: player.x + 32 + random(0, 40),
+            y: player.y - 16 + offset,
+            vx: 8 + random(0, 4),
+            vy: offset * 0.1,
+            size: random(4, 8),
+            alpha: 255,
+            life: 10,
+            color: [255, 50, 50] // Red color for beam effects
+          };
+          shootEffects.push(effect);
+        }
+      } else if (activePowerUps.rapidFire > 0) {
+        // Rapid fire - shoot multiple projectiles with spread
+        console.log("Mobile Shoot: Firing Rapid Fire");
+        for (let i = -1; i <= 1; i++) {
+          let projectile = {
+            x: player.x + 32,
+            y: player.y - 16 + (i * 5),
+            vx: 12,
+            vy: i * 0.5, // Slight spread
+            isRed: true // Flag for red projectiles
+          };
+          projectiles.push(projectile);
+        }
+        
+        // Enhanced shooting effect for rapid fire - now red
+        for (let i = 0; i < 12; i++) {
+          let angle = random(-PI/3, PI/3);
+          let speed = random(2, 6);
+          let particle = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(3, 7),
+            alpha: 255,
+            life: 8,
+            isRed: true // Flag for red particles
+          };
+          shootEffects.push(particle);
+        }
+      } else {
+        // Normal single projectile - now red
+        console.log("Mobile Shoot: Firing Normal Shot");
+        projectiles.push({
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: 12,
+          vy: 0,
+          isRed: true // Flag for red projectiles
+        });
+        
+        // Normal shooting effect - now red
+        let shootEffect = {
+          x: player.x + 32,
+          y: player.y - 16,
+          size: 20,
+          alpha: 255,
+          life: 15,
+          isRed: true // Flag for red effect
+        };
+        shootEffects.push(shootEffect);
+        
+        // Add additional particles - now red
+        for (let i = 0; i < 5; i++) {
+          let angle = random(-PI/4, PI/4);
+          let speed = random(2, 4);
+          let particle = {
+            x: player.x + 32,
+            y: player.y - 16,
+            vx: cos(angle) * speed,
+            vy: sin(angle) * speed,
+            size: random(4, 8),
+            alpha: 255,
+            life: 10,
+            isRed: true // Flag for red particles
+          };
+          shootEffects.push(particle);
+        }
       }
-    }
+    // --- End Replicated Logic ---
   };
   
   window.mobileJump = function() {
