@@ -343,11 +343,60 @@
         
         /* Modify button position in landscape mode */
         @media (orientation: landscape) {
+            /* Adjust start button for landscape */
             #mobile-start-button {
-                top: 50%;
+                top: 50%; /* Centered vertically */
                 height: 80px;
                 line-height: 80px;
                 font-size: 24px;
+                width: 220px; /* Slightly narrower */
+            }
+
+            /* Adjust restart button for landscape */
+            #restartButton {
+                 top: 50%; /* Centered vertically */
+                 height: 80px;
+                 line-height: 80px;
+                 font-size: 24px;
+                 width: 220px; /* Slightly narrower */
+            }
+
+            /* Adjust gameplay controls for landscape */
+            .control-area {
+                bottom: 10px; /* Closer to the bottom */
+                width: 100px; /* Make buttons smaller */
+                height: 100px;
+            }
+            #leftControl {
+                left: 10px; /* Move slightly inwards */
+            }
+            #leftControl::after {
+                font-size: 18px; /* Smaller text */
+            }
+            #rightControl {
+                right: 10px; /* Move slightly inwards */
+            }
+             #rightControl::after {
+                font-size: 18px; /* Smaller text */
+            }
+
+            /* Adjust leaderboard form for landscape */
+            #leaderboardForm {
+                 /* Keep centered, maybe slightly smaller width */
+                 max-width: 280px;
+            }
+
+            /* Adjust submit score button for landscape */
+            #submitLeaderboardBtn {
+                 width: 240px;
+                 height: 80px;
+                 line-height: 80px;
+                 font-size: 20px;
+                 top: 50%; /* Center it vertically */
+            }
+            @keyframes pulseLarge {
+                 from { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 30px rgba(255, 100, 100, 0.9); }
+                 to { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 50px rgba(255, 150, 150, 0.95); }
             }
         }
         
