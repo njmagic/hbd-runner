@@ -194,7 +194,7 @@ function setup() {
     const mobileControlsDiv = document.getElementById('mobileControls');
     if (mobileControlsDiv) {
         mobileControlsDiv.style.display = 'block'; 
-        controlsVisible = true;
+    controlsVisible = true;
     } else {
         console.error("#mobileControls container not found");
     }
@@ -3318,7 +3318,7 @@ function touchStarted(event) { // Added event parameter
       const cancelRect = cancelButton.getBoundingClientRect();
       
       let handled = false;
-
+      
       // Check if touch is on submit button
       if (touchX >= submitRect.left && touchX <= submitRect.right &&
           touchY >= submitRect.top && touchY <= submitRect.bottom) {
@@ -3341,7 +3341,7 @@ function touchStarted(event) { // Added event parameter
       // If we handled a button tap, prevent further default actions
       if (handled) {
           // We already prevented default in the button listeners
-          return false; 
+        return false;
       }
     }
   }
@@ -4362,7 +4362,7 @@ function drawGameOverScreen() {
   // Draw leaderboard prompt as a button (more room now)
   // Show the button regardless of submission status, but change text if already submitted
       push();
-  // Draw button background with subtle noir styling
+      // Draw button background with subtle noir styling
   let buttonWidth = 300;
   let buttonHeight = 45;
   
@@ -4386,10 +4386,10 @@ function drawGameOverScreen() {
   noStroke();
   textSize(16); // Further reduced from 18 to fit comfortably
   
-  if (!leaderboardScoreSubmitted) {
+              if (!leaderboardScoreSubmitted) {
     fill(220, 200, 200); // Lighter color on dark red background
     text("SUBMIT SCORE TO LEADERBOARD", width/2, buttonY + 6);
-      } else {
+                      } else {
     // If already submitted, show different text
     fill(180, 160, 160); // Slightly dimmer text for the "already done" state
     text("VIEW LEADERBOARD", width/2, buttonY + 6);
@@ -4398,7 +4398,7 @@ function drawGameOverScreen() {
   // Remove the following detection section since we're handling clicks in mousePressed()
   // We're not using mouseIsPressed here anymore
      // pop();
-  
+
   // Restart prompt with subtle styling instead of flashing
   // textSize(24);
   // fill(180, 180, 200, 180 + sin(frameCount * 0.04) * 30);
@@ -4841,6 +4841,17 @@ function checkProjectileEnemyCollision(projectile, enemy) {
       height: projectile.height
     };
     
+    // For flying enemies with beams, use a slightly larger vertical hitbox for the enemy
+    if (enemy.type === 'flying') {
+        let expandedFlyingHitbox = {
+            x: enemyHitbox.x,
+            y: enemyHitbox.y - 4, // Extend hitbox slightly upwards
+            width: enemyHitbox.width,
+            height: enemyHitbox.height + 8 // Extend hitbox slightly downwards
+        };
+         return checkCollision(beamHitbox, expandedFlyingHitbox);
+    }
+    // Use standard hitbox for other enemy types with beams
     return checkCollision(beamHitbox, enemyHitbox);
   } 
   // Special case for ninjas - use a more generous collision detection 
@@ -4860,6 +4871,24 @@ function checkProjectileEnemyCollision(projectile, enemy) {
            projectile.y > expanded.y && 
            projectile.y < expanded.y + expanded.height;
   } 
+  // --- ADDED Special case for flying enemies --- 
+  else if (enemy.type === 'flying') {
+    // Create a larger hitbox specifically for projectiles hitting flying enemies
+    // Standard hitbox: { x: enemy.x, y: enemy.y - 16, width: 32, height: 16 }
+    let projectileTargetHitbox = {
+        x: enemyHitbox.x - 4, // Expand left by 4px
+        y: enemyHitbox.y - 4, // Expand up by 4px
+        width: enemyHitbox.width + 8, // Total width increase 8px (32 -> 40)
+        height: enemyHitbox.height + 8 // Total height increase 8px (16 -> 24)
+    };
+    // Check if the projectile point is within this larger hitbox
+    return projectile.x > projectileTargetHitbox.x && 
+           projectile.x < projectileTargetHitbox.x + projectileTargetHitbox.width &&
+           projectile.y > projectileTargetHitbox.y && 
+           projectile.y < projectileTargetHitbox.y + projectileTargetHitbox.height;
+  }
+  // --- End Special case for flying enemies ---
+  
   // Normal projectile collision detection for other enemies
   else {
     return projectile.x > enemyHitbox.x && 
@@ -5090,7 +5119,7 @@ function setupLeaderboardFormEvents() {
   const submitButton = document.getElementById('submitScore');
   const cancelButton = document.getElementById('cancelSubmit');
   const emailError = document.getElementById('emailError');
-
+  
   if (!leaderboardForm || !playerNameInput || !playerEmailInput || !submitButton || !cancelButton || !emailError) {
       console.error("One or more leaderboard form elements not found!");
       return;
@@ -5174,7 +5203,7 @@ function showLeaderboardForm() {
   form.style.opacity = '1'; // Keep opacity for potential transitions
   form.style.visibility = 'visible';
   // Let CSS handle z-index, positioning, and specific mobile styles
-
+  
   // --- Mobile Button Visibility --- 
   if (isMobileDevice) {
       const restartBtn = document.getElementById('restartButton');
@@ -5613,10 +5642,10 @@ function exposeGameFunctions() {
         // Beam shot - wider projectile that can hit multiple enemies
         console.log("Mobile Shoot: Firing Beam Shot");
         let beam = {
-          x: player.x + 32,
-          y: player.y - 16,
+        x: player.x + 32,
+        y: player.y - 16,
           vx: 16, // Faster than normal shots
-          vy: 0,
+        vy: 0,
           width: 80, // Long beam
           height: 12, // Wider than normal shots
           isBeam: true,
@@ -5651,7 +5680,7 @@ function exposeGameFunctions() {
             vy: i * 0.5, // Slight spread
             isRed: true // Flag for red projectiles
           };
-          projectiles.push(projectile);
+      projectiles.push(projectile);
         }
         
         // Enhanced shooting effect for rapid fire - now red
@@ -5659,25 +5688,25 @@ function exposeGameFunctions() {
           let angle = random(-PI/3, PI/3);
           let speed = random(2, 6);
           let particle = {
-            x: player.x + 32,
-            y: player.y - 16,
-            vx: cos(angle) * speed,
-            vy: sin(angle) * speed,
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
             size: random(3, 7),
-            alpha: 255,
-            life: 8,
+          alpha: 255,
+          life: 8,
             isRed: true // Flag for red particles
           };
           shootEffects.push(particle);
         }
-      } else {
+    } else {
         // Normal single projectile - now red
         console.log("Mobile Shoot: Firing Normal Shot");
         projectiles.push({
-          x: player.x + 32,
-          y: player.y - 16,
-          vx: 12,
-          vy: 0,
+        x: player.x + 32,
+        y: player.y - 16,
+        vx: 12,
+        vy: 0,
           isRed: true // Flag for red projectiles
         });
         
@@ -5693,22 +5722,22 @@ function exposeGameFunctions() {
         shootEffects.push(shootEffect);
         
         // Add additional particles - now red
-        for (let i = 0; i < 5; i++) {
-          let angle = random(-PI/4, PI/4);
+      for (let i = 0; i < 5; i++) {
+        let angle = random(-PI/4, PI/4);
           let speed = random(2, 4);
           let particle = {
-            x: player.x + 32,
-            y: player.y - 16,
-            vx: cos(angle) * speed,
-            vy: sin(angle) * speed,
+          x: player.x + 32,
+          y: player.y - 16,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
             size: random(4, 8),
-            alpha: 255,
+          alpha: 255,
             life: 10,
             isRed: true // Flag for red particles
-          };
+        };
           shootEffects.push(particle);
-        }
       }
+    }
     // --- End Replicated Logic ---
   };
   
