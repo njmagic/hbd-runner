@@ -44,7 +44,7 @@ let groundOffset = 0;
 let backgroundOffset = 0;
 let midgroundOffset = 0;
 let foregroundOffset = 0;
-let scrollSpeed = 5;
+let scrollSpeed = 4; // DECREASED from 5
 let gravity = 0.5;
 let jumpStrength = -12; // Increased from -10 to make jumps higher
 let score = 0;
@@ -54,7 +54,7 @@ let shootEffects = []; // Array to hold shooting visual effects
 let slowMotion = false;
 let slowMotionTimer = 0;
 let slowMotionDuration = 30; // 0.5 seconds at 60fps
-let normalScrollSpeed = 5;
+let normalScrollSpeed = 4; // DECREASED from 5
 // Screen effects
 let screenFlash = 0;
 let groundY = 380; // Adjusted ground level to be closer to bottom of screen
